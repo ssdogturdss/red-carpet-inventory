@@ -1,8 +1,8 @@
-# Workspace
+# Chemical Inventory App
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+A mobile-first chemical inventory management system for 11 stores tracking 23 chemicals on a weekly basis. Store employees fill out counts manually or scan paper sheets with AI-powered OCR. Administrators receive automatic alerts when chemical usage is abnormal.
 
 ## Stack
 
@@ -15,6 +15,36 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
+- **Mobile**: Expo (React Native) with expo-router
+- **AI**: OpenAI GPT-5.4 vision for photo OCR (Replit AI Integrations)
+
+## Artifacts
+
+- **`artifacts/api-server`** — Express API server at `/api`
+- **`artifacts/mobile`** — Expo mobile app at `/`
+- **`artifacts/mockup-sandbox`** — UI sandbox at `/__mockup`
+
+## Key Features
+
+- **Dashboard** — Alert summary by store, quick actions, recent submissions
+- **Count Entry** — Fill out all 23 chemical quantities for a store/week manually
+- **Scan Sheet** — Take a photo of a paper count sheet; AI reads the quantities automatically
+- **Alert Center** — Admin view of all excessive usage alerts, filter by store, acknowledge alerts
+
+## Data Model
+
+- **Stores** — 11 stores seeded (Store 1 Downtown through Store 11 University)
+- **Chemicals** — 23 chemicals seeded (Chlorine, pH Plus, Algaecide, etc.) each with a threshold %
+- **InventoryCounts** — Weekly counts per store with all 23 entries
+- **Alerts** — Auto-generated when count change exceeds threshold %, with severity (warning/critical)
+
+## Alert Logic
+
+When a count is submitted, it compares to the previous week for the same store:
+- % change calculated per chemical
+- If `|change| >= thresholdPercent` → **warning** alert
+- If `|change| >= thresholdPercent * 2` → **critical** alert
+- `direction: "over"` = too much chemical used, `"under"` = too little
 
 ## Key Commands
 
@@ -22,6 +52,11 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/api-server run dev` — run API server locally
+
+## AI Integration
+
+Uses Replit AI Integrations (OpenAI) — no user API key needed. Charges billed to Replit credits.
+- `AI_INTEGRATIONS_OPENAI_BASE_URL` and `AI_INTEGRATIONS_OPENAI_API_KEY` provisioned automatically
+- Model: `gpt-5.4` with vision for image analysis
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.

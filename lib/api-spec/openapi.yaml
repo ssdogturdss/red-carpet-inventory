@@ -3,20 +3,27 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Chemical Inventory API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: stores
+    description: Store operations
+  - name: chemicals
+    description: Chemical operations
+  - name: inventory
+    description: Inventory count operations
+  - name: alerts
+    description: Alert operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +31,187 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /stores:
+    get:
+      operationId: getStores
+      tags: [stores]
+      summary: List all stores
+      responses:
+        "200":
+          description: List of stores
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Store"
+
+  /chemicals:
+    get:
+      operationId: getChemicals
+      tags: [chemicals]
+      summary: List all chemicals
+      responses:
+        "200":
+          description: List of chemicals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Chemical"
+
+  /inventory:
+    get:
+      operationId: getInventoryCounts
+      tags: [inventory]
+      summary: List inventory counts
+      parameters:
+        - name: storeId
+          in: query
+          schema:
+            type: integer
+        - name: weekOf
+          in: query
+          schema:
+            type: string
+            description: ISO date string for the week (YYYY-MM-DD, Monday)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of inventory counts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryCount"
+    post:
+      operationId: submitInventoryCount
+      tags: [inventory]
+      summary: Submit a weekly inventory count
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitInventoryCountBody"
+      responses:
+        "201":
+          description: Count submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryCount"
+
+  /inventory/{countId}:
+    get:
+      operationId: getInventoryCount
+      tags: [inventory]
+      summary: Get a single inventory count
+      parameters:
+        - name: countId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Inventory count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryCount"
+
+  /inventory/scan:
+    post:
+      operationId: scanInventorySheet
+      tags: [inventory]
+      summary: Upload photo of paper count sheet and extract counts via AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanInventorySheetBody"
+      responses:
+        "200":
+          description: Extracted inventory counts from the photo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanInventorySheetResult"
+
+  /alerts:
+    get:
+      operationId: getAlerts
+      tags: [alerts]
+      summary: List alerts
+      parameters:
+        - name: storeId
+          in: query
+          schema:
+            type: integer
+        - name: acknowledged
+          in: query
+          schema:
+            type: boolean
+        - name: weekOf
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        "200":
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Alert"
+
+  /alerts/summary:
+    get:
+      operationId: getAlertsSummary
+      tags: [alerts]
+      summary: Get alert counts grouped by store and severity
+      responses:
+        "200":
+          description: Alert summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertsSummary"
+
+  /alerts/{alertId}/acknowledge:
+    patch:
+      operationId: acknowledgeAlert
+      tags: [alerts]
+      summary: Acknowledge an alert
+      parameters:
+        - name: alertId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Alert acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Alert"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +222,245 @@ components:
       required:
         - status
 
+    Store:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        storeNumber:
+          type: string
+      required:
+        - id
+        - name
+        - storeNumber
+
+    Chemical:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        unit:
+          type: string
+        thresholdPercent:
+          type: number
+          description: Percent change that triggers an alert (e.g. 30 = 30%)
+      required:
+        - id
+        - name
+        - unit
+        - thresholdPercent
+
+    InventoryEntry:
+      type: object
+      properties:
+        chemicalId:
+          type: integer
+        chemicalName:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+      required:
+        - chemicalId
+        - chemicalName
+        - quantity
+        - unit
+
+    InventoryCount:
+      type: object
+      properties:
+        id:
+          type: integer
+        storeId:
+          type: integer
+        storeName:
+          type: string
+        weekOf:
+          type: string
+          description: ISO date string for the Monday of the week
+        submittedBy:
+          type: string
+        submittedAt:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/InventoryEntry"
+      required:
+        - id
+        - storeId
+        - storeName
+        - weekOf
+        - submittedBy
+        - submittedAt
+        - entries
+
+    SubmitInventoryCountBody:
+      type: object
+      properties:
+        storeId:
+          type: integer
+        weekOf:
+          type: string
+        submittedBy:
+          type: string
+        entries:
+          type: array
+          items:
+            type: object
+            properties:
+              chemicalId:
+                type: integer
+              quantity:
+                type: number
+            required:
+              - chemicalId
+              - quantity
+      required:
+        - storeId
+        - weekOf
+        - submittedBy
+        - entries
+
+    ScanInventorySheetBody:
+      type: object
+      properties:
+        imageBase64:
+          type: string
+          description: Base64-encoded image of the paper count sheet
+        chemicals:
+          type: array
+          description: List of chemicals to look for in the sheet
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              unit:
+                type: string
+            required:
+              - id
+              - name
+              - unit
+      required:
+        - imageBase64
+        - chemicals
+
+    ScanInventorySheetResult:
+      type: object
+      properties:
+        entries:
+          type: array
+          items:
+            type: object
+            properties:
+              chemicalId:
+                type: integer
+              chemicalName:
+                type: string
+              quantity:
+                type: number
+              confidence:
+                type: string
+                enum: [high, medium, low]
+            required:
+              - chemicalId
+              - chemicalName
+              - quantity
+              - confidence
+        rawText:
+          type: string
+          description: Raw text extracted from the image
+      required:
+        - entries
+        - rawText
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: integer
+        storeId:
+          type: integer
+        storeName:
+          type: string
+        chemicalId:
+          type: integer
+        chemicalName:
+          type: string
+        weekOf:
+          type: string
+        previousQuantity:
+          type: number
+        currentQuantity:
+          type: number
+        percentChange:
+          type: number
+        direction:
+          type: string
+          enum: [over, under]
+          description: over = too much chemical used, under = too little used
+        severity:
+          type: string
+          enum: [warning, critical]
+        acknowledged:
+          type: boolean
+        acknowledgedAt:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - storeId
+        - storeName
+        - chemicalId
+        - chemicalName
+        - weekOf
+        - previousQuantity
+        - currentQuantity
+        - percentChange
+        - direction
+        - severity
+        - acknowledged
+        - createdAt
+
+    AlertsSummary:
+      type: object
+      properties:
+        totalUnacknowledged:
+          type: integer
+        criticalCount:
+          type: integer
+        warningCount:
+          type: integer
+        byStore:
+          type: array
+          items:
+            type: object
+            properties:
+              storeId:
+                type: integer
+              storeName:
+                type: string
+              unacknowledgedCount:
+                type: integer
+              criticalCount:
+                type: integer
+            required:
+              - storeId
+              - storeName
+              - unacknowledgedCount
+              - criticalCount
+      required:
+        - totalUnacknowledged
+        - criticalCount
+        - warningCount
+        - byStore
