@@ -3,17 +3,17 @@ import { storesTable, chemicalsTable } from "@workspace/db";
 import { logger } from "../lib/logger";
 
 const STORES = [
-  { name: "Store 1 - Downtown", storeNumber: "001" },
-  { name: "Store 2 - Northside", storeNumber: "002" },
-  { name: "Store 3 - Eastview", storeNumber: "003" },
-  { name: "Store 4 - Westgate", storeNumber: "004" },
-  { name: "Store 5 - Southpark", storeNumber: "005" },
-  { name: "Store 6 - Lakewood", storeNumber: "006" },
-  { name: "Store 7 - Riverside", storeNumber: "007" },
-  { name: "Store 8 - Hillcrest", storeNumber: "008" },
-  { name: "Store 9 - Midtown", storeNumber: "009" },
-  { name: "Store 10 - Airport", storeNumber: "010" },
-  { name: "Store 11 - University", storeNumber: "011" },
+  { name: "FIG", storeNumber: "001" },
+  { name: "PBL", storeNumber: "002" },
+  { name: "FBL", storeNumber: "003" },
+  { name: "WIN", storeNumber: "004" },
+  { name: "FWL", storeNumber: "005" },
+  { name: "202", storeNumber: "006" },
+  { name: "KCC", storeNumber: "007" },
+  { name: "TUL", storeNumber: "008" },
+  { name: "CLO", storeNumber: "009" },
+  { name: "RED", storeNumber: "010" },
+  { name: "FRE", storeNumber: "011" },
 ];
 
 const CHEMICALS = [
