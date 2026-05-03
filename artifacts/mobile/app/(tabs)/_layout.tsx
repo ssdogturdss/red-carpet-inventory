@@ -24,6 +24,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "camera", selected: "camera.fill" }} />
         <Label>Scan</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="history">
+        <Icon sf={{ default: "clock.arrow.circlepath", selected: "clock.arrow.circlepath" }} />
+        <Label>History</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="admin">
         <Icon sf={{ default: "exclamationmark.triangle", selected: "exclamationmark.triangle.fill" }} />
         <Label>Alerts</Label>
@@ -100,6 +104,18 @@ function ClassicTabLayout() {
               <SymbolView name="camera.fill" tintColor={color} size={22} />
             ) : (
               <Feather name="camera" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: "History",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="clock.arrow.circlepath" tintColor={color} size={22} />
+            ) : (
+              <Feather name="clock" size={22} color={color} />
             ),
         }}
       />
