@@ -17,9 +17,12 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AdminAuthBody,
+  AdminAuthResult,
   Alert,
   AlertsSummary,
   Chemical,
+  DeleteResult,
   GetAlertsParams,
   GetInventoryCountsParams,
   HealthStatus,
@@ -28,6 +31,9 @@ import type {
   ScanInventorySheetResult,
   Store,
   SubmitInventoryCountBody,
+  UpdateChemicalBody,
+  UpdateInventoryCountBody,
+  UpdateStoreBody,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -115,6 +121,92 @@ export function useHealthCheck<
 }
 
 /**
+ * @summary Validate admin PIN
+ */
+export const getAdminAuthUrl = () => {
+  return `/api/admin/auth`;
+};
+
+export const adminAuth = async (
+  adminAuthBody: AdminAuthBody,
+  options?: RequestInit,
+): Promise<AdminAuthResult> => {
+  return customFetch<AdminAuthResult>(getAdminAuthUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(adminAuthBody),
+  });
+};
+
+export const getAdminAuthMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminAuth>>,
+    TError,
+    { data: BodyType<AdminAuthBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminAuth>>,
+  TError,
+  { data: BodyType<AdminAuthBody> },
+  TContext
+> => {
+  const mutationKey = ["adminAuth"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminAuth>>,
+    { data: BodyType<AdminAuthBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return adminAuth(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminAuthMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminAuth>>
+>;
+export type AdminAuthMutationBody = BodyType<AdminAuthBody>;
+export type AdminAuthMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Validate admin PIN
+ */
+export const useAdminAuth = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminAuth>>,
+    TError,
+    { data: BodyType<AdminAuthBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminAuth>>,
+  TError,
+  { data: BodyType<AdminAuthBody> },
+  TContext
+> => {
+  return useMutation(getAdminAuthMutationOptions(options));
+};
+
+/**
  * @summary List all stores
  */
 export const getGetStoresUrl = () => {
@@ -178,6 +270,177 @@ export function useGetStores<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Update a store
+ */
+export const getUpdateStoreUrl = (storeId: number) => {
+  return `/api/stores/${storeId}`;
+};
+
+export const updateStore = async (
+  storeId: number,
+  updateStoreBody: UpdateStoreBody,
+  options?: RequestInit,
+): Promise<Store> => {
+  return customFetch<Store>(getUpdateStoreUrl(storeId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateStoreBody),
+  });
+};
+
+export const getUpdateStoreMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateStore>>,
+    TError,
+    { storeId: number; data: BodyType<UpdateStoreBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateStore>>,
+  TError,
+  { storeId: number; data: BodyType<UpdateStoreBody> },
+  TContext
+> => {
+  const mutationKey = ["updateStore"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateStore>>,
+    { storeId: number; data: BodyType<UpdateStoreBody> }
+  > = (props) => {
+    const { storeId, data } = props ?? {};
+
+    return updateStore(storeId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateStoreMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateStore>>
+>;
+export type UpdateStoreMutationBody = BodyType<UpdateStoreBody>;
+export type UpdateStoreMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a store
+ */
+export const useUpdateStore = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateStore>>,
+    TError,
+    { storeId: number; data: BodyType<UpdateStoreBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateStore>>,
+  TError,
+  { storeId: number; data: BodyType<UpdateStoreBody> },
+  TContext
+> => {
+  return useMutation(getUpdateStoreMutationOptions(options));
+};
+
+/**
+ * @summary Delete a store and all its data
+ */
+export const getDeleteStoreUrl = (storeId: number) => {
+  return `/api/stores/${storeId}`;
+};
+
+export const deleteStore = async (
+  storeId: number,
+  options?: RequestInit,
+): Promise<DeleteResult> => {
+  return customFetch<DeleteResult>(getDeleteStoreUrl(storeId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteStoreMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteStore>>,
+    TError,
+    { storeId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteStore>>,
+  TError,
+  { storeId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteStore"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteStore>>,
+    { storeId: number }
+  > = (props) => {
+    const { storeId } = props ?? {};
+
+    return deleteStore(storeId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteStoreMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteStore>>
+>;
+
+export type DeleteStoreMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a store and all its data
+ */
+export const useDeleteStore = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteStore>>,
+    TError,
+    { storeId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteStore>>,
+  TError,
+  { storeId: number },
+  TContext
+> => {
+  return useMutation(getDeleteStoreMutationOptions(options));
+};
 
 /**
  * @summary List all chemicals
@@ -253,6 +516,177 @@ export function useGetChemicals<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Update a chemical/product
+ */
+export const getUpdateChemicalUrl = (chemicalId: number) => {
+  return `/api/chemicals/${chemicalId}`;
+};
+
+export const updateChemical = async (
+  chemicalId: number,
+  updateChemicalBody: UpdateChemicalBody,
+  options?: RequestInit,
+): Promise<Chemical> => {
+  return customFetch<Chemical>(getUpdateChemicalUrl(chemicalId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateChemicalBody),
+  });
+};
+
+export const getUpdateChemicalMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateChemical>>,
+    TError,
+    { chemicalId: number; data: BodyType<UpdateChemicalBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateChemical>>,
+  TError,
+  { chemicalId: number; data: BodyType<UpdateChemicalBody> },
+  TContext
+> => {
+  const mutationKey = ["updateChemical"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateChemical>>,
+    { chemicalId: number; data: BodyType<UpdateChemicalBody> }
+  > = (props) => {
+    const { chemicalId, data } = props ?? {};
+
+    return updateChemical(chemicalId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateChemicalMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateChemical>>
+>;
+export type UpdateChemicalMutationBody = BodyType<UpdateChemicalBody>;
+export type UpdateChemicalMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a chemical/product
+ */
+export const useUpdateChemical = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateChemical>>,
+    TError,
+    { chemicalId: number; data: BodyType<UpdateChemicalBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateChemical>>,
+  TError,
+  { chemicalId: number; data: BodyType<UpdateChemicalBody> },
+  TContext
+> => {
+  return useMutation(getUpdateChemicalMutationOptions(options));
+};
+
+/**
+ * @summary Delete a chemical/product
+ */
+export const getDeleteChemicalUrl = (chemicalId: number) => {
+  return `/api/chemicals/${chemicalId}`;
+};
+
+export const deleteChemical = async (
+  chemicalId: number,
+  options?: RequestInit,
+): Promise<DeleteResult> => {
+  return customFetch<DeleteResult>(getDeleteChemicalUrl(chemicalId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteChemicalMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteChemical>>,
+    TError,
+    { chemicalId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteChemical>>,
+  TError,
+  { chemicalId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteChemical"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteChemical>>,
+    { chemicalId: number }
+  > = (props) => {
+    const { chemicalId } = props ?? {};
+
+    return deleteChemical(chemicalId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteChemicalMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteChemical>>
+>;
+
+export type DeleteChemicalMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a chemical/product
+ */
+export const useDeleteChemical = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteChemical>>,
+    TError,
+    { chemicalId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteChemical>>,
+  TError,
+  { chemicalId: number },
+  TContext
+> => {
+  return useMutation(getDeleteChemicalMutationOptions(options));
+};
 
 /**
  * @summary List inventory counts
@@ -527,6 +961,178 @@ export function useGetInventoryCount<
 }
 
 /**
+ * @summary Update notes or submittedBy on a count
+ */
+export const getUpdateInventoryCountUrl = (countId: number) => {
+  return `/api/inventory/${countId}`;
+};
+
+export const updateInventoryCount = async (
+  countId: number,
+  updateInventoryCountBody: UpdateInventoryCountBody,
+  options?: RequestInit,
+): Promise<DeleteResult> => {
+  return customFetch<DeleteResult>(getUpdateInventoryCountUrl(countId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateInventoryCountBody),
+  });
+};
+
+export const getUpdateInventoryCountMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateInventoryCount>>,
+    TError,
+    { countId: number; data: BodyType<UpdateInventoryCountBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateInventoryCount>>,
+  TError,
+  { countId: number; data: BodyType<UpdateInventoryCountBody> },
+  TContext
+> => {
+  const mutationKey = ["updateInventoryCount"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateInventoryCount>>,
+    { countId: number; data: BodyType<UpdateInventoryCountBody> }
+  > = (props) => {
+    const { countId, data } = props ?? {};
+
+    return updateInventoryCount(countId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateInventoryCountMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateInventoryCount>>
+>;
+export type UpdateInventoryCountMutationBody =
+  BodyType<UpdateInventoryCountBody>;
+export type UpdateInventoryCountMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update notes or submittedBy on a count
+ */
+export const useUpdateInventoryCount = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateInventoryCount>>,
+    TError,
+    { countId: number; data: BodyType<UpdateInventoryCountBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateInventoryCount>>,
+  TError,
+  { countId: number; data: BodyType<UpdateInventoryCountBody> },
+  TContext
+> => {
+  return useMutation(getUpdateInventoryCountMutationOptions(options));
+};
+
+/**
+ * @summary Delete an inventory count and its entries
+ */
+export const getDeleteInventoryCountUrl = (countId: number) => {
+  return `/api/inventory/${countId}`;
+};
+
+export const deleteInventoryCount = async (
+  countId: number,
+  options?: RequestInit,
+): Promise<DeleteResult> => {
+  return customFetch<DeleteResult>(getDeleteInventoryCountUrl(countId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteInventoryCountMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteInventoryCount>>,
+    TError,
+    { countId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteInventoryCount>>,
+  TError,
+  { countId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteInventoryCount"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteInventoryCount>>,
+    { countId: number }
+  > = (props) => {
+    const { countId } = props ?? {};
+
+    return deleteInventoryCount(countId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteInventoryCountMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteInventoryCount>>
+>;
+
+export type DeleteInventoryCountMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete an inventory count and its entries
+ */
+export const useDeleteInventoryCount = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteInventoryCount>>,
+    TError,
+    { countId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteInventoryCount>>,
+  TError,
+  { countId: number },
+  TContext
+> => {
+  return useMutation(getDeleteInventoryCountMutationOptions(options));
+};
+
+/**
  * @summary Upload photo of paper count sheet and extract counts via AI
  */
 export const getScanInventorySheetUrl = () => {
@@ -780,6 +1386,90 @@ export function useGetAlertsSummary<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Delete an alert
+ */
+export const getDeleteAlertUrl = (alertId: number) => {
+  return `/api/alerts/${alertId}`;
+};
+
+export const deleteAlert = async (
+  alertId: number,
+  options?: RequestInit,
+): Promise<DeleteResult> => {
+  return customFetch<DeleteResult>(getDeleteAlertUrl(alertId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAlertMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAlert>>,
+    TError,
+    { alertId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAlert>>,
+  TError,
+  { alertId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteAlert"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAlert>>,
+    { alertId: number }
+  > = (props) => {
+    const { alertId } = props ?? {};
+
+    return deleteAlert(alertId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAlertMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAlert>>
+>;
+
+export type DeleteAlertMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete an alert
+ */
+export const useDeleteAlert = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAlert>>,
+    TError,
+    { alertId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAlert>>,
+  TError,
+  { alertId: number },
+  TContext
+> => {
+  return useMutation(getDeleteAlertMutationOptions(options));
+};
 
 /**
  * @summary Acknowledge an alert

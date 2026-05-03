@@ -29,8 +29,8 @@ function NativeTabLayout() {
         <Label>History</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="admin">
-        <Icon sf={{ default: "exclamationmark.triangle", selected: "exclamationmark.triangle.fill" }} />
-        <Label>Alerts</Label>
+        <Icon sf={{ default: "shield.lefthalf.filled", selected: "shield.lefthalf.filled" }} />
+        <Label>Admin</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -122,12 +122,12 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="admin"
         options={{
-          title: "Alerts",
+          title: "Admin",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="exclamationmark.triangle.fill" tintColor={color} size={22} />
+              <SymbolView name="shield.lefthalf.filled" tintColor={color} size={22} />
             ) : (
-              <Feather name="alert-triangle" size={22} color={color} />
+              <Feather name="shield" size={22} color={color} />
             ),
         }}
       />

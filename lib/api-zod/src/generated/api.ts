@@ -15,6 +15,17 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
+ * @summary Validate admin PIN
+ */
+export const AdminAuthBody = zod.object({
+  pin: zod.string(),
+});
+
+export const AdminAuthResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
  * @summary List all stores
  */
 export const GetStoresResponseItem = zod.object({
@@ -23,6 +34,36 @@ export const GetStoresResponseItem = zod.object({
   storeNumber: zod.string(),
 });
 export const GetStoresResponse = zod.array(GetStoresResponseItem);
+
+/**
+ * @summary Update a store
+ */
+export const UpdateStoreParams = zod.object({
+  storeId: zod.coerce.number(),
+});
+
+export const UpdateStoreBody = zod.object({
+  name: zod.string().optional(),
+  storeNumber: zod.string().optional(),
+});
+
+export const UpdateStoreResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  storeNumber: zod.string(),
+});
+
+/**
+ * @summary Delete a store and all its data
+ */
+export const DeleteStoreParams = zod.object({
+  storeId: zod.coerce.number(),
+});
+
+export const DeleteStoreResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
+});
 
 /**
  * @summary List all chemicals
@@ -36,6 +77,40 @@ export const GetChemicalsResponseItem = zod.object({
     .describe("Percent change that triggers an alert (e.g. 30 = 30%)"),
 });
 export const GetChemicalsResponse = zod.array(GetChemicalsResponseItem);
+
+/**
+ * @summary Update a chemical/product
+ */
+export const UpdateChemicalParams = zod.object({
+  chemicalId: zod.coerce.number(),
+});
+
+export const UpdateChemicalBody = zod.object({
+  name: zod.string().optional(),
+  unit: zod.string().optional(),
+  thresholdPercent: zod.number().optional(),
+});
+
+export const UpdateChemicalResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  unit: zod.string(),
+  thresholdPercent: zod
+    .number()
+    .describe("Percent change that triggers an alert (e.g. 30 = 30%)"),
+});
+
+/**
+ * @summary Delete a chemical/product
+ */
+export const DeleteChemicalParams = zod.object({
+  chemicalId: zod.coerce.number(),
+});
+
+export const DeleteChemicalResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
+});
 
 /**
  * @summary List inventory counts
@@ -108,6 +183,35 @@ export const GetInventoryCountResponse = zod.object({
       unit: zod.string(),
     }),
   ),
+});
+
+/**
+ * @summary Update notes or submittedBy on a count
+ */
+export const UpdateInventoryCountParams = zod.object({
+  countId: zod.coerce.number(),
+});
+
+export const UpdateInventoryCountBody = zod.object({
+  submittedBy: zod.string().optional(),
+  notes: zod.string().nullish(),
+});
+
+export const UpdateInventoryCountResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
+});
+
+/**
+ * @summary Delete an inventory count and its entries
+ */
+export const DeleteInventoryCountParams = zod.object({
+  countId: zod.coerce.number(),
+});
+
+export const DeleteInventoryCountResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
 });
 
 /**
@@ -187,6 +291,18 @@ export const GetAlertsSummaryResponse = zod.object({
       criticalCount: zod.number(),
     }),
   ),
+});
+
+/**
+ * @summary Delete an alert
+ */
+export const DeleteAlertParams = zod.object({
+  alertId: zod.coerce.number(),
+});
+
+export const DeleteAlertResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
 });
 
 /**

@@ -101,6 +101,35 @@ router.get("/inventory/:countId", async (req, res) => {
   res.json({ ...count, submittedAt: count.submittedAt.toISOString(), entries });
 });
 
+router.patch("/inventory/:countId", async (req, res) => {
+  const countId = Number(req.params["countId"]);
+  const { notes, submittedBy } = req.body as { notes?: string | null; submittedBy?: string };
+
+  const updates: Partial<typeof inventoryCountsTable.$inferInsert> = {};
+  if (notes !== undefined) updates.notes = notes;
+  if (submittedBy !== undefined) updates.submittedBy = submittedBy;
+
+  const [updated] = await db
+    .update(inventoryCountsTable)
+    .set(updates)
+    .where(eq(inventoryCountsTable.id, countId))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "Count not found" });
+    return;
+  }
+
+  res.json({ success: true, id: countId });
+});
+
+router.delete("/inventory/:countId", async (req, res) => {
+  const countId = Number(req.params["countId"]);
+  await db.delete(inventoryEntriesTable).where(eq(inventoryEntriesTable.countId, countId));
+  await db.delete(inventoryCountsTable).where(eq(inventoryCountsTable.id, countId));
+  res.json({ success: true, id: countId });
+});
+
 router.post("/inventory", async (req, res) => {
   const parseResult = SubmitInventoryCountBody.safeParse(req.body);
   if (!parseResult.success) {

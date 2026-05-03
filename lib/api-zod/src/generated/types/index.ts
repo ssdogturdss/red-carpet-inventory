@@ -6,12 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./adminAuthBody";
+export * from "./adminAuthResult";
 export * from "./alert";
 export * from "./alertDirection";
 export * from "./alertSeverity";
 export * from "./alertsSummary";
 export * from "./alertsSummaryByStoreItem";
 export * from "./chemical";
+export * from "./deleteResult";
 export * from "./getAlertsParams";
 export * from "./getInventoryCountsParams";
 export * from "./healthStatus";
@@ -25,3 +28,6 @@ export * from "./scanInventorySheetResultEntriesItemConfidence";
 export * from "./store";
 export * from "./submitInventoryCountBody";
 export * from "./submitInventoryCountBodyEntriesItem";
+export * from "./updateChemicalBody";
+export * from "./updateInventoryCountBody";
+export * from "./updateStoreBody";

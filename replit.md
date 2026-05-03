@@ -29,7 +29,16 @@ A mobile-first chemical inventory management system for 11 stores tracking 23 ch
 - **Dashboard** — Alert summary by store, quick actions, recent submissions
 - **Count Entry** — Fill out all 23 chemical quantities for a store/week manually
 - **Scan Sheet** — Take a photo of a paper count sheet; AI reads the quantities automatically
-- **Alert Center** — Admin view of all excessive usage alerts, filter by store, acknowledge alerts
+- **History** — Browse all past weekly submissions by store
+- **Admin Panel** (PIN-gated) — Full CRUD dashboard for all records:
+  - **Alerts tab** — View, acknowledge, and delete alerts; filter by store
+  - **Stores tab** — Edit store name/number, delete store (cascades to all counts + alerts)
+  - **Products tab** — Edit product name, unit, and alert threshold %; delete products
+  - **Counts tab** — View and delete any past submission
+
+## Admin PIN
+
+Default PIN is `1234`. Override by setting the `ADMIN_PIN` environment variable/secret on the server.
 
 ## Data Model
 

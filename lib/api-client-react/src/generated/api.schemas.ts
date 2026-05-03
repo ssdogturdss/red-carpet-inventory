@@ -5,6 +5,35 @@
  * Chemical Inventory API
  * OpenAPI spec version: 0.1.0
  */
+export interface AdminAuthBody {
+  pin: string;
+}
+
+export interface AdminAuthResult {
+  success: boolean;
+}
+
+export interface DeleteResult {
+  success: boolean;
+  id: number;
+}
+
+export interface UpdateStoreBody {
+  name?: string;
+  storeNumber?: string;
+}
+
+export interface UpdateChemicalBody {
+  name?: string;
+  unit?: string;
+  thresholdPercent?: number;
+}
+
+export interface UpdateInventoryCountBody {
+  submittedBy?: string;
+  notes?: string | null;
+}
+
 export interface HealthStatus {
   status: string;
 }

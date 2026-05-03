@@ -88,6 +88,12 @@ router.get("/alerts/summary", async (_req, res) => {
   });
 });
 
+router.delete("/alerts/:alertId", async (req, res) => {
+  const alertId = Number(req.params["alertId"]);
+  await db.delete(alertsTable).where(eq(alertsTable.id, alertId));
+  res.json({ success: true, id: alertId });
+});
+
 router.patch("/alerts/:alertId/acknowledge", async (req, res) => {
   const alertId = Number(req.params["alertId"]);
 

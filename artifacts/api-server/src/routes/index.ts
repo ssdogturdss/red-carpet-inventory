@@ -5,10 +5,12 @@ import chemicalsRouter from "./chemicals";
 import inventoryRouter from "./inventory";
 import scanRouter from "./scan";
 import alertsRouter from "./alerts";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(adminRouter);
 router.use(storesRouter);
 router.use(chemicalsRouter);
 router.use(scanRouter);

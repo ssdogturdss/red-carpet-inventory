@@ -1,406 +1,597 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  RefreshControl,
-  Platform,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  TextInput, Alert, ActivityIndicator, Platform, Modal,
+  Pressable, RefreshControl, KeyboardAvoidingView,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  useGetAlerts,
-  useGetAlertsSummary,
-  useAcknowledgeAlert,
-  useGetStores,
+  useAdminAuth,
+  useGetAlerts, useGetAlertsSummary, useAcknowledgeAlert, useDeleteAlert,
+  useGetStores, useUpdateStore, useDeleteStore,
+  useGetChemicals, useUpdateChemical, useDeleteChemical,
+  useGetInventoryCounts, useDeleteInventoryCount,
 } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
-import { useQueryClient } from "@tanstack/react-query";
 
-function formatWeekOf(weekOf: string): string {
+type Section = "alerts" | "stores" | "products" | "counts";
+
+function formatWeekOf(weekOf: string) {
   const d = new Date(weekOf + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function formatPercent(n: number): string {
-  return `${Math.abs(n).toFixed(1)}%`;
-}
+// ─── PIN Screen ────────────────────────────────────────────────────────────────
+function PinScreen({ onSuccess, colors, insets }: {
+  onSuccess: () => void;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+  insets: { top: number };
+}) {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState(false);
+  const { mutateAsync: authAdmin, isPending } = useAdminAuth();
+  const webTop = Platform.OS === "web" ? 67 : 0;
 
-export default function AdminScreen() {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const queryClient = useQueryClient();
-
-  const [filterStoreId, setFilterStoreId] = useState<number | undefined>();
-  const [filterAcknowledged, setFilterAcknowledged] = useState<boolean>(false);
-  const [showStoreFilter, setShowStoreFilter] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const { data: stores } = useGetStores();
-  const {
-    data: alerts,
-    isLoading,
-    refetch: refetchAlerts,
-  } = useGetAlerts({
-    storeId: filterStoreId,
-    acknowledged: filterAcknowledged,
-    limit: 200,
-  });
-  const { data: summary, refetch: refetchSummary } = useGetAlertsSummary();
-  const { mutateAsync: ackAlert } = useAcknowledgeAlert();
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await Promise.all([refetchAlerts(), refetchSummary()]);
-    setRefreshing(false);
+  const handleDigit = (d: string) => {
+    if (pin.length >= 6) return;
+    const next = pin + d;
+    setPin(next);
+    setError(false);
+    if (next.length >= 4) submit(next);
   };
 
-  const handleAcknowledge = async (alertId: number) => {
-    try {
-      await ackAlert({ alertId });
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      queryClient.invalidateQueries();
-    } catch {
-      // ignore
+  const handleDelete = () => setPin((p) => p.slice(0, -1));
+
+  const submit = async (value: string) => {
+    const result = await authAdmin({ data: { pin: value } });
+    if (result.success) {
+      onSuccess();
+    } else {
+      setError(true);
+      setPin("");
     }
   };
 
-  const selectedStore = stores?.find((s) => s.id === filterStoreId);
+  const s = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.navy },
+    inner: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingTop: insets.top + webTop,
+      paddingHorizontal: 40,
+    },
+    lockIcon: {
+      width: 72, height: 72, borderRadius: 36,
+      backgroundColor: "rgba(255,255,255,0.1)",
+      alignItems: "center", justifyContent: "center", marginBottom: 20,
+    },
+    label: { fontSize: 12, color: colors.tealLight, fontFamily: "Inter_600SemiBold", letterSpacing: 1, textTransform: "uppercase", marginBottom: 6 },
+    title: { fontSize: 26, color: "#fff", fontFamily: "Inter_700Bold", marginBottom: 4 },
+    subtitle: { fontSize: 14, color: "rgba(255,255,255,0.55)", fontFamily: "Inter_400Regular", marginBottom: 40 },
+    dots: { flexDirection: "row", gap: 14, marginBottom: 8 },
+    dot: { width: 16, height: 16, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.2)", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
+    dotFilled: { backgroundColor: colors.teal, borderColor: colors.teal },
+    errorText: { fontSize: 13, color: "#f87171", fontFamily: "Inter_500Medium", marginTop: 8, marginBottom: 16, height: 18 },
+    pad: { width: "100%", maxWidth: 260, marginTop: 16 },
+    padRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 14 },
+    padBtn: {
+      width: 72, height: 72, borderRadius: 36,
+      backgroundColor: "rgba(255,255,255,0.08)",
+      alignItems: "center", justifyContent: "center",
+    },
+    padBtnText: { fontSize: 26, color: "#fff", fontFamily: "Inter_400Regular" },
+    padBtnSub: { fontSize: 10, color: "rgba(255,255,255,0.4)", fontFamily: "Inter_400Regular", letterSpacing: 1 },
+  });
 
-  const webTop = Platform.OS === "web" ? 67 : 0;
-  const webBottom = Platform.OS === "web" ? 34 : 0;
+  const digits = [
+    ["1", ""], ["2", "ABC"], ["3", "DEF"],
+    ["4", "GHI"], ["5", "JKL"], ["6", "MNO"],
+    ["7", "PQRS"], ["8", "TUV"], ["9", "WXYZ"],
+    ["", ""], ["0", "+"], ["⌫", ""],
+  ];
 
-  const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
-    header: {
-      paddingTop: insets.top + 16 + webTop,
-      paddingHorizontal: 20,
-      paddingBottom: 20,
-      backgroundColor: colors.navy,
-    },
-    headerLabel: {
-      fontSize: 12,
-      color: colors.tealLight,
-      fontFamily: "Inter_600SemiBold",
-      letterSpacing: 1,
-      textTransform: "uppercase",
-      marginBottom: 4,
-    },
-    headerTitle: { fontSize: 28, color: "#fff", fontFamily: "Inter_700Bold" },
-    headerSub: { fontSize: 14, color: "rgba(255,255,255,0.6)", fontFamily: "Inter_400Regular", marginTop: 4 },
-    statsBar: {
-      flexDirection: "row",
-      paddingHorizontal: 20,
-      paddingVertical: 14,
-      backgroundColor: colors.navyLight,
-      gap: 20,
-    },
-    statItem: { alignItems: "center" },
-    statVal: { fontSize: 22, fontFamily: "Inter_700Bold", color: "#fff" },
-    statLbl: { fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(255,255,255,0.5)", marginTop: 2 },
-    criticalVal: { color: "#f87171" },
-    warningVal: { color: "#fbbf24" },
-    filtersBar: {
-      flexDirection: "row",
-      paddingHorizontal: 20,
-      paddingVertical: 12,
-      gap: 10,
-      backgroundColor: colors.card,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    filterChip: {
-      paddingHorizontal: 14,
-      paddingVertical: 7,
-      borderRadius: 20,
-      backgroundColor: colors.secondary,
-      borderWidth: 1,
-      borderColor: colors.border,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-    },
-    filterChipActive: {
-      backgroundColor: colors.primary,
-      borderColor: colors.primary,
-    },
-    filterChipText: { fontSize: 13, fontFamily: "Inter_500Medium", color: colors.foreground },
-    filterChipTextActive: { color: "#fff" },
-    storeDropdown: {
-      position: "absolute",
-      top: 44,
-      left: 0,
-      right: 0,
-      backgroundColor: colors.card,
-      borderRadius: colors.radius,
-      borderWidth: 1,
-      borderColor: colors.border,
-      zIndex: 100,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.15,
-      shadowRadius: 8,
-      elevation: 8,
-    },
-    storeDropdownItem: {
-      padding: 14,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    storeDropdownText: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: colors.foreground },
-    scroll: { flex: 1 },
-    scrollContent: { padding: 16, paddingBottom: insets.bottom + 100 + webBottom },
-    alertCard: {
-      backgroundColor: colors.card,
-      borderRadius: colors.radius,
-      padding: 16,
-      marginBottom: 10,
-      borderWidth: 1,
-      borderLeftWidth: 4,
-    },
-    alertCardCritical: { borderColor: "#fecaca", borderLeftColor: colors.critical },
-    alertCardWarning: { borderColor: "#fde68a", borderLeftColor: colors.warning },
-    alertCardAcknowledged: { borderColor: colors.border, borderLeftColor: colors.border, opacity: 0.6 },
-    alertTop: { flexDirection: "row", alignItems: "flex-start", marginBottom: 8 },
-    alertInfo: { flex: 1 },
-    alertChemical: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: colors.foreground },
-    alertStore: { fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 },
-    alertWeek: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 },
-    badgeCritical: {
-      backgroundColor: "#fef2f2",
-      borderRadius: 20,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-    },
-    badgeCriticalText: { color: colors.critical, fontSize: 11, fontFamily: "Inter_700Bold" },
-    badgeWarning: {
-      backgroundColor: "#fffbeb",
-      borderRadius: 20,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-    },
-    badgeWarningText: { color: colors.warning, fontSize: 11, fontFamily: "Inter_700Bold" },
-    alertStats: { flexDirection: "row", gap: 16, marginBottom: 12 },
-    alertStatLabel: { fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground },
-    alertStatValue: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground },
-    directionBadge: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 4,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 20,
-      alignSelf: "flex-start",
-      marginBottom: 12,
-    },
-    directionOver: { backgroundColor: "#fef2f2" },
-    directionUnder: { backgroundColor: "#eff6ff" },
-    directionText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-    directionOverText: { color: colors.critical },
-    directionUnderText: { color: "#2563eb" },
-    ackBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      backgroundColor: colors.secondary,
-      borderRadius: 8,
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      alignSelf: "flex-end",
-    },
-    ackBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: colors.foreground },
-    ackedText: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground },
-    emptyContainer: { alignItems: "center", paddingVertical: 60 },
-    emptyText: { fontSize: 16, fontFamily: "Inter_500Medium", color: colors.mutedForeground, marginTop: 16 },
-    emptySub: { fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 8, textAlign: "center" },
+  return (
+    <View style={s.container}>
+      <View style={s.inner}>
+        <View style={s.lockIcon}>
+          <Feather name="lock" size={32} color={colors.teal} />
+        </View>
+        <Text style={s.label}>Red Carpet Inventory</Text>
+        <Text style={s.title}>Admin Access</Text>
+        <Text style={s.subtitle}>Enter your PIN to continue</Text>
+
+        <View style={s.dots}>
+          {[0, 1, 2, 3].map((i) => (
+            <View key={i} style={[s.dot, i < pin.length && s.dotFilled]} />
+          ))}
+        </View>
+        <Text style={s.errorText}>{error ? "Incorrect PIN. Try again." : ""}</Text>
+
+        {isPending ? (
+          <ActivityIndicator color={colors.teal} size="large" />
+        ) : (
+          <View style={s.pad}>
+            {[0, 1, 2, 3].map((row) => (
+              <View key={row} style={s.padRow}>
+                {digits.slice(row * 3, row * 3 + 3).map(([d, sub], col) => (
+                  <TouchableOpacity
+                    key={col}
+                    style={s.padBtn}
+                    onPress={() => {
+                      if (d === "⌫") handleDelete();
+                      else if (d) handleDigit(d);
+                    }}
+                    disabled={!d}
+                    activeOpacity={d ? 0.6 : 1}
+                  >
+                    {d === "⌫" ? (
+                      <Feather name="delete" size={22} color="#fff" />
+                    ) : (
+                      <>
+                        <Text style={s.padBtnText}>{d}</Text>
+                        {sub ? <Text style={s.padBtnSub}>{sub}</Text> : null}
+                      </>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
+// ─── Edit Modal ─────────────────────────────────────────────────────────────
+function EditModal({
+  visible, title, fields, onSave, onClose, saving, colors, insets,
+}: {
+  visible: boolean;
+  title: string;
+  fields: { label: string; key: string; value: string; numeric?: boolean }[];
+  onSave: (values: Record<string, string>) => void;
+  onClose: () => void;
+  saving: boolean;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+  insets: { bottom: number };
+}) {
+  const [values, setValues] = useState<Record<string, string>>({});
+
+  React.useEffect(() => {
+    const initial: Record<string, string> = {};
+    for (const f of fields) initial[f.key] = f.value;
+    setValues(initial);
+  }, [visible]);
+
+  const s = StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+    sheet: { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: insets.bottom + 16 },
+    handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginTop: 12, marginBottom: 8 },
+    header: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+    headerTitle: { flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    fieldBlock: { paddingHorizontal: 20, paddingTop: 16 },
+    fieldLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 6 },
+    fieldInput: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: colors.radius, padding: 12, fontSize: 15, fontFamily: "Inter_400Regular", color: colors.foreground },
+    btnRow: { flexDirection: "row", gap: 12, paddingHorizontal: 20, paddingTop: 20 },
+    cancelBtn: { flex: 1, backgroundColor: colors.secondary, borderRadius: colors.radius, padding: 14, alignItems: "center" },
+    cancelBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    saveBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: colors.radius, padding: 14, alignItems: "center" },
+    saveBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
   });
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerLabel}>Red Carpet Inventory</Text>
-        <Text style={styles.headerTitle}>Alert Center</Text>
-        <Text style={styles.headerSub}>
-          {summary?.totalUnacknowledged ?? 0} unacknowledged alerts
-        </Text>
-      </View>
-
-      <View style={styles.statsBar}>
-        <View style={styles.statItem}>
-          <Text style={[styles.statVal, styles.criticalVal]}>{summary?.criticalCount ?? 0}</Text>
-          <Text style={styles.statLbl}>Critical</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={[styles.statVal, styles.warningVal]}>{summary?.warningCount ?? 0}</Text>
-          <Text style={styles.statLbl}>Warning</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statVal}>{summary?.totalUnacknowledged ?? 0}</Text>
-          <Text style={styles.statLbl}>Total Open</Text>
-        </View>
-      </View>
-
-      <View style={[styles.filtersBar, { zIndex: 50 }]}>
-        <View style={{ position: "relative" }}>
-          <TouchableOpacity
-            style={[styles.filterChip, filterStoreId !== undefined && styles.filterChipActive]}
-            onPress={() => setShowStoreFilter(!showStoreFilter)}
-          >
-            <Feather
-              name="map-pin"
-              size={13}
-              color={filterStoreId !== undefined ? "#fff" : colors.foreground}
-            />
-            <Text
-              style={[styles.filterChipText, filterStoreId !== undefined && styles.filterChipTextActive]}
-            >
-              {selectedStore?.name.replace("Store ", "S") ?? "All Stores"}
-            </Text>
-            <Feather
-              name="chevron-down"
-              size={13}
-              color={filterStoreId !== undefined ? "#fff" : colors.foreground}
-            />
-          </TouchableOpacity>
-
-          {showStoreFilter && (
-            <View style={styles.storeDropdown}>
-              <TouchableOpacity
-                style={styles.storeDropdownItem}
-                onPress={() => { setFilterStoreId(undefined); setShowStoreFilter(false); }}
-              >
-                <Text style={styles.storeDropdownText}>All Stores</Text>
-                {!filterStoreId && <Feather name="check" size={14} color={colors.primary} />}
-              </TouchableOpacity>
-              {(stores ?? []).map((store, idx) => (
-                <TouchableOpacity
-                  key={store.id}
-                  style={[styles.storeDropdownItem, idx === (stores?.length ?? 0) - 1 && { borderBottomWidth: 0 }]}
-                  onPress={() => { setFilterStoreId(store.id); setShowStoreFilter(false); }}
-                >
-                  <Text style={styles.storeDropdownText}>{store.name}</Text>
-                  {filterStoreId === store.id && <Feather name="check" size={14} color={colors.primary} />}
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-
-        <TouchableOpacity
-          style={[styles.filterChip, filterAcknowledged && styles.filterChipActive]}
-          onPress={() => setFilterAcknowledged(!filterAcknowledged)}
-        >
-          <Feather name="check-circle" size={13} color={filterAcknowledged ? "#fff" : colors.foreground} />
-          <Text style={[styles.filterChipText, filterAcknowledged && styles.filterChipTextActive]}>
-            Acknowledged
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-      >
-        {isLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
-        ) : (alerts ?? []).length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Feather name="check-circle" size={48} color={colors.success} />
-            <Text style={styles.emptyText}>No alerts found</Text>
-            <Text style={styles.emptySub}>
-              {filterAcknowledged ? "No acknowledged alerts" : "All chemical usage is within normal range"}
-            </Text>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <Pressable style={{ flex: 1 }} onPress={onClose} />
+        <View style={s.sheet}>
+          <View style={s.handle} />
+          <View style={s.header}>
+            <Text style={s.headerTitle}>{title}</Text>
+            <TouchableOpacity onPress={onClose}><Feather name="x" size={20} color={colors.mutedForeground} /></TouchableOpacity>
           </View>
-        ) : (
-          (alerts ?? []).map((alert) => (
-            <View
-              key={alert.id}
-              style={[
-                styles.alertCard,
-                alert.acknowledged && styles.alertCardAcknowledged,
-                !alert.acknowledged && alert.severity === "critical" && styles.alertCardCritical,
-                !alert.acknowledged && alert.severity === "warning" && styles.alertCardWarning,
-              ]}
-            >
-              <View style={styles.alertTop}>
-                <View style={styles.alertInfo}>
-                  <Text style={styles.alertChemical}>{alert.chemicalName}</Text>
-                  <Text style={styles.alertStore}>{alert.storeName}</Text>
-                  <Text style={styles.alertWeek}>Week of {formatWeekOf(alert.weekOf)}</Text>
-                </View>
-                {!alert.acknowledged && alert.severity === "critical" && (
-                  <View style={styles.badgeCritical}>
-                    <Text style={styles.badgeCriticalText}>CRITICAL</Text>
-                  </View>
-                )}
-                {!alert.acknowledged && alert.severity === "warning" && (
-                  <View style={styles.badgeWarning}>
-                    <Text style={styles.badgeWarningText}>WARNING</Text>
-                  </View>
-                )}
-              </View>
-
-              <View
-                style={[
-                  styles.directionBadge,
-                  alert.direction === "over" ? styles.directionOver : styles.directionUnder,
-                ]}
-              >
-                <Feather
-                  name={alert.direction === "over" ? "trending-down" : "trending-up"}
-                  size={14}
-                  color={alert.direction === "over" ? colors.critical : "#2563eb"}
-                />
-                <Text
-                  style={[
-                    styles.directionText,
-                    alert.direction === "over" ? styles.directionOverText : styles.directionUnderText,
-                  ]}
-                >
-                  {alert.direction === "over"
-                    ? `${formatPercent(alert.percentChange)} more used than expected`
-                    : `${formatPercent(alert.percentChange)} less used than expected`}
-                </Text>
-              </View>
-
-              <View style={styles.alertStats}>
-                <View>
-                  <Text style={styles.alertStatLabel}>Previous</Text>
-                  <Text style={styles.alertStatValue}>{alert.previousQuantity.toFixed(1)}</Text>
-                </View>
-                <View>
-                  <Text style={styles.alertStatLabel}>Current</Text>
-                  <Text style={styles.alertStatValue}>{alert.currentQuantity.toFixed(1)}</Text>
-                </View>
-                <View>
-                  <Text style={styles.alertStatLabel}>Change</Text>
-                  <Text style={[styles.alertStatValue, { color: alert.direction === "over" ? colors.critical : "#2563eb" }]}>
-                    {alert.percentChange > 0 ? "+" : ""}{formatPercent(alert.percentChange)}
-                  </Text>
-                </View>
-              </View>
-
-              {alert.acknowledged ? (
-                <Text style={styles.ackedText}>
-                  Acknowledged {alert.acknowledgedAt ? new Date(alert.acknowledgedAt).toLocaleDateString() : ""}
-                </Text>
-              ) : (
-                <TouchableOpacity style={styles.ackBtn} onPress={() => handleAcknowledge(alert.id)}>
-                  <Feather name="check" size={14} color={colors.foreground} />
-                  <Text style={styles.ackBtnText}>Acknowledge</Text>
-                </TouchableOpacity>
-              )}
+          {fields.map((f) => (
+            <View key={f.key} style={s.fieldBlock}>
+              <Text style={s.fieldLabel}>{f.label}</Text>
+              <TextInput
+                style={s.fieldInput}
+                value={values[f.key] ?? ""}
+                onChangeText={(v) => setValues((prev) => ({ ...prev, [f.key]: v }))}
+                keyboardType={f.numeric ? "decimal-pad" : "default"}
+                autoCapitalize="none"
+              />
             </View>
-          ))
-        )}
+          ))}
+          <View style={s.btnRow}>
+            <TouchableOpacity style={s.cancelBtn} onPress={onClose}>
+              <Text style={s.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.saveBtn} onPress={() => onSave(values)} disabled={saving}>
+              {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveBtnText}>Save Changes</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+// ─── Alerts Section ──────────────────────────────────────────────────────────
+function AlertsSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: { bottom: number } }) {
+  const qc = useQueryClient();
+  const [storeFilter, setStoreFilter] = useState<number | undefined>();
+  const [refreshing, setRefreshing] = useState(false);
+  const { data: stores } = useGetStores();
+  const { data: alerts, isLoading, refetch } = useGetAlerts({ storeId: storeFilter, limit: 200 });
+  const { mutateAsync: acknowledge } = useAcknowledgeAlert();
+  const { mutateAsync: deleteAlert } = useDeleteAlert();
+  const webBottom = Platform.OS === "web" ? 34 : 0;
+
+  const onRefresh = useCallback(async () => { setRefreshing(true); await refetch(); setRefreshing(false); }, [refetch]);
+
+  const confirmDelete = (id: number) => Alert.alert("Delete Alert", "Remove this alert permanently?", [
+    { text: "Cancel", style: "cancel" },
+    { text: "Delete", style: "destructive", onPress: async () => { await deleteAlert({ alertId: id }); qc.invalidateQueries(); } },
+  ]);
+
+  const s = StyleSheet.create({
+    scroll: { flex: 1 },
+    content: { padding: 16, paddingBottom: insets.bottom + 80 + webBottom },
+    filterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
+    chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+    chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    chipText: { fontSize: 13, fontFamily: "Inter_500Medium", color: colors.foreground },
+    chipTextActive: { color: "#fff" },
+    card: { backgroundColor: colors.card, borderRadius: colors.radius, borderWidth: 1, borderColor: colors.border, marginBottom: 10, padding: 14 },
+    row: { flexDirection: "row", alignItems: "flex-start" },
+    info: { flex: 1 },
+    store: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    chemical: { fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 },
+    week: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 },
+    badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12, marginLeft: 8 },
+    badgeCritical: { backgroundColor: "#fef2f2" },
+    badgeWarning: { backgroundColor: "#fffbeb" },
+    badgeText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+    btnRow: { flexDirection: "row", gap: 8, marginTop: 10 },
+    ackBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: colors.secondary, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 },
+    ackBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: colors.foreground },
+    delBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: "#fef2f2", alignItems: "center" },
+    ackBtnDone: { backgroundColor: "#dcfce7" },
+    ackBtnDoneText: { color: "#16a34a" },
+    empty: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 40 },
+  });
+
+  return (
+    <ScrollView style={s.scroll} contentContainerStyle={s.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+      <View style={s.filterRow}>
+        <TouchableOpacity style={[s.chip, !storeFilter && s.chipActive]} onPress={() => setStoreFilter(undefined)}>
+          <Text style={[s.chipText, !storeFilter && s.chipTextActive]}>All</Text>
+        </TouchableOpacity>
+        {(stores ?? []).map((st) => (
+          <TouchableOpacity key={st.id} style={[s.chip, storeFilter === st.id && s.chipActive]} onPress={() => setStoreFilter(st.id)}>
+            <Text style={[s.chipText, storeFilter === st.id && s.chipTextActive]}>{st.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      {isLoading ? <ActivityIndicator color={colors.primary} /> : !alerts?.length ? (
+        <Text style={s.empty}>No alerts found.</Text>
+      ) : alerts.map((a) => (
+        <View key={a.id} style={s.card}>
+          <View style={s.row}>
+            <View style={s.info}>
+              <Text style={s.store}>{a.storeName}</Text>
+              <Text style={s.chemical}>{a.chemicalName} · {a.direction === "over" ? "▲" : "▼"} {Math.abs(a.percentChange).toFixed(1)}%</Text>
+              <Text style={s.week}>Week of {formatWeekOf(a.weekOf)}</Text>
+            </View>
+            <View style={[s.badge, a.severity === "critical" ? s.badgeCritical : s.badgeWarning]}>
+              <Text style={[s.badgeText, { color: a.severity === "critical" ? colors.critical : colors.warning }]}>
+                {a.severity}
+              </Text>
+            </View>
+          </View>
+          <View style={s.btnRow}>
+            <TouchableOpacity
+              style={[s.ackBtn, a.acknowledged && s.ackBtnDone]}
+              onPress={async () => { if (!a.acknowledged) { await acknowledge({ alertId: a.id }); qc.invalidateQueries(); } }}
+            >
+              <Feather name={a.acknowledged ? "check-circle" : "circle"} size={15} color={a.acknowledged ? "#16a34a" : colors.mutedForeground} />
+              <Text style={[s.ackBtnText, a.acknowledged && s.ackBtnDoneText]}>{a.acknowledged ? "Acknowledged" : "Acknowledge"}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.delBtn} onPress={() => confirmDelete(a.id)}>
+              <Feather name="trash-2" size={16} color={colors.critical} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+// ─── Stores Section ──────────────────────────────────────────────────────────
+function StoresSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: { bottom: number } }) {
+  const qc = useQueryClient();
+  const { data: stores, isLoading, refetch } = useGetStores();
+  const { mutateAsync: updateStore, isPending: updating } = useUpdateStore();
+  const { mutateAsync: deleteStore } = useDeleteStore();
+  const [editTarget, setEditTarget] = useState<{ id: number; name: string; storeNumber: string } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const webBottom = Platform.OS === "web" ? 34 : 0;
+
+  const onRefresh = useCallback(async () => { setRefreshing(true); await refetch(); setRefreshing(false); }, [refetch]);
+
+  const confirmDelete = (id: number, name: string) => Alert.alert(
+    "Delete Store",
+    `Delete "${name}"? This will permanently remove all its counts and alerts.`,
+    [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: async () => { await deleteStore({ storeId: id }); qc.invalidateQueries(); } }]
+  );
+
+  const s = StyleSheet.create({
+    scroll: { flex: 1 },
+    content: { padding: 16, paddingBottom: insets.bottom + 80 + webBottom },
+    card: { backgroundColor: colors.card, borderRadius: colors.radius, borderWidth: 1, borderColor: colors.border, marginBottom: 10, padding: 14, flexDirection: "row", alignItems: "center" },
+    info: { flex: 1 },
+    name: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    number: { fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 },
+    actions: { flexDirection: "row", gap: 10 },
+    editBtn: { padding: 8, borderRadius: 8, backgroundColor: colors.secondary },
+    delBtn: { padding: 8, borderRadius: 8, backgroundColor: "#fef2f2" },
+    empty: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 40 },
+  });
+
+  return (
+    <>
+      <ScrollView style={s.scroll} contentContainerStyle={s.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+        {isLoading ? <ActivityIndicator color={colors.primary} /> : !stores?.length ? (
+          <Text style={s.empty}>No stores found.</Text>
+        ) : stores.map((st) => (
+          <View key={st.id} style={s.card}>
+            <View style={s.info}>
+              <Text style={s.name}>{st.name}</Text>
+              <Text style={s.number}>Store #{st.storeNumber}</Text>
+            </View>
+            <View style={s.actions}>
+              <TouchableOpacity style={s.editBtn} onPress={() => setEditTarget({ id: st.id, name: st.name, storeNumber: st.storeNumber })}>
+                <Feather name="edit-2" size={16} color={colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity style={s.delBtn} onPress={() => confirmDelete(st.id, st.name)}>
+                <Feather name="trash-2" size={16} color={colors.critical} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
       </ScrollView>
+
+      <EditModal
+        visible={!!editTarget}
+        title="Edit Store"
+        fields={[
+          { label: "Name", key: "name", value: editTarget?.name ?? "" },
+          { label: "Store Number", key: "storeNumber", value: editTarget?.storeNumber ?? "" },
+        ]}
+        saving={updating}
+        colors={colors}
+        insets={insets}
+        onClose={() => setEditTarget(null)}
+        onSave={async (vals) => {
+          if (!editTarget) return;
+          await updateStore({ storeId: editTarget.id, data: { name: vals["name"], storeNumber: vals["storeNumber"] } });
+          qc.invalidateQueries();
+          setEditTarget(null);
+        }}
+      />
+    </>
+  );
+}
+
+// ─── Products Section ────────────────────────────────────────────────────────
+function ProductsSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: { bottom: number } }) {
+  const qc = useQueryClient();
+  const { data: chemicals, isLoading, refetch } = useGetChemicals();
+  const { mutateAsync: updateChemical, isPending: updating } = useUpdateChemical();
+  const { mutateAsync: deleteChemical } = useDeleteChemical();
+  const [editTarget, setEditTarget] = useState<{ id: number; name: string; unit: string; thresholdPercent: number } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const webBottom = Platform.OS === "web" ? 34 : 0;
+
+  const onRefresh = useCallback(async () => { setRefreshing(true); await refetch(); setRefreshing(false); }, [refetch]);
+
+  const confirmDelete = (id: number, name: string) => Alert.alert(
+    "Delete Product",
+    `Delete "${name}"? This will remove it from all future counts.`,
+    [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: async () => { await deleteChemical({ chemicalId: id }); qc.invalidateQueries(); } }]
+  );
+
+  const s = StyleSheet.create({
+    scroll: { flex: 1 },
+    content: { padding: 16, paddingBottom: insets.bottom + 80 + webBottom },
+    card: { backgroundColor: colors.card, borderRadius: colors.radius, borderWidth: 1, borderColor: colors.border, marginBottom: 10, padding: 14, flexDirection: "row", alignItems: "center" },
+    info: { flex: 1 },
+    name: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    meta: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 3 },
+    actions: { flexDirection: "row", gap: 10 },
+    editBtn: { padding: 8, borderRadius: 8, backgroundColor: colors.secondary },
+    delBtn: { padding: 8, borderRadius: 8, backgroundColor: "#fef2f2" },
+    empty: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 40 },
+  });
+
+  return (
+    <>
+      <ScrollView style={s.scroll} contentContainerStyle={s.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+        {isLoading ? <ActivityIndicator color={colors.primary} /> : !chemicals?.length ? (
+          <Text style={s.empty}>No products found.</Text>
+        ) : chemicals.map((c) => (
+          <View key={c.id} style={s.card}>
+            <View style={s.info}>
+              <Text style={s.name}>{c.name}</Text>
+              <Text style={s.meta}>{c.unit} · Alert threshold: {c.thresholdPercent}%</Text>
+            </View>
+            <View style={s.actions}>
+              <TouchableOpacity style={s.editBtn} onPress={() => setEditTarget({ id: c.id, name: c.name, unit: c.unit, thresholdPercent: c.thresholdPercent })}>
+                <Feather name="edit-2" size={16} color={colors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity style={s.delBtn} onPress={() => confirmDelete(c.id, c.name)}>
+                <Feather name="trash-2" size={16} color={colors.critical} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+      </ScrollView>
+
+      <EditModal
+        visible={!!editTarget}
+        title="Edit Product"
+        fields={[
+          { label: "Product Name", key: "name", value: editTarget?.name ?? "" },
+          { label: "Unit", key: "unit", value: editTarget?.unit ?? "" },
+          { label: "Alert Threshold (%)", key: "thresholdPercent", value: String(editTarget?.thresholdPercent ?? ""), numeric: true },
+        ]}
+        saving={updating}
+        colors={colors}
+        insets={insets}
+        onClose={() => setEditTarget(null)}
+        onSave={async (vals) => {
+          if (!editTarget) return;
+          await updateChemical({
+            chemicalId: editTarget.id,
+            data: {
+              name: vals["name"],
+              unit: vals["unit"],
+              thresholdPercent: parseFloat(vals["thresholdPercent"] ?? "30") || 30,
+            },
+          });
+          qc.invalidateQueries();
+          setEditTarget(null);
+        }}
+      />
+    </>
+  );
+}
+
+// ─── Counts Section ──────────────────────────────────────────────────────────
+function CountsSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: { bottom: number } }) {
+  const qc = useQueryClient();
+  const { data: counts, isLoading, refetch } = useGetInventoryCounts({ limit: 200 });
+  const { mutateAsync: deleteCount } = useDeleteInventoryCount();
+  const [refreshing, setRefreshing] = useState(false);
+  const webBottom = Platform.OS === "web" ? 34 : 0;
+
+  const onRefresh = useCallback(async () => { setRefreshing(true); await refetch(); setRefreshing(false); }, [refetch]);
+
+  const confirmDelete = (id: number, storeName: string, weekOf: string) => Alert.alert(
+    "Delete Submission",
+    `Delete the count for ${storeName} (Week of ${formatWeekOf(weekOf)})? This cannot be undone.`,
+    [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: async () => { await deleteCount({ countId: id }); qc.invalidateQueries(); } }]
+  );
+
+  const s = StyleSheet.create({
+    scroll: { flex: 1 },
+    content: { padding: 16, paddingBottom: insets.bottom + 80 + webBottom },
+    card: { backgroundColor: colors.card, borderRadius: colors.radius, borderWidth: 1, borderColor: colors.border, marginBottom: 10, padding: 14, flexDirection: "row", alignItems: "center" },
+    info: { flex: 1 },
+    store: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    meta: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 3 },
+    delBtn: { padding: 8, borderRadius: 8, backgroundColor: "#fef2f2" },
+    empty: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 40 },
+  });
+
+  return (
+    <ScrollView style={s.scroll} contentContainerStyle={s.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+      {isLoading ? <ActivityIndicator color={colors.primary} /> : !counts?.length ? (
+        <Text style={s.empty}>No submissions found.</Text>
+      ) : counts.map((c) => (
+        <View key={c.id} style={s.card}>
+          <View style={s.info}>
+            <Text style={s.store}>{c.storeName}</Text>
+            <Text style={s.meta}>Week of {formatWeekOf(c.weekOf)} · By {c.submittedBy}</Text>
+          </View>
+          <TouchableOpacity style={s.delBtn} onPress={() => confirmDelete(c.id, c.storeName, c.weekOf)}>
+            <Feather name="trash-2" size={16} color={colors.critical} />
+          </TouchableOpacity>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+// ─── Main Admin Screen ───────────────────────────────────────────────────────
+export default function AdminScreen() {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const [authenticated, setAuthenticated] = useState(false);
+  const [activeSection, setActiveSection] = useState<Section>("alerts");
+  const webTop = Platform.OS === "web" ? 67 : 0;
+
+  if (!authenticated) {
+    return <PinScreen onSuccess={() => setAuthenticated(true)} colors={colors} insets={{ top: insets.top }} />;
+  }
+
+  const sections: { key: Section; label: string; icon: string }[] = [
+    { key: "alerts", label: "Alerts", icon: "alert-triangle" },
+    { key: "stores", label: "Stores", icon: "map-pin" },
+    { key: "products", label: "Products", icon: "package" },
+    { key: "counts", label: "Counts", icon: "clipboard" },
+  ];
+
+  const s = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      paddingTop: insets.top + 16 + webTop,
+      paddingHorizontal: 20, paddingBottom: 16,
+      backgroundColor: colors.navy,
+    },
+    headerTop: { flexDirection: "row", alignItems: "center" },
+    headerLabel: { fontSize: 12, color: colors.tealLight, fontFamily: "Inter_600SemiBold", letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 },
+    headerTitle: { fontSize: 26, color: "#fff", fontFamily: "Inter_700Bold", flex: 1 },
+    lockBtn: { padding: 8, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.1)" },
+    tabBar: {
+      flexDirection: "row",
+      backgroundColor: colors.navy,
+      paddingHorizontal: 16,
+      paddingBottom: 0,
+      borderBottomWidth: 1,
+      borderBottomColor: "rgba(255,255,255,0.1)",
+    },
+    tab: { flex: 1, alignItems: "center", paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: "transparent" },
+    tabActive: { borderBottomColor: colors.teal },
+    tabText: { fontSize: 12, fontFamily: "Inter_500Medium", color: "rgba(255,255,255,0.5)", marginTop: 3 },
+    tabTextActive: { color: colors.teal },
+    content: { flex: 1 },
+  });
+
+  return (
+    <View style={s.container}>
+      <View style={s.header}>
+        <Text style={s.headerLabel}>Red Carpet Inventory</Text>
+        <View style={s.headerTop}>
+          <Text style={s.headerTitle}>Admin Panel</Text>
+          <TouchableOpacity style={s.lockBtn} onPress={() => setAuthenticated(false)}>
+            <Feather name="lock" size={18} color="rgba(255,255,255,0.7)" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={s.tabBar}>
+        {sections.map((sec) => (
+          <TouchableOpacity key={sec.key} style={[s.tab, activeSection === sec.key && s.tabActive]} onPress={() => setActiveSection(sec.key)}>
+            <Feather name={sec.icon as any} size={18} color={activeSection === sec.key ? colors.teal : "rgba(255,255,255,0.5)"} />
+            <Text style={[s.tabText, activeSection === sec.key && s.tabTextActive]}>{sec.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={s.content}>
+        {activeSection === "alerts" && <AlertsSection colors={colors} insets={insets} />}
+        {activeSection === "stores" && <StoresSection colors={colors} insets={insets} />}
+        {activeSection === "products" && <ProductsSection colors={colors} insets={insets} />}
+        {activeSection === "counts" && <CountsSection colors={colors} insets={insets} />}
+      </View>
     </View>
   );
 }
