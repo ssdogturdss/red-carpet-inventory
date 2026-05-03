@@ -54,6 +54,7 @@ export const GetInventoryCountsResponseItem = zod.object({
   storeName: zod.string(),
   weekOf: zod.string().describe("ISO date string for the Monday of the week"),
   submittedBy: zod.string(),
+  notes: zod.string().nullish(),
   submittedAt: zod.string(),
   entries: zod.array(
     zod.object({
@@ -75,6 +76,7 @@ export const SubmitInventoryCountBody = zod.object({
   storeId: zod.number(),
   weekOf: zod.string(),
   submittedBy: zod.string(),
+  notes: zod.string().nullish(),
   entries: zod.array(
     zod.object({
       chemicalId: zod.number(),
@@ -96,6 +98,7 @@ export const GetInventoryCountResponse = zod.object({
   storeName: zod.string(),
   weekOf: zod.string().describe("ISO date string for the Monday of the week"),
   submittedBy: zod.string(),
+  notes: zod.string().nullish(),
   submittedAt: zod.string(),
   entries: zod.array(
     zod.object({

@@ -28,6 +28,7 @@ router.get("/inventory", async (req, res) => {
       storeName: storesTable.name,
       weekOf: inventoryCountsTable.weekOf,
       submittedBy: inventoryCountsTable.submittedBy,
+      notes: inventoryCountsTable.notes,
       submittedAt: inventoryCountsTable.submittedAt,
     })
     .from(inventoryCountsTable)
@@ -74,6 +75,7 @@ router.get("/inventory/:countId", async (req, res) => {
       storeName: storesTable.name,
       weekOf: inventoryCountsTable.weekOf,
       submittedBy: inventoryCountsTable.submittedBy,
+      notes: inventoryCountsTable.notes,
       submittedAt: inventoryCountsTable.submittedAt,
     })
     .from(inventoryCountsTable)
@@ -114,6 +116,7 @@ router.post("/inventory", async (req, res) => {
       storeId: body.storeId,
       weekOf: body.weekOf,
       submittedBy: body.submittedBy,
+      notes: body.notes ?? null,
     })
     .returning();
 

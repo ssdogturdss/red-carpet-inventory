@@ -34,6 +34,7 @@ type Count = {
   storeName: string;
   weekOf: string;
   submittedBy: string;
+  notes?: string | null;
   submittedAt: string;
   entries: { chemicalName: string; quantity: number; unit: string }[];
 };
@@ -199,6 +200,28 @@ export default function HistoryScreen() {
       color: colors.mutedForeground,
       marginLeft: 4,
     },
+    notesBox: {
+      marginTop: 12,
+      backgroundColor: colors.secondary,
+      borderRadius: 8,
+      padding: 12,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.primary,
+    },
+    notesBoxTitle: {
+      fontSize: 11,
+      fontFamily: "Inter_600SemiBold",
+      color: colors.mutedForeground,
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+      marginBottom: 4,
+    },
+    notesBoxText: {
+      fontSize: 14,
+      fontFamily: "Inter_400Regular",
+      color: colors.foreground,
+      lineHeight: 20,
+    },
     countBadge: {
       fontSize: 12,
       fontFamily: "Inter_500Medium",
@@ -329,6 +352,12 @@ export default function HistoryScreen() {
                           <Text style={styles.entryUnit}>{entry.unit}</Text>
                         </View>
                       ))}
+                      {c.notes ? (
+                        <View style={styles.notesBox}>
+                          <Text style={styles.notesBoxTitle}>Notes</Text>
+                          <Text style={styles.notesBoxText}>{c.notes}</Text>
+                        </View>
+                      ) : null}
                     </View>
                   )}
                 </View>

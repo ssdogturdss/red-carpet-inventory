@@ -11,5 +11,6 @@ export interface SubmitInventoryCountBody {
   storeId: number;
   weekOf: string;
   submittedBy: string;
+  notes?: string | null;
   entries: SubmitInventoryCountBodyEntriesItem[];
 }

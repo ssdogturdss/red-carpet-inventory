@@ -9,6 +9,7 @@ export const inventoryCountsTable = pgTable("inventory_counts", {
   storeId: integer("store_id").notNull().references(() => storesTable.id),
   weekOf: date("week_of").notNull(),
   submittedBy: text("submitted_by").notNull(),
+  notes: text("notes"),
   submittedAt: timestamp("submitted_at").defaultNow().notNull(),
 });
 

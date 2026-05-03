@@ -37,6 +37,7 @@ export default function CountScreen() {
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
   const [submittedBy, setSubmittedBy] = useState("");
   const [quantities, setQuantities] = useState<Record<number, string>>({});
+  const [notes, setNotes] = useState("");
   const [showStorePicker, setShowStorePicker] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -69,6 +70,7 @@ export default function CountScreen() {
           storeId: selectedStoreId,
           weekOf: currentWeek,
           submittedBy: submittedBy.trim(),
+          notes: notes.trim() || null,
           entries,
         },
       });
@@ -86,6 +88,7 @@ export default function CountScreen() {
     setSelectedStoreId(null);
     setSubmittedBy("");
     setQuantities({});
+    setNotes("");
   };
 
   const webTop = Platform.OS === "web" ? 67 : 0;
@@ -181,6 +184,24 @@ export default function CountScreen() {
       fontSize: 16,
       fontFamily: "Inter_600SemiBold",
       color: colors.foreground,
+    },
+    notesInput: {
+      backgroundColor: colors.card,
+      borderRadius: colors.radius,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      fontSize: 15,
+      fontFamily: "Inter_400Regular",
+      color: colors.foreground,
+      minHeight: 100,
+      textAlignVertical: "top",
+    },
+    notesHint: {
+      fontSize: 12,
+      fontFamily: "Inter_400Regular",
+      color: colors.mutedForeground,
+      marginTop: 6,
     },
     submitBtn: {
       backgroundColor: colors.primary,
@@ -307,6 +328,19 @@ export default function CountScreen() {
             />
           </View>
         ))}
+
+        <Text style={styles.sectionTitle}>Notes</Text>
+        <TextInput
+          style={styles.notesInput}
+          placeholder="Add any handwritten notes, observations, or special instructions here..."
+          placeholderTextColor={colors.mutedForeground}
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+          numberOfLines={4}
+          returnKeyType="default"
+        />
+        <Text style={styles.notesHint}>Optional — notes will be saved with this submission.</Text>
 
         <TouchableOpacity
           style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}

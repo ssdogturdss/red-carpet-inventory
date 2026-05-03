@@ -14,6 +14,7 @@ export interface InventoryCount {
   /** ISO date string for the Monday of the week */
   weekOf: string;
   submittedBy: string;
+  notes?: string | null;
   submittedAt: string;
   entries: InventoryEntry[];
 }

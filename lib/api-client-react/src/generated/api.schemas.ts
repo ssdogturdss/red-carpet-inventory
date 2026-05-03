@@ -37,6 +37,7 @@ export interface InventoryCount {
   /** ISO date string for the Monday of the week */
   weekOf: string;
   submittedBy: string;
+  notes?: string | null;
   submittedAt: string;
   entries: InventoryEntry[];
 }
@@ -50,6 +51,7 @@ export interface SubmitInventoryCountBody {
   storeId: number;
   weekOf: string;
   submittedBy: string;
+  notes?: string | null;
   entries: SubmitInventoryCountBodyEntriesItem[];
 }
 

@@ -285,6 +285,9 @@ components:
           description: ISO date string for the Monday of the week
         submittedBy:
           type: string
+        notes:
+          type: string
+          nullable: true
         submittedAt:
           type: string
         entries:
@@ -309,6 +312,9 @@ components:
           type: string
         submittedBy:
           type: string
+        notes:
+          type: string
+          nullable: true
         entries:
           type: array
           items:
