@@ -371,7 +371,7 @@ export default function ScanScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerLabel}>Chemical Inventory</Text>
+          <Text style={styles.headerLabel}>Red Carpet Inventory</Text>
           <Text style={styles.headerTitle}>Scan Sheet</Text>
         </View>
         <View style={styles.successContainer}>
@@ -393,7 +393,7 @@ export default function ScanScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerLabel}>Chemical Inventory</Text>
+        <Text style={styles.headerLabel}>Red Carpet Inventory</Text>
         <Text style={styles.headerTitle}>Scan Sheet</Text>
         <Text style={styles.headerSub}>
           {step === "capture" ? "Take a photo of your count sheet" : `Reviewing ${entries.length} chemicals`}

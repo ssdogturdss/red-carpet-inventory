@@ -217,7 +217,7 @@ export default function CountScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerLabel}>Chemical Inventory</Text>
+          <Text style={styles.headerLabel}>Red Carpet Inventory</Text>
           <Text style={styles.headerTitle}>Count Entry</Text>
         </View>
         <View style={styles.successContainer}>
@@ -239,7 +239,7 @@ export default function CountScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerLabel}>Chemical Inventory</Text>
+        <Text style={styles.headerLabel}>Red Carpet Inventory</Text>
         <Text style={styles.headerTitle}>Count Entry</Text>
         <Text style={styles.headerSubtitle}>Week of {currentWeek}</Text>
       </View>

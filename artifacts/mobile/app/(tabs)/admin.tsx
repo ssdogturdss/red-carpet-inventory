@@ -224,7 +224,7 @@ export default function AdminScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerLabel}>Chemical Inventory</Text>
+        <Text style={styles.headerLabel}>Red Carpet Inventory</Text>
         <Text style={styles.headerTitle}>Alert Center</Text>
         <Text style={styles.headerSub}>
           {summary?.totalUnacknowledged ?? 0} unacknowledged alerts

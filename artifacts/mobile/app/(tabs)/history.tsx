@@ -256,7 +256,7 @@ export default function HistoryScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerLabel}>Chemical Inventory</Text>
+        <Text style={styles.headerLabel}>Red Carpet Inventory</Text>
         <Text style={styles.headerTitle}>History</Text>
       </View>
 
