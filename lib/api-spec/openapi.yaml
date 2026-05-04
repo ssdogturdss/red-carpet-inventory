@@ -376,6 +376,180 @@ paths:
               schema:
                 $ref: "#/components/schemas/Alert"
 
+  /orders:
+    get:
+      operationId: getOrders
+      tags: [orders]
+      summary: List chemical orders
+      parameters:
+        - name: storeId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: chemicalId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChemicalOrder"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Place a new chemical order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderBody"
+      responses:
+        "200":
+          description: Created order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChemicalOrder"
+
+  /orders/{orderId}:
+    patch:
+      operationId: updateOrder
+      tags: [orders]
+      summary: Update an order (status, notes, etc.)
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderBody"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChemicalOrder"
+    delete:
+      operationId: deleteOrder
+      tags: [orders]
+      summary: Delete an order
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /received:
+    get:
+      operationId: getReceived
+      tags: [received]
+      summary: List inventory received records
+      parameters:
+        - name: storeId
+          in: query
+          schema:
+            type: integer
+        - name: chemicalId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of received records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryReceived"
+    post:
+      operationId: logReceived
+      tags: [received]
+      summary: Log an inventory receipt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReceivedBody"
+      responses:
+        "200":
+          description: Created received record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryReceived"
+
+  /received/{receivedId}:
+    delete:
+      operationId: deleteReceived
+      tags: [received]
+      summary: Delete a received record
+      parameters:
+        - name: receivedId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /on-hand:
+    get:
+      operationId: getOnHand
+      tags: [inventory]
+      summary: Get current on-hand quantities for a store
+      parameters:
+        - name: storeId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: On-hand inventory for the store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnHandResult"
+
 components:
   schemas:
     AdminAuthBody:
@@ -431,6 +605,210 @@ components:
         notes:
           type: string
           nullable: true
+
+    ChemicalOrder:
+      type: object
+      properties:
+        id:
+          type: integer
+        storeId:
+          type: integer
+        storeName:
+          type: string
+        chemicalId:
+          type: integer
+        chemicalName:
+          type: string
+        quantityOrdered:
+          type: number
+        unit:
+          type: string
+        orderDate:
+          type: string
+        expectedDelivery:
+          type: string
+          nullable: true
+        status:
+          type: string
+        poNumber:
+          type: string
+          nullable: true
+        orderedBy:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - storeId
+        - storeName
+        - chemicalId
+        - chemicalName
+        - quantityOrdered
+        - unit
+        - orderDate
+        - status
+        - createdAt
+
+    CreateOrderBody:
+      type: object
+      properties:
+        storeId:
+          type: integer
+        chemicalId:
+          type: integer
+        quantityOrdered:
+          type: number
+        unit:
+          type: string
+        orderDate:
+          type: string
+        expectedDelivery:
+          type: string
+          nullable: true
+        poNumber:
+          type: string
+        orderedBy:
+          type: string
+        notes:
+          type: string
+      required:
+        - storeId
+        - chemicalId
+        - quantityOrdered
+        - orderDate
+
+    UpdateOrderBody:
+      type: object
+      properties:
+        status:
+          type: string
+        quantityOrdered:
+          type: number
+        expectedDelivery:
+          type: string
+          nullable: true
+        poNumber:
+          type: string
+          nullable: true
+        orderedBy:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    InventoryReceived:
+      type: object
+      properties:
+        id:
+          type: integer
+        storeId:
+          type: integer
+        storeName:
+          type: string
+        chemicalId:
+          type: integer
+        chemicalName:
+          type: string
+        quantityReceived:
+          type: number
+        unit:
+          type: string
+        receivedDate:
+          type: string
+        receivedBy:
+          type: string
+          nullable: true
+        poNumber:
+          type: string
+          nullable: true
+        orderId:
+          type: integer
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - storeId
+        - storeName
+        - chemicalId
+        - chemicalName
+        - quantityReceived
+        - unit
+        - receivedDate
+        - createdAt
+
+    CreateReceivedBody:
+      type: object
+      properties:
+        storeId:
+          type: integer
+        chemicalId:
+          type: integer
+        quantityReceived:
+          type: number
+        unit:
+          type: string
+        receivedDate:
+          type: string
+        receivedBy:
+          type: string
+        poNumber:
+          type: string
+        orderId:
+          type: integer
+          nullable: true
+        notes:
+          type: string
+      required:
+        - storeId
+        - chemicalId
+        - quantityReceived
+        - receivedDate
+
+    OnHandEntry:
+      type: object
+      properties:
+        chemicalId:
+          type: integer
+        chemicalName:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+      required:
+        - chemicalId
+        - chemicalName
+        - quantity
+        - unit
+
+    OnHandResult:
+      type: object
+      properties:
+        storeId:
+          type: integer
+        storeName:
+          type: string
+        weekOf:
+          type: string
+          nullable: true
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/OnHandEntry"
+      required:
+        - storeId
+        - storeName
+        - weekOf
+        - entries
 
     HealthStatus:
       type: object

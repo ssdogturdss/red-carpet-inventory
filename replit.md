@@ -30,6 +30,11 @@ A mobile-first chemical inventory management system for 11 stores tracking 23 ch
 - **Count Entry** — Fill out all 23 chemical quantities for a store/week manually
 - **Scan Sheet** — Take a photo of a paper count sheet; AI reads the quantities automatically
 - **History** — Browse all past weekly submissions by store
+- **Inventory Hub** (renamed from History) — 4 sub-tabs in one screen:
+  - **History** — Browse all past weekly count submissions by store, expandable per-product detail
+  - **On Hand** — Select a store and see current on-hand quantities from the latest weekly count
+  - **Received** — Log inbound chemical deliveries (store, product, qty, date, PO#, received by); filter by store
+  - **Orders** — Place and track chemical purchase orders with status (pending/received/cancelled); mark received or cancel inline
 - **Admin Panel** (PIN-gated) — Full CRUD dashboard for all records:
   - **Alerts tab** — View, acknowledge, and delete alerts; filter by store
   - **Stores tab** — Edit store name/number, delete store (cascades to all counts + alerts)

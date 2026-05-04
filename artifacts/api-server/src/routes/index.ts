@@ -6,6 +6,9 @@ import inventoryRouter from "./inventory";
 import scanRouter from "./scan";
 import alertsRouter from "./alerts";
 import adminRouter from "./admin";
+import ordersRouter from "./orders";
+import receivedRouter from "./received";
+import onhandRouter from "./onhand";
 
 const router: IRouter = Router();
 
@@ -16,5 +19,8 @@ router.use(chemicalsRouter);
 router.use(scanRouter);
 router.use(inventoryRouter);
 router.use(alertsRouter);
+router.use(ordersRouter);
+router.use(receivedRouter);
+router.use(onhandRouter);
 
 export default router;

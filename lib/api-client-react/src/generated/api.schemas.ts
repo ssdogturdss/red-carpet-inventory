@@ -34,6 +34,86 @@ export interface UpdateInventoryCountBody {
   notes?: string | null;
 }
 
+export interface ChemicalOrder {
+  id: number;
+  storeId: number;
+  storeName: string;
+  chemicalId: number;
+  chemicalName: string;
+  quantityOrdered: number;
+  unit: string;
+  orderDate: string;
+  expectedDelivery?: string | null;
+  status: string;
+  poNumber?: string | null;
+  orderedBy?: string | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface CreateOrderBody {
+  storeId: number;
+  chemicalId: number;
+  quantityOrdered: number;
+  unit?: string;
+  orderDate: string;
+  expectedDelivery?: string | null;
+  poNumber?: string;
+  orderedBy?: string;
+  notes?: string;
+}
+
+export interface UpdateOrderBody {
+  status?: string;
+  quantityOrdered?: number;
+  expectedDelivery?: string | null;
+  poNumber?: string | null;
+  orderedBy?: string | null;
+  notes?: string | null;
+}
+
+export interface InventoryReceived {
+  id: number;
+  storeId: number;
+  storeName: string;
+  chemicalId: number;
+  chemicalName: string;
+  quantityReceived: number;
+  unit: string;
+  receivedDate: string;
+  receivedBy?: string | null;
+  poNumber?: string | null;
+  orderId?: number | null;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface CreateReceivedBody {
+  storeId: number;
+  chemicalId: number;
+  quantityReceived: number;
+  unit?: string;
+  receivedDate: string;
+  receivedBy?: string;
+  poNumber?: string;
+  orderId?: number | null;
+  notes?: string;
+}
+
+export interface OnHandEntry {
+  chemicalId: number;
+  chemicalName: string;
+  quantity: number;
+  unit: string;
+}
+
+export interface OnHandResult {
+  storeId: number;
+  storeName: string;
+  weekOf: string | null;
+  entries: OnHandEntry[];
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -183,4 +263,21 @@ export type GetAlertsParams = {
   acknowledged?: boolean;
   weekOf?: string;
   limit?: number;
+};
+
+export type GetOrdersParams = {
+  storeId?: number;
+  status?: string;
+  chemicalId?: number;
+  limit?: number;
+};
+
+export type GetReceivedParams = {
+  storeId?: number;
+  chemicalId?: number;
+  limit?: number;
+};
+
+export type GetOnHandParams = {
+  storeId: number;
 };

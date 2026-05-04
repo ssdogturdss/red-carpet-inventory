@@ -22,17 +22,26 @@ import type {
   Alert,
   AlertsSummary,
   Chemical,
+  ChemicalOrder,
+  CreateOrderBody,
+  CreateReceivedBody,
   DeleteResult,
   GetAlertsParams,
   GetInventoryCountsParams,
+  GetOnHandParams,
+  GetOrdersParams,
+  GetReceivedParams,
   HealthStatus,
   InventoryCount,
+  InventoryReceived,
+  OnHandResult,
   ScanInventorySheetBody,
   ScanInventorySheetResult,
   Store,
   SubmitInventoryCountBody,
   UpdateChemicalBody,
   UpdateInventoryCountBody,
+  UpdateOrderBody,
   UpdateStoreBody,
 } from "./api.schemas";
 
@@ -1554,3 +1563,712 @@ export const useAcknowledgeAlert = <
 > => {
   return useMutation(getAcknowledgeAlertMutationOptions(options));
 };
+
+/**
+ * @summary List chemical orders
+ */
+export const getGetOrdersUrl = (params?: GetOrdersParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/orders?${stringifiedParams}`
+    : `/api/orders`;
+};
+
+export const getOrders = async (
+  params?: GetOrdersParams,
+  options?: RequestInit,
+): Promise<ChemicalOrder[]> => {
+  return customFetch<ChemicalOrder[]>(getGetOrdersUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOrdersQueryKey = (params?: GetOrdersParams) => {
+  return [`/api/orders`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetOrdersQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOrders>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetOrdersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrders>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetOrdersQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrders>>> = ({
+    signal,
+  }) => getOrders(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOrders>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOrdersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOrders>>
+>;
+export type GetOrdersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List chemical orders
+ */
+
+export function useGetOrders<
+  TData = Awaited<ReturnType<typeof getOrders>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetOrdersParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrders>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOrdersQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Place a new chemical order
+ */
+export const getCreateOrderUrl = () => {
+  return `/api/orders`;
+};
+
+export const createOrder = async (
+  createOrderBody: CreateOrderBody,
+  options?: RequestInit,
+): Promise<ChemicalOrder> => {
+  return customFetch<ChemicalOrder>(getCreateOrderUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createOrderBody),
+  });
+};
+
+export const getCreateOrderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOrder>>,
+    TError,
+    { data: BodyType<CreateOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createOrder>>,
+  TError,
+  { data: BodyType<CreateOrderBody> },
+  TContext
+> => {
+  const mutationKey = ["createOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createOrder>>,
+    { data: BodyType<CreateOrderBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createOrder(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createOrder>>
+>;
+export type CreateOrderMutationBody = BodyType<CreateOrderBody>;
+export type CreateOrderMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Place a new chemical order
+ */
+export const useCreateOrder = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOrder>>,
+    TError,
+    { data: BodyType<CreateOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createOrder>>,
+  TError,
+  { data: BodyType<CreateOrderBody> },
+  TContext
+> => {
+  return useMutation(getCreateOrderMutationOptions(options));
+};
+
+/**
+ * @summary Update an order (status, notes, etc.)
+ */
+export const getUpdateOrderUrl = (orderId: number) => {
+  return `/api/orders/${orderId}`;
+};
+
+export const updateOrder = async (
+  orderId: number,
+  updateOrderBody: UpdateOrderBody,
+  options?: RequestInit,
+): Promise<ChemicalOrder> => {
+  return customFetch<ChemicalOrder>(getUpdateOrderUrl(orderId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateOrderBody),
+  });
+};
+
+export const getUpdateOrderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateOrder>>,
+    TError,
+    { orderId: number; data: BodyType<UpdateOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateOrder>>,
+  TError,
+  { orderId: number; data: BodyType<UpdateOrderBody> },
+  TContext
+> => {
+  const mutationKey = ["updateOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateOrder>>,
+    { orderId: number; data: BodyType<UpdateOrderBody> }
+  > = (props) => {
+    const { orderId, data } = props ?? {};
+
+    return updateOrder(orderId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateOrder>>
+>;
+export type UpdateOrderMutationBody = BodyType<UpdateOrderBody>;
+export type UpdateOrderMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update an order (status, notes, etc.)
+ */
+export const useUpdateOrder = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateOrder>>,
+    TError,
+    { orderId: number; data: BodyType<UpdateOrderBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateOrder>>,
+  TError,
+  { orderId: number; data: BodyType<UpdateOrderBody> },
+  TContext
+> => {
+  return useMutation(getUpdateOrderMutationOptions(options));
+};
+
+/**
+ * @summary Delete an order
+ */
+export const getDeleteOrderUrl = (orderId: number) => {
+  return `/api/orders/${orderId}`;
+};
+
+export const deleteOrder = async (
+  orderId: number,
+  options?: RequestInit,
+): Promise<DeleteResult> => {
+  return customFetch<DeleteResult>(getDeleteOrderUrl(orderId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteOrderMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteOrder>>,
+    TError,
+    { orderId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteOrder>>,
+  TError,
+  { orderId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteOrder"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteOrder>>,
+    { orderId: number }
+  > = (props) => {
+    const { orderId } = props ?? {};
+
+    return deleteOrder(orderId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteOrderMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteOrder>>
+>;
+
+export type DeleteOrderMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete an order
+ */
+export const useDeleteOrder = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteOrder>>,
+    TError,
+    { orderId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteOrder>>,
+  TError,
+  { orderId: number },
+  TContext
+> => {
+  return useMutation(getDeleteOrderMutationOptions(options));
+};
+
+/**
+ * @summary List inventory received records
+ */
+export const getGetReceivedUrl = (params?: GetReceivedParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/received?${stringifiedParams}`
+    : `/api/received`;
+};
+
+export const getReceived = async (
+  params?: GetReceivedParams,
+  options?: RequestInit,
+): Promise<InventoryReceived[]> => {
+  return customFetch<InventoryReceived[]>(getGetReceivedUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetReceivedQueryKey = (params?: GetReceivedParams) => {
+  return [`/api/received`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetReceivedQueryOptions = <
+  TData = Awaited<ReturnType<typeof getReceived>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetReceivedParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReceived>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetReceivedQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getReceived>>> = ({
+    signal,
+  }) => getReceived(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getReceived>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetReceivedQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getReceived>>
+>;
+export type GetReceivedQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List inventory received records
+ */
+
+export function useGetReceived<
+  TData = Awaited<ReturnType<typeof getReceived>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetReceivedParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getReceived>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetReceivedQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Log an inventory receipt
+ */
+export const getLogReceivedUrl = () => {
+  return `/api/received`;
+};
+
+export const logReceived = async (
+  createReceivedBody: CreateReceivedBody,
+  options?: RequestInit,
+): Promise<InventoryReceived> => {
+  return customFetch<InventoryReceived>(getLogReceivedUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createReceivedBody),
+  });
+};
+
+export const getLogReceivedMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof logReceived>>,
+    TError,
+    { data: BodyType<CreateReceivedBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof logReceived>>,
+  TError,
+  { data: BodyType<CreateReceivedBody> },
+  TContext
+> => {
+  const mutationKey = ["logReceived"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof logReceived>>,
+    { data: BodyType<CreateReceivedBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return logReceived(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LogReceivedMutationResult = NonNullable<
+  Awaited<ReturnType<typeof logReceived>>
+>;
+export type LogReceivedMutationBody = BodyType<CreateReceivedBody>;
+export type LogReceivedMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Log an inventory receipt
+ */
+export const useLogReceived = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof logReceived>>,
+    TError,
+    { data: BodyType<CreateReceivedBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof logReceived>>,
+  TError,
+  { data: BodyType<CreateReceivedBody> },
+  TContext
+> => {
+  return useMutation(getLogReceivedMutationOptions(options));
+};
+
+/**
+ * @summary Delete a received record
+ */
+export const getDeleteReceivedUrl = (receivedId: number) => {
+  return `/api/received/${receivedId}`;
+};
+
+export const deleteReceived = async (
+  receivedId: number,
+  options?: RequestInit,
+): Promise<DeleteResult> => {
+  return customFetch<DeleteResult>(getDeleteReceivedUrl(receivedId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteReceivedMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteReceived>>,
+    TError,
+    { receivedId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteReceived>>,
+  TError,
+  { receivedId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteReceived"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteReceived>>,
+    { receivedId: number }
+  > = (props) => {
+    const { receivedId } = props ?? {};
+
+    return deleteReceived(receivedId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteReceivedMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteReceived>>
+>;
+
+export type DeleteReceivedMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a received record
+ */
+export const useDeleteReceived = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteReceived>>,
+    TError,
+    { receivedId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteReceived>>,
+  TError,
+  { receivedId: number },
+  TContext
+> => {
+  return useMutation(getDeleteReceivedMutationOptions(options));
+};
+
+/**
+ * @summary Get current on-hand quantities for a store
+ */
+export const getGetOnHandUrl = (params: GetOnHandParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/on-hand?${stringifiedParams}`
+    : `/api/on-hand`;
+};
+
+export const getOnHand = async (
+  params: GetOnHandParams,
+  options?: RequestInit,
+): Promise<OnHandResult> => {
+  return customFetch<OnHandResult>(getGetOnHandUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOnHandQueryKey = (params?: GetOnHandParams) => {
+  return [`/api/on-hand`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetOnHandQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOnHand>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetOnHandParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOnHand>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetOnHandQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getOnHand>>> = ({
+    signal,
+  }) => getOnHand(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOnHand>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOnHandQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOnHand>>
+>;
+export type GetOnHandQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get current on-hand quantities for a store
+ */
+
+export function useGetOnHand<
+  TData = Awaited<ReturnType<typeof getOnHand>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetOnHandParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOnHand>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOnHandQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}

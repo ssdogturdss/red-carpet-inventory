@@ -25,8 +25,8 @@ function NativeTabLayout() {
         <Label>Scan</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="history">
-        <Icon sf={{ default: "clock.arrow.circlepath", selected: "clock.arrow.circlepath" }} />
-        <Label>History</Label>
+        <Icon sf={{ default: "archivebox", selected: "archivebox.fill" }} />
+        <Label>Inventory</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="admin">
         <Icon sf={{ default: "shield.lefthalf.filled", selected: "shield.lefthalf.filled" }} />
@@ -110,12 +110,12 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: "History",
+          title: "Inventory",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="clock.arrow.circlepath" tintColor={color} size={22} />
+              <SymbolView name="archivebox.fill" tintColor={color} size={22} />
             ) : (
-              <Feather name="clock" size={22} color={color} />
+              <Feather name="archive" size={22} color={color} />
             ),
         }}
       />

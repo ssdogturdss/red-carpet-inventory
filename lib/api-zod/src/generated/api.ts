@@ -330,3 +330,198 @@ export const AcknowledgeAlertResponse = zod.object({
   acknowledgedAt: zod.string().nullish(),
   createdAt: zod.string(),
 });
+
+/**
+ * @summary List chemical orders
+ */
+export const GetOrdersQueryParams = zod.object({
+  storeId: zod.coerce.number().optional(),
+  status: zod.coerce.string().optional(),
+  chemicalId: zod.coerce.number().optional(),
+  limit: zod.coerce.number().optional(),
+});
+
+export const GetOrdersResponseItem = zod.object({
+  id: zod.number(),
+  storeId: zod.number(),
+  storeName: zod.string(),
+  chemicalId: zod.number(),
+  chemicalName: zod.string(),
+  quantityOrdered: zod.number(),
+  unit: zod.string(),
+  orderDate: zod.string(),
+  expectedDelivery: zod.string().nullish(),
+  status: zod.string(),
+  poNumber: zod.string().nullish(),
+  orderedBy: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+export const GetOrdersResponse = zod.array(GetOrdersResponseItem);
+
+/**
+ * @summary Place a new chemical order
+ */
+export const CreateOrderBody = zod.object({
+  storeId: zod.number(),
+  chemicalId: zod.number(),
+  quantityOrdered: zod.number(),
+  unit: zod.string().optional(),
+  orderDate: zod.string(),
+  expectedDelivery: zod.string().nullish(),
+  poNumber: zod.string().optional(),
+  orderedBy: zod.string().optional(),
+  notes: zod.string().optional(),
+});
+
+export const CreateOrderResponse = zod.object({
+  id: zod.number(),
+  storeId: zod.number(),
+  storeName: zod.string(),
+  chemicalId: zod.number(),
+  chemicalName: zod.string(),
+  quantityOrdered: zod.number(),
+  unit: zod.string(),
+  orderDate: zod.string(),
+  expectedDelivery: zod.string().nullish(),
+  status: zod.string(),
+  poNumber: zod.string().nullish(),
+  orderedBy: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Update an order (status, notes, etc.)
+ */
+export const UpdateOrderParams = zod.object({
+  orderId: zod.coerce.number(),
+});
+
+export const UpdateOrderBody = zod.object({
+  status: zod.string().optional(),
+  quantityOrdered: zod.number().optional(),
+  expectedDelivery: zod.string().nullish(),
+  poNumber: zod.string().nullish(),
+  orderedBy: zod.string().nullish(),
+  notes: zod.string().nullish(),
+});
+
+export const UpdateOrderResponse = zod.object({
+  id: zod.number(),
+  storeId: zod.number(),
+  storeName: zod.string(),
+  chemicalId: zod.number(),
+  chemicalName: zod.string(),
+  quantityOrdered: zod.number(),
+  unit: zod.string(),
+  orderDate: zod.string(),
+  expectedDelivery: zod.string().nullish(),
+  status: zod.string(),
+  poNumber: zod.string().nullish(),
+  orderedBy: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Delete an order
+ */
+export const DeleteOrderParams = zod.object({
+  orderId: zod.coerce.number(),
+});
+
+export const DeleteOrderResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
+});
+
+/**
+ * @summary List inventory received records
+ */
+export const GetReceivedQueryParams = zod.object({
+  storeId: zod.coerce.number().optional(),
+  chemicalId: zod.coerce.number().optional(),
+  limit: zod.coerce.number().optional(),
+});
+
+export const GetReceivedResponseItem = zod.object({
+  id: zod.number(),
+  storeId: zod.number(),
+  storeName: zod.string(),
+  chemicalId: zod.number(),
+  chemicalName: zod.string(),
+  quantityReceived: zod.number(),
+  unit: zod.string(),
+  receivedDate: zod.string(),
+  receivedBy: zod.string().nullish(),
+  poNumber: zod.string().nullish(),
+  orderId: zod.number().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+export const GetReceivedResponse = zod.array(GetReceivedResponseItem);
+
+/**
+ * @summary Log an inventory receipt
+ */
+export const LogReceivedBody = zod.object({
+  storeId: zod.number(),
+  chemicalId: zod.number(),
+  quantityReceived: zod.number(),
+  unit: zod.string().optional(),
+  receivedDate: zod.string(),
+  receivedBy: zod.string().optional(),
+  poNumber: zod.string().optional(),
+  orderId: zod.number().nullish(),
+  notes: zod.string().optional(),
+});
+
+export const LogReceivedResponse = zod.object({
+  id: zod.number(),
+  storeId: zod.number(),
+  storeName: zod.string(),
+  chemicalId: zod.number(),
+  chemicalName: zod.string(),
+  quantityReceived: zod.number(),
+  unit: zod.string(),
+  receivedDate: zod.string(),
+  receivedBy: zod.string().nullish(),
+  poNumber: zod.string().nullish(),
+  orderId: zod.number().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Delete a received record
+ */
+export const DeleteReceivedParams = zod.object({
+  receivedId: zod.coerce.number(),
+});
+
+export const DeleteReceivedResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
+});
+
+/**
+ * @summary Get current on-hand quantities for a store
+ */
+export const GetOnHandQueryParams = zod.object({
+  storeId: zod.coerce.number(),
+});
+
+export const GetOnHandResponse = zod.object({
+  storeId: zod.number(),
+  storeName: zod.string(),
+  weekOf: zod.string().nullable(),
+  entries: zod.array(
+    zod.object({
+      chemicalId: zod.number(),
+      chemicalName: zod.string(),
+      quantity: zod.number(),
+      unit: zod.string(),
+    }),
+  ),
+});
