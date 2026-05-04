@@ -550,7 +550,7 @@ export const GetChemicalReportResponse = zod.array(
 );
 
 /**
- * @summary List all SMS notification contacts
+ * @summary List all email notification contacts
  */
 export const GetNotificationContactsQueryParams = zod.object({
   storeId: zod.coerce.number().optional(),
@@ -560,7 +560,7 @@ export const GetNotificationContactsResponseItem = zod.object({
   id: zod.number(),
   storeId: zod.number().nullish(),
   storeName: zod.string().nullish(),
-  phoneNumber: zod.string(),
+  email: zod.string(),
   label: zod.string(),
   active: zod.boolean(),
   severity: zod.string(),
@@ -571,18 +571,18 @@ export const GetNotificationContactsResponse = zod.array(
 );
 
 /**
- * @summary Add a new SMS contact
+ * @summary Add a new email contact
  */
 export const CreateNotificationContactBody = zod.object({
   storeId: zod.number().nullish(),
-  phoneNumber: zod.string(),
+  email: zod.string(),
   label: zod.string().optional(),
   active: zod.boolean().optional(),
   severity: zod.string().optional(),
 });
 
 /**
- * @summary Update an SMS contact
+ * @summary Update an email contact
  */
 export const UpdateNotificationContactParams = zod.object({
   id: zod.coerce.number(),
@@ -590,7 +590,7 @@ export const UpdateNotificationContactParams = zod.object({
 
 export const UpdateNotificationContactBody = zod.object({
   storeId: zod.number().nullish(),
-  phoneNumber: zod.string().optional(),
+  email: zod.string().optional(),
   label: zod.string().optional(),
   active: zod.boolean().optional(),
   severity: zod.string().optional(),
@@ -600,7 +600,7 @@ export const UpdateNotificationContactResponse = zod.object({
   id: zod.number(),
   storeId: zod.number().nullish(),
   storeName: zod.string().nullish(),
-  phoneNumber: zod.string(),
+  email: zod.string(),
   label: zod.string(),
   active: zod.boolean(),
   severity: zod.string(),
@@ -608,7 +608,7 @@ export const UpdateNotificationContactResponse = zod.object({
 });
 
 /**
- * @summary Remove an SMS contact
+ * @summary Remove an email contact
  */
 export const DeleteNotificationContactParams = zod.object({
   id: zod.coerce.number(),
@@ -620,7 +620,7 @@ export const DeleteNotificationContactResponse = zod.object({
 });
 
 /**
- * @summary Send a test SMS to a contact
+ * @summary Send a test email to a contact
  */
 export const TestNotificationContactParams = zod.object({
   id: zod.coerce.number(),
@@ -632,7 +632,7 @@ export const TestNotificationContactResponse = zod.object({
 });
 
 /**
- * @summary Check if SMS is configured
+ * @summary Check if email is configured
  */
 export const GetNotificationStatusResponse = zod.object({
   configured: zod.boolean(),

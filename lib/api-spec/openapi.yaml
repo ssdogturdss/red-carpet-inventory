@@ -569,7 +569,7 @@ paths:
     get:
       operationId: getNotificationContacts
       tags: [notifications]
-      summary: List all SMS notification contacts
+      summary: List all email notification contacts
       parameters:
         - name: storeId
           in: query
@@ -588,7 +588,7 @@ paths:
     post:
       operationId: createNotificationContact
       tags: [notifications]
-      summary: Add a new SMS contact
+      summary: Add a new email contact
       requestBody:
         required: true
         content:
@@ -607,7 +607,7 @@ paths:
     patch:
       operationId: updateNotificationContact
       tags: [notifications]
-      summary: Update an SMS contact
+      summary: Update an email contact
       parameters:
         - name: id
           in: path
@@ -630,7 +630,7 @@ paths:
     delete:
       operationId: deleteNotificationContact
       tags: [notifications]
-      summary: Remove an SMS contact
+      summary: Remove an email contact
       parameters:
         - name: id
           in: path
@@ -655,7 +655,7 @@ paths:
     post:
       operationId: testNotificationContact
       tags: [notifications]
-      summary: Send a test SMS to a contact
+      summary: Send a test email to a contact
       parameters:
         - name: id
           in: path
@@ -681,10 +681,10 @@ paths:
     get:
       operationId: getNotificationStatus
       tags: [notifications]
-      summary: Check if SMS is configured
+      summary: Check if email is configured
       responses:
         "200":
-          description: SMS configuration status
+          description: Email configuration status
           content:
             application/json:
               schema:
@@ -1264,7 +1264,7 @@ components:
         storeName:
           type: string
           nullable: true
-        phoneNumber:
+        email:
           type: string
         label:
           type: string
@@ -1276,7 +1276,7 @@ components:
           type: string
       required:
         - id
-        - phoneNumber
+        - email
         - label
         - active
         - severity
@@ -1288,7 +1288,7 @@ components:
         storeId:
           type: integer
           nullable: true
-        phoneNumber:
+        email:
           type: string
         label:
           type: string
@@ -1297,7 +1297,7 @@ components:
         severity:
           type: string
       required:
-        - phoneNumber
+        - email
 
     UpdateNotificationContactBody:
       type: object
@@ -1305,7 +1305,7 @@ components:
         storeId:
           type: integer
           nullable: true
-        phoneNumber:
+        email:
           type: string
         label:
           type: string

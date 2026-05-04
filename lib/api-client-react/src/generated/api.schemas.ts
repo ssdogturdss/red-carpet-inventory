@@ -270,7 +270,7 @@ export interface NotificationContact {
   id: number;
   storeId?: number | null;
   storeName?: string | null;
-  phoneNumber: string;
+  email: string;
   label: string;
   active: boolean;
   severity: string;
@@ -279,7 +279,7 @@ export interface NotificationContact {
 
 export interface CreateNotificationContactBody {
   storeId?: number | null;
-  phoneNumber: string;
+  email: string;
   label?: string;
   active?: boolean;
   severity?: string;
@@ -287,7 +287,7 @@ export interface CreateNotificationContactBody {
 
 export interface UpdateNotificationContactBody {
   storeId?: number | null;
-  phoneNumber?: string;
+  email?: string;
   label?: string;
   active?: boolean;
   severity?: string;

@@ -10,7 +10,7 @@ import {
 import { eq, and, desc, sql, or, isNull } from "drizzle-orm";
 import { SubmitInventoryCountBody } from "@workspace/api-zod";
 import { notificationContactsTable } from "@workspace/db";
-import { sendAlertSms } from "../services/sms";
+import { sendAlertEmail } from "../services/email";
 
 const router = Router();
 
@@ -257,10 +257,10 @@ async function generateAlerts(
 
       req.log.info({ storeId, chemicalId: entry.chemicalId, percentChange, direction }, "Alert generated");
 
-      // Send SMS to active contacts for this store or global contacts
+      // Send email to active contacts for this store or global contacts
       try {
         const contacts = await db
-          .select({ phoneNumber: notificationContactsTable.phoneNumber })
+          .select({ email: notificationContactsTable.email })
           .from(notificationContactsTable)
           .where(
             and(
@@ -279,8 +279,8 @@ async function generateAlerts(
         if (contacts.length > 0) {
           const [store] = await db.select({ name: storesTable.name }).from(storesTable).where(eq(storesTable.id, storeId));
           const chem = chemicals.find((c) => c.id === entry.chemicalId);
-          await sendAlertSms(
-            contacts.map((c) => c.phoneNumber),
+          await sendAlertEmail(
+            contacts.map((c) => c.email),
             store?.name ?? "",
             chem?.name ?? "",
             severity,
@@ -288,8 +288,8 @@ async function generateAlerts(
             percentChange
           );
         }
-      } catch (smsErr) {
-        req.log.warn({ smsErr }, "SMS send failed (non-fatal)");
+      } catch (emailErr) {
+        req.log.warn({ emailErr }, "Email send failed (non-fatal)");
       }
     }
   }

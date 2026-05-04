@@ -2357,7 +2357,7 @@ export function useGetChemicalReport<
 }
 
 /**
- * @summary List all SMS notification contacts
+ * @summary List all email notification contacts
  */
 export const getGetNotificationContactsUrl = (
   params?: GetNotificationContactsParams,
@@ -2433,7 +2433,7 @@ export type GetNotificationContactsQueryResult = NonNullable<
 export type GetNotificationContactsQueryError = ErrorType<unknown>;
 
 /**
- * @summary List all SMS notification contacts
+ * @summary List all email notification contacts
  */
 
 export function useGetNotificationContacts<
@@ -2460,7 +2460,7 @@ export function useGetNotificationContacts<
 }
 
 /**
- * @summary Add a new SMS contact
+ * @summary Add a new email contact
  */
 export const getCreateNotificationContactUrl = () => {
   return `/api/notifications/contacts`;
@@ -2524,7 +2524,7 @@ export type CreateNotificationContactMutationBody =
 export type CreateNotificationContactMutationError = ErrorType<unknown>;
 
 /**
- * @summary Add a new SMS contact
+ * @summary Add a new email contact
  */
 export const useCreateNotificationContact = <
   TError = ErrorType<unknown>,
@@ -2547,7 +2547,7 @@ export const useCreateNotificationContact = <
 };
 
 /**
- * @summary Update an SMS contact
+ * @summary Update an email contact
  */
 export const getUpdateNotificationContactUrl = (id: number) => {
   return `/api/notifications/contacts/${id}`;
@@ -2612,7 +2612,7 @@ export type UpdateNotificationContactMutationBody =
 export type UpdateNotificationContactMutationError = ErrorType<unknown>;
 
 /**
- * @summary Update an SMS contact
+ * @summary Update an email contact
  */
 export const useUpdateNotificationContact = <
   TError = ErrorType<unknown>,
@@ -2635,7 +2635,7 @@ export const useUpdateNotificationContact = <
 };
 
 /**
- * @summary Remove an SMS contact
+ * @summary Remove an email contact
  */
 export const getDeleteNotificationContactUrl = (id: number) => {
   return `/api/notifications/contacts/${id}`;
@@ -2699,7 +2699,7 @@ export type DeleteNotificationContactMutationResult = NonNullable<
 export type DeleteNotificationContactMutationError = ErrorType<unknown>;
 
 /**
- * @summary Remove an SMS contact
+ * @summary Remove an email contact
  */
 export const useDeleteNotificationContact = <
   TError = ErrorType<unknown>,
@@ -2722,7 +2722,7 @@ export const useDeleteNotificationContact = <
 };
 
 /**
- * @summary Send a test SMS to a contact
+ * @summary Send a test email to a contact
  */
 export const getTestNotificationContactUrl = (id: number) => {
   return `/api/notifications/contacts/${id}/test`;
@@ -2786,7 +2786,7 @@ export type TestNotificationContactMutationResult = NonNullable<
 export type TestNotificationContactMutationError = ErrorType<unknown>;
 
 /**
- * @summary Send a test SMS to a contact
+ * @summary Send a test email to a contact
  */
 export const useTestNotificationContact = <
   TError = ErrorType<unknown>,
@@ -2809,7 +2809,7 @@ export const useTestNotificationContact = <
 };
 
 /**
- * @summary Check if SMS is configured
+ * @summary Check if email is configured
  */
 export const getGetNotificationStatusUrl = () => {
   return `/api/notifications/status`;
@@ -2860,7 +2860,7 @@ export type GetNotificationStatusQueryResult = NonNullable<
 export type GetNotificationStatusQueryError = ErrorType<unknown>;
 
 /**
- * @summary Check if SMS is configured
+ * @summary Check if email is configured
  */
 
 export function useGetNotificationStatus<

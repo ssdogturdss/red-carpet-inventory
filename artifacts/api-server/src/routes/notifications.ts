@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { notificationContactsTable, storesTable } from "@workspace/db";
-import { eq, and, isNull, or } from "drizzle-orm";
-import { isSmsConfigured, sendSms } from "../services/sms";
+import { eq, isNull, or } from "drizzle-orm";
+import { isEmailConfigured, sendEmail } from "../services/email";
 
 const router = Router();
 
@@ -14,7 +14,7 @@ router.get("/notifications/contacts", async (req, res) => {
       id: notificationContactsTable.id,
       storeId: notificationContactsTable.storeId,
       storeName: storesTable.name,
-      phoneNumber: notificationContactsTable.phoneNumber,
+      email: notificationContactsTable.email,
       label: notificationContactsTable.label,
       active: notificationContactsTable.active,
       severity: notificationContactsTable.severity,
@@ -37,16 +37,16 @@ router.get("/notifications/contacts", async (req, res) => {
 });
 
 router.post("/notifications/contacts", async (req, res) => {
-  const { storeId, phoneNumber, label, active, severity } = req.body as {
+  const { storeId, email, label, active, severity } = req.body as {
     storeId?: number | null;
-    phoneNumber: string;
+    email: string;
     label?: string;
     active?: boolean;
     severity?: string;
   };
 
-  if (!phoneNumber) {
-    res.status(400).json({ error: "phoneNumber is required" });
+  if (!email) {
+    res.status(400).json({ error: "email is required" });
     return;
   }
 
@@ -54,7 +54,7 @@ router.post("/notifications/contacts", async (req, res) => {
     .insert(notificationContactsTable)
     .values({
       storeId: storeId ?? null,
-      phoneNumber,
+      email,
       label: label ?? "",
       active: active ?? true,
       severity: severity ?? "all",
@@ -71,8 +71,8 @@ router.post("/notifications/contacts", async (req, res) => {
 
 router.patch("/notifications/contacts/:id", async (req, res) => {
   const id = Number(req.params["id"]);
-  const { phoneNumber, label, active, severity, storeId } = req.body as {
-    phoneNumber?: string;
+  const { email, label, active, severity, storeId } = req.body as {
+    email?: string;
     label?: string;
     active?: boolean;
     severity?: string;
@@ -80,7 +80,7 @@ router.patch("/notifications/contacts/:id", async (req, res) => {
   };
 
   const updates: Partial<typeof notificationContactsTable.$inferInsert> = {};
-  if (phoneNumber !== undefined) updates.phoneNumber = phoneNumber;
+  if (email !== undefined) updates.email = email;
   if (label !== undefined) updates.label = label;
   if (active !== undefined) updates.active = active;
   if (severity !== undefined) updates.severity = severity;
@@ -119,21 +119,22 @@ router.post("/notifications/contacts/:id/test", async (req, res) => {
     return;
   }
 
-  if (!isSmsConfigured()) {
-    res.status(400).json({ error: "SMS not configured — add TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER to your secrets." });
+  if (!isEmailConfigured()) {
+    res.status(400).json({ error: "Email not configured — add SMTP_HOST, SMTP_USER, SMTP_PASS, and SMTP_FROM to your secrets." });
     return;
   }
 
-  const result = await sendSms(
-    contact.phoneNumber,
-    `✅ Red Carpet Inventory: Test message for ${contact.label || contact.phoneNumber}. Your alert notifications are active.`
+  const result = await sendEmail(
+    contact.email,
+    "Red Carpet Inventory — Test Notification",
+    `This is a test notification for "${contact.label || contact.email}".\n\nYour email alert notifications are active.`
   );
 
   res.json(result);
 });
 
 router.get("/notifications/status", async (_req, res) => {
-  res.json({ configured: isSmsConfigured() });
+  res.json({ configured: isEmailConfigured() });
 });
 
 export default router;

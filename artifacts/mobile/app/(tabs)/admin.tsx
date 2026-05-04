@@ -19,7 +19,7 @@ import {
 } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 
-type Section = "alerts" | "stores" | "products" | "counts" | "texts";
+type Section = "alerts" | "stores" | "products" | "counts" | "email";
 
 function formatWeekOf(weekOf: string) {
   const d = new Date(weekOf + "T00:00:00");
@@ -523,8 +523,8 @@ function CountsSection({ colors, insets }: { colors: ReturnType<typeof import("@
   );
 }
 
-// ─── Texts Section ───────────────────────────────────────────────────────────
-function TextsSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: { bottom: number } }) {
+// ─── Email Section ───────────────────────────────────────────────────────────
+function EmailSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: { bottom: number } }) {
   const qc = useQueryClient();
   const { data: contacts, isLoading, refetch } = useGetNotificationContacts();
   const { data: status } = useGetNotificationStatus();
@@ -536,24 +536,24 @@ function TextsSection({ colors, insets }: { colors: ReturnType<typeof import("@/
   const [refreshing, setRefreshing] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editTarget, setEditTarget] = useState<{
-    id: number; phoneNumber: string; label: string;
+    id: number; email: string; label: string;
     storeId: number | null; severity: string; active: boolean;
   } | null>(null);
-  const [form, setForm] = useState({ phoneNumber: "", label: "", storeId: "", severity: "all", active: true });
+  const [form, setForm] = useState({ email: "", label: "", storeId: "", severity: "all", active: true });
   const webBottom = Platform.OS === "web" ? 34 : 0;
 
   const onRefresh = useCallback(async () => { setRefreshing(true); await refetch(); setRefreshing(false); }, [refetch]);
 
-  const resetForm = () => setForm({ phoneNumber: "", label: "", storeId: "", severity: "all", active: true });
+  const resetForm = () => setForm({ email: "", label: "", storeId: "", severity: "all", active: true });
 
   const handleAdd = async () => {
-    if (!form.phoneNumber.trim() || !form.label.trim()) {
+    if (!form.email.trim() || !form.label.trim()) {
       Alert.alert("Missing fields", "Phone number and label are required.");
       return;
     }
     await createContact({
       data: {
-        phoneNumber: form.phoneNumber.trim(),
+        email: form.email.trim(),
         label: form.label.trim(),
         storeId: form.storeId ? parseInt(form.storeId) : null,
         severity: form.severity as "all" | "warning" | "critical",
@@ -570,7 +570,7 @@ function TextsSection({ colors, insets }: { colors: ReturnType<typeof import("@/
     await updateContact({
       id: editTarget.id,
       data: {
-        phoneNumber: editTarget.phoneNumber,
+        email: editTarget.email,
         label: editTarget.label,
         storeId: editTarget.storeId,
         severity: editTarget.severity as "all" | "warning" | "critical",
@@ -583,7 +583,7 @@ function TextsSection({ colors, insets }: { colors: ReturnType<typeof import("@/
 
   const handleDelete = (id: number, label: string) => Alert.alert(
     "Remove Contact",
-    `Remove "${label}" from SMS notifications?`,
+    `Remove "${label}" from email notifications?`,
     [{ text: "Cancel", style: "cancel" }, {
       text: "Remove", style: "destructive",
       onPress: async () => { await deleteContact({ id }); qc.invalidateQueries(); },
@@ -593,9 +593,9 @@ function TextsSection({ colors, insets }: { colors: ReturnType<typeof import("@/
   const handleTest = async (id: number, label: string) => {
     try {
       await testContact({ id });
-      Alert.alert("Test Sent", `A test SMS was sent to "${label}".`);
+      Alert.alert("Test Sent", `A test email was sent to "${label}".`);
     } catch {
-      Alert.alert("Failed", "Could not send test SMS. Check your Twilio credentials.");
+      Alert.alert("Failed", "Could not send test SMS. Check your SMTP credentials.");
     }
   };
 
@@ -677,7 +677,7 @@ function TextsSection({ colors, insets }: { colors: ReturnType<typeof import("@/
   const ContactForm = ({
     values, onChange, onSave, onCancel, saving, title,
   }: {
-    values: { phoneNumber: string; label: string; storeId: string | null; severity: string; active: boolean };
+    values: { email: string; label: string; storeId: string | null; severity: string; active: boolean };
     onChange: (key: string, val: any) => void;
     onSave: () => void;
     onCancel: () => void;
@@ -692,12 +692,12 @@ function TextsSection({ colors, insets }: { colors: ReturnType<typeof import("@/
         onChangeText={(v) => onChange("label", v)}
         placeholder="e.g. Store Manager" placeholderTextColor={colors.mutedForeground}
       />
-      <Text style={s.fieldLabel}>Phone Number</Text>
+      <Text style={s.fieldLabel}>Email Address</Text>
       <TextInput
-        style={s.fieldInput} value={values.phoneNumber}
-        onChangeText={(v) => onChange("phoneNumber", v)}
-        placeholder="+15551234567" placeholderTextColor={colors.mutedForeground}
-        keyboardType="phone-pad"
+        style={s.fieldInput} value={values.email}
+        onChangeText={(v) => onChange("email", v)}
+        placeholder="alerts@example.com" placeholderTextColor={colors.mutedForeground}
+        keyboardType="email-address"
       />
       <Text style={s.fieldLabel}>Store (optional — blank = all stores)</Text>
       <View style={s.storePickerRow}>
@@ -760,13 +760,13 @@ function TextsSection({ colors, insets }: { colors: ReturnType<typeof import("@/
       <View style={s.statusBanner}>
         <View style={[s.statusDot, { backgroundColor: status?.configured ? "#22c55e" : "#94a3b8" }]} />
         <Text style={s.statusText}>
-          {status?.configured ? "Twilio SMS is configured and active" : "Twilio not configured — set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER"}
+          {status?.configured ? "Email (SMTP) is configured and active" : "Email not configured — set SMTP_HOST, SMTP_USER, SMTP_PASS, and SMTP_FROM"}
         </Text>
       </View>
 
       {showAdd ? (
         <ContactForm
-          title="Add SMS Contact"
+          title="Add Email Contact"
           values={{ ...form, storeId: form.storeId || null }}
           onChange={(key, val) => setForm((prev) => ({ ...prev, [key]: val }))}
           onSave={handleAdd}
@@ -776,15 +776,15 @@ function TextsSection({ colors, insets }: { colors: ReturnType<typeof import("@/
       ) : (
         <TouchableOpacity style={s.addBtn} onPress={() => setShowAdd(true)}>
           <Feather name="plus" size={18} color="#fff" />
-          <Text style={s.addBtnText}>Add SMS Contact</Text>
+          <Text style={s.addBtnText}>Add Email Contact</Text>
         </TouchableOpacity>
       )}
 
       {editTarget && (
         <ContactForm
-          title="Edit SMS Contact"
+          title="Edit Email Contact"
           values={{
-            phoneNumber: editTarget.phoneNumber,
+            email: editTarget.email,
             label: editTarget.label,
             storeId: editTarget.storeId ? String(editTarget.storeId) : null,
             severity: editTarget.severity,
@@ -798,13 +798,13 @@ function TextsSection({ colors, insets }: { colors: ReturnType<typeof import("@/
       )}
 
       {isLoading ? <ActivityIndicator color={colors.primary} /> : !(contacts ?? []).length ? (
-        <Text style={s.empty}>No SMS contacts configured.</Text>
+        <Text style={s.empty}>No email contacts configured.</Text>
       ) : (contacts ?? []).map((c) => (
         <View key={c.id} style={s.card}>
           <View style={s.cardRow}>
             <View style={s.cardInfo}>
               <Text style={s.cardLabel}>{c.label}</Text>
-              <Text style={s.cardPhone}>{c.phoneNumber}</Text>
+              <Text style={s.cardPhone}>{c.email}</Text>
               <Text style={s.cardMeta}>{c.storeName ? `Store: ${c.storeName}` : "All stores"}</Text>
             </View>
           </View>
@@ -827,7 +827,7 @@ function TextsSection({ colors, insets }: { colors: ReturnType<typeof import("@/
               style={s.editBtn}
               onPress={() => setEditTarget({
                 id: c.id,
-                phoneNumber: c.phoneNumber,
+                email: c.email,
                 label: c.label,
                 storeId: c.storeId ?? null,
                 severity: c.severity,
@@ -863,7 +863,7 @@ export default function AdminScreen() {
     { key: "stores", label: "Stores", icon: "map-pin" },
     { key: "products", label: "Products", icon: "package" },
     { key: "counts", label: "Counts", icon: "clipboard" },
-    { key: "texts", label: "Texts", icon: "message-square" },
+    { key: "email", label: "Email", icon: "mail" },
   ];
 
   const s = StyleSheet.create({
@@ -918,7 +918,7 @@ export default function AdminScreen() {
         {activeSection === "stores" && <StoresSection colors={colors} insets={insets} />}
         {activeSection === "products" && <ProductsSection colors={colors} insets={insets} />}
         {activeSection === "counts" && <CountsSection colors={colors} insets={insets} />}
-        {activeSection === "texts" && <TextsSection colors={colors} insets={insets} />}
+        {activeSection === "email" && <EmailSection colors={colors} insets={insets} />}
       </View>
     </View>
   );
