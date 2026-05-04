@@ -11,10 +11,11 @@ import {
   useGetInventoryCounts, useGetStores, useGetChemicals,
   useGetOnHand, useGetReceived, useLogReceived, useDeleteReceived,
   useGetOrders, useCreateOrder, useUpdateOrder, useDeleteOrder,
+  useGetChemicalReport,
 } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 
-type SubTab = "history" | "onhand" | "received" | "orders";
+type SubTab = "history" | "onhand" | "received" | "orders" | "reports";
 
 function todayString() {
   return new Date().toISOString().split("T")[0]!;
@@ -85,6 +86,7 @@ function SubTabBar({ active, onChange, colors }: { active: SubTab; onChange: (t:
     { key: "onhand", label: "On Hand", icon: "package" },
     { key: "received", label: "Received", icon: "download" },
     { key: "orders", label: "Orders", icon: "shopping-cart" },
+    { key: "reports", label: "Reports", icon: "bar-chart-2" },
   ];
   const s = StyleSheet.create({
     bar: { flexDirection: "row", backgroundColor: colors.navy, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.1)" },
@@ -672,6 +674,146 @@ function OrdersSection({ colors, insets }: { colors: ReturnType<typeof import("@
   );
 }
 
+// ─── Reports Section ─────────────────────────────────────────────────────────
+function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: ReturnType<typeof useSafeAreaInsets> }) {
+  const webBottom = Platform.OS === "web" ? 34 : 0;
+  const [selectedChemIdx, setSelectedChemIdx] = useState(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const { data: report, isLoading, refetch } = useGetChemicalReport();
+  const onRefresh = useCallback(async () => { setRefreshing(true); await refetch(); setRefreshing(false); }, [refetch]);
+
+  const chemical = report?.[selectedChemIdx];
+  const chemOptions = (report ?? []).map((c, i) => ({ id: i, name: c.chemicalName }));
+
+  const stores = chemical?.stores ?? [];
+  const counted = stores.filter((s) => s.latestQuantity !== null);
+  const avg = counted.length ? counted.reduce((sum, s) => sum + (s.latestQuantity ?? 0), 0) / counted.length : null;
+  const maxQty = counted.length ? Math.max(...counted.map((s) => s.latestQuantity ?? 0)) : 0;
+  const minQty = counted.length ? Math.min(...counted.map((s) => s.latestQuantity ?? 0)) : 0;
+
+  const s = StyleSheet.create({
+    outer: { flex: 1 },
+    pickerRow: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border },
+    pickerBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.primary, borderRadius: colors.radius, paddingHorizontal: 14, paddingVertical: 9, alignSelf: "flex-start" },
+    pickerBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.primary, flex: 1 },
+    scroll: { flex: 1 },
+    content: { padding: 16, paddingBottom: insets.bottom + 90 + webBottom },
+    summaryRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
+    statCard: { flex: 1, backgroundColor: colors.card, borderRadius: colors.radius, borderWidth: 1, borderColor: colors.border, padding: 12, alignItems: "center" },
+    statValue: { fontSize: 20, fontFamily: "Inter_700Bold", color: colors.foreground },
+    statLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: colors.mutedForeground, marginTop: 3, textTransform: "uppercase", letterSpacing: 0.6 },
+    sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 },
+    tableHeader: { flexDirection: "row", paddingHorizontal: 12, paddingVertical: 7, backgroundColor: colors.secondary, borderRadius: 6, marginBottom: 4 },
+    thStore: { flex: 1, fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.6 },
+    thQty: { width: 64, textAlign: "right", fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.6 },
+    thBar: { width: 72, textAlign: "right", fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.6 },
+    storeRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 10, backgroundColor: colors.card, borderRadius: 8, marginBottom: 4, borderWidth: 1, borderColor: colors.border },
+    storeName: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground },
+    storeNum: { fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground },
+    qtyText: { width: 64, textAlign: "right", fontSize: 14, fontFamily: "Inter_700Bold", color: colors.foreground },
+    qtyNull: { color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 13 },
+    alertDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.critical, marginLeft: 6 },
+    barWrap: { width: 72, alignItems: "flex-end", paddingLeft: 8 },
+    barBg: { width: 60, height: 7, backgroundColor: colors.secondary, borderRadius: 4, overflow: "hidden" },
+    barFill: { height: 7, borderRadius: 4 },
+    noData: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 40 },
+  });
+
+  const getBarColor = (qty: number | null) => {
+    if (qty === null) return colors.border;
+    if (avg === null || maxQty === 0) return colors.teal;
+    const ratio = qty / maxQty;
+    if (ratio < 0.25) return colors.critical;
+    if (ratio < 0.5) return "#f59e0b";
+    return colors.teal;
+  };
+
+  return (
+    <View style={s.outer}>
+      <View style={s.pickerRow}>
+        <TouchableOpacity style={s.pickerBtn} onPress={() => setPickerOpen(true)}>
+          <Feather name="bar-chart-2" size={14} color={colors.primary} />
+          <Text style={s.pickerBtnText} numberOfLines={1}>{chemical?.chemicalName ?? "Select a chemical…"}</Text>
+          <Feather name="chevron-down" size={14} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+      <ScrollView style={s.scroll} contentContainerStyle={s.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+        {isLoading ? (
+          <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+        ) : !chemical ? (
+          <Text style={s.noData}>No data yet.</Text>
+        ) : (
+          <>
+            {/* Summary stats */}
+            {counted.length > 0 && (
+              <View style={s.summaryRow}>
+                <View style={s.statCard}>
+                  <Text style={s.statValue}>{avg !== null ? avg.toFixed(1) : "—"}</Text>
+                  <Text style={s.statLabel}>Avg {chemical.unit}</Text>
+                </View>
+                <View style={s.statCard}>
+                  <Text style={s.statValue}>{maxQty}</Text>
+                  <Text style={s.statLabel}>Highest</Text>
+                </View>
+                <View style={s.statCard}>
+                  <Text style={s.statValue}>{minQty}</Text>
+                  <Text style={s.statLabel}>Lowest</Text>
+                </View>
+                <View style={s.statCard}>
+                  <Text style={[s.statValue, { color: stores.filter((s) => s.hasAlert).length > 0 ? colors.critical : colors.teal }]}>
+                    {stores.filter((s) => s.hasAlert).length}
+                  </Text>
+                  <Text style={s.statLabel}>Alerts</Text>
+                </View>
+              </View>
+            )}
+
+            {/* Store comparison table */}
+            <Text style={s.sectionTitle}>All Stores — {chemical.unit}</Text>
+            <View style={s.tableHeader}>
+              <Text style={s.thStore}>Store</Text>
+              <Text style={s.thQty}>Qty</Text>
+              <Text style={s.thBar}>Level</Text>
+            </View>
+            {stores.map((st) => {
+              const barPct = maxQty > 0 && st.latestQuantity !== null ? (st.latestQuantity / maxQty) * 60 : 0;
+              const barColor = getBarColor(st.latestQuantity);
+              return (
+                <View key={st.storeId} style={s.storeRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.storeName}>{st.storeName}</Text>
+                    {st.weekOf ? <Text style={s.storeNum}>Wk {formatDate(st.weekOf)}</Text> : <Text style={s.storeNum}>No count yet</Text>}
+                  </View>
+                  <Text style={[s.qtyText, st.latestQuantity === null && s.qtyNull]}>
+                    {st.latestQuantity !== null ? st.latestQuantity : "—"}
+                  </Text>
+                  {st.hasAlert && <View style={s.alertDot} />}
+                  <View style={s.barWrap}>
+                    <View style={s.barBg}>
+                      <View style={[s.barFill, { width: barPct, backgroundColor: barColor }]} />
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+          </>
+        )}
+      </ScrollView>
+      <PickerModal
+        visible={pickerOpen}
+        title="Select Chemical"
+        items={chemOptions}
+        selected={selectedChemIdx}
+        onSelect={(id) => { if (id !== undefined) setSelectedChemIdx(id); }}
+        onClose={() => setPickerOpen(false)}
+        colors={colors}
+        insets={insets}
+      />
+    </View>
+  );
+}
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 export default function InventoryScreen() {
   const colors = useColors();
@@ -699,6 +841,7 @@ export default function InventoryScreen() {
         {activeTab === "onhand" && <OnHandSection colors={colors} insets={insets} />}
         {activeTab === "received" && <ReceivedSection colors={colors} insets={insets} />}
         {activeTab === "orders" && <OrdersSection colors={colors} insets={insets} />}
+        {activeTab === "reports" && <ReportsSection colors={colors} insets={insets} />}
       </View>
     </View>
   );

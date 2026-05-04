@@ -23,6 +23,7 @@ import type {
   AlertsSummary,
   Chemical,
   ChemicalOrder,
+  ChemicalReport,
   CreateOrderBody,
   CreateReceivedBody,
   DeleteResult,
@@ -2265,6 +2266,81 @@ export function useGetOnHand<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetOnHandQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Usage comparison for all chemicals across all stores
+ */
+export const getGetChemicalReportUrl = () => {
+  return `/api/reports/chemicals`;
+};
+
+export const getChemicalReport = async (
+  options?: RequestInit,
+): Promise<ChemicalReport[]> => {
+  return customFetch<ChemicalReport[]>(getGetChemicalReportUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetChemicalReportQueryKey = () => {
+  return [`/api/reports/chemicals`] as const;
+};
+
+export const getGetChemicalReportQueryOptions = <
+  TData = Awaited<ReturnType<typeof getChemicalReport>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getChemicalReport>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetChemicalReportQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getChemicalReport>>
+  > = ({ signal }) => getChemicalReport({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getChemicalReport>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetChemicalReportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getChemicalReport>>
+>;
+export type GetChemicalReportQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Usage comparison for all chemicals across all stores
+ */
+
+export function useGetChemicalReport<
+  TData = Awaited<ReturnType<typeof getChemicalReport>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getChemicalReport>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetChemicalReportQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

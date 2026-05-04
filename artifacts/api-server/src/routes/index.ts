@@ -9,6 +9,7 @@ import adminRouter from "./admin";
 import ordersRouter from "./orders";
 import receivedRouter from "./received";
 import onhandRouter from "./onhand";
+import reportsRouter from "./reports";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(alertsRouter);
 router.use(ordersRouter);
 router.use(receivedRouter);
 router.use(onhandRouter);
+router.use(reportsRouter);
 
 export default router;

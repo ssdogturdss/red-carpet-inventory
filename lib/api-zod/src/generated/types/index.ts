@@ -15,6 +15,8 @@ export * from "./alertsSummary";
 export * from "./alertsSummaryByStoreItem";
 export * from "./chemical";
 export * from "./chemicalOrder";
+export * from "./chemicalReport";
+export * from "./chemicalReportStoresItem";
 export * from "./createOrderBody";
 export * from "./createReceivedBody";
 export * from "./deleteResult";

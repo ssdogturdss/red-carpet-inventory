@@ -249,6 +249,23 @@ export interface AlertsSummary {
   byStore: AlertsSummaryByStoreItem[];
 }
 
+export type ChemicalReportStoresItem = {
+  storeId: number;
+  storeName: string;
+  storeNumber: string;
+  latestQuantity?: number | null;
+  weekOf?: string | null;
+  hasAlert: boolean;
+};
+
+export interface ChemicalReport {
+  chemicalId: number;
+  chemicalName: string;
+  unit: string;
+  alertThresholdPercent: number;
+  stores: ChemicalReportStoresItem[];
+}
+
 export type GetInventoryCountsParams = {
   storeId?: number;
   /**

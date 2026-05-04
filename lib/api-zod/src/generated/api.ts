@@ -525,3 +525,26 @@ export const GetOnHandResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * @summary Usage comparison for all chemicals across all stores
+ */
+export const GetChemicalReportResponseItem = zod.object({
+  chemicalId: zod.number(),
+  chemicalName: zod.string(),
+  unit: zod.string(),
+  alertThresholdPercent: zod.number(),
+  stores: zod.array(
+    zod.object({
+      storeId: zod.number(),
+      storeName: zod.string(),
+      storeNumber: zod.string(),
+      latestQuantity: zod.number().nullish(),
+      weekOf: zod.string().nullish(),
+      hasAlert: zod.boolean(),
+    }),
+  ),
+});
+export const GetChemicalReportResponse = zod.array(
+  GetChemicalReportResponseItem,
+);

@@ -550,6 +550,21 @@ paths:
               schema:
                 $ref: "#/components/schemas/OnHandResult"
 
+  /reports/chemicals:
+    get:
+      operationId: getChemicalReport
+      tags: [reports]
+      summary: Usage comparison for all chemicals across all stores
+      responses:
+        "200":
+          description: List of chemicals each with per-store latest count data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChemicalReport"
+
 components:
   schemas:
     AdminAuthBody:
@@ -1066,3 +1081,45 @@ components:
         - criticalCount
         - warningCount
         - byStore
+
+    ChemicalReport:
+      type: object
+      properties:
+        chemicalId:
+          type: integer
+        chemicalName:
+          type: string
+        unit:
+          type: string
+        alertThresholdPercent:
+          type: number
+        stores:
+          type: array
+          items:
+            type: object
+            properties:
+              storeId:
+                type: integer
+              storeName:
+                type: string
+              storeNumber:
+                type: string
+              latestQuantity:
+                type: number
+                nullable: true
+              weekOf:
+                type: string
+                nullable: true
+              hasAlert:
+                type: boolean
+            required:
+              - storeId
+              - storeName
+              - storeNumber
+              - hasAlert
+      required:
+        - chemicalId
+        - chemicalName
+        - unit
+        - alertThresholdPercent
+        - stores
