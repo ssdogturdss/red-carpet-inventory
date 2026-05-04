@@ -16,7 +16,13 @@ import { setBaseUrl } from "@workspace/api-client-react";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
-setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
+// In the browser the API is always on the same origin (dev preview or production).
+// On native devices fall back to the env var set by the dev workflow.
+setBaseUrl(
+  typeof window !== "undefined"
+    ? window.location.origin
+    : `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+);
 
 SplashScreen.preventAutoHideAsync();
 
