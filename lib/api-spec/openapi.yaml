@@ -1123,3 +1123,193 @@ components:
         - unit
         - alertThresholdPercent
         - stores
+
+  /notifications/contacts:
+    get:
+      operationId: getNotificationContacts
+      tags: [notifications]
+      summary: List all SMS notification contacts
+      parameters:
+        - name: storeId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of contacts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationContact"
+    post:
+      operationId: createNotificationContact
+      tags: [notifications]
+      summary: Add a new SMS contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNotificationContactBody"
+      responses:
+        "201":
+          description: Created contact
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationContact"
+
+  /notifications/contacts/{id}:
+    patch:
+      operationId: updateNotificationContact
+      tags: [notifications]
+      summary: Update an SMS contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNotificationContactBody"
+      responses:
+        "200":
+          description: Updated contact
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationContact"
+    delete:
+      operationId: deleteNotificationContact
+      tags: [notifications]
+      summary: Remove an SMS contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  id:
+                    type: integer
+                required: [success, id]
+
+  /notifications/contacts/{id}/test:
+    post:
+      operationId: testNotificationContact
+      tags: [notifications]
+      summary: Send a test SMS to a contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Result of test send
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  error:
+                    type: string
+                    nullable: true
+                required: [success]
+
+  /notifications/status:
+    get:
+      operationId: getNotificationStatus
+      tags: [notifications]
+      summary: Check if SMS is configured
+      responses:
+        "200":
+          description: SMS configuration status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  configured:
+                    type: boolean
+                required: [configured]
+
+    NotificationContact:
+      type: object
+      properties:
+        id:
+          type: integer
+        storeId:
+          type: integer
+          nullable: true
+        storeName:
+          type: string
+          nullable: true
+        phoneNumber:
+          type: string
+        label:
+          type: string
+        active:
+          type: boolean
+        severity:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - phoneNumber
+        - label
+        - active
+        - severity
+        - createdAt
+
+    CreateNotificationContactBody:
+      type: object
+      properties:
+        storeId:
+          type: integer
+          nullable: true
+        phoneNumber:
+          type: string
+        label:
+          type: string
+        active:
+          type: boolean
+        severity:
+          type: string
+      required:
+        - phoneNumber
+
+    UpdateNotificationContactBody:
+      type: object
+      properties:
+        storeId:
+          type: integer
+          nullable: true
+        phoneNumber:
+          type: string
+        label:
+          type: string
+        active:
+          type: boolean
+        severity:
+          type: string

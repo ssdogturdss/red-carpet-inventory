@@ -7,8 +7,10 @@ import {
   chemicalsTable,
   alertsTable,
 } from "@workspace/db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, or, isNull } from "drizzle-orm";
 import { SubmitInventoryCountBody } from "@workspace/api-zod";
+import { notificationContactsTable } from "@workspace/db";
+import { sendAlertSms } from "../services/sms";
 
 const router = Router();
 
@@ -254,6 +256,41 @@ async function generateAlerts(
       });
 
       req.log.info({ storeId, chemicalId: entry.chemicalId, percentChange, direction }, "Alert generated");
+
+      // Send SMS to active contacts for this store or global contacts
+      try {
+        const contacts = await db
+          .select({ phoneNumber: notificationContactsTable.phoneNumber })
+          .from(notificationContactsTable)
+          .where(
+            and(
+              or(
+                eq(notificationContactsTable.storeId, storeId),
+                isNull(notificationContactsTable.storeId)
+              ),
+              eq(notificationContactsTable.active, true),
+              or(
+                eq(notificationContactsTable.severity, "all"),
+                eq(notificationContactsTable.severity, severity)
+              )
+            )
+          );
+
+        if (contacts.length > 0) {
+          const [store] = await db.select({ name: storesTable.name }).from(storesTable).where(eq(storesTable.id, storeId));
+          const chem = chemicals.find((c) => c.id === entry.chemicalId);
+          await sendAlertSms(
+            contacts.map((c) => c.phoneNumber),
+            store?.name ?? "",
+            chem?.name ?? "",
+            severity,
+            direction,
+            percentChange
+          );
+        }
+      } catch (smsErr) {
+        req.log.warn({ smsErr }, "SMS send failed (non-fatal)");
+      }
     }
   }
 }

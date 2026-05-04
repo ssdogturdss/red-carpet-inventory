@@ -10,6 +10,7 @@ import ordersRouter from "./orders";
 import receivedRouter from "./received";
 import onhandRouter from "./onhand";
 import reportsRouter from "./reports";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(ordersRouter);
 router.use(receivedRouter);
 router.use(onhandRouter);
 router.use(reportsRouter);
+router.use(notificationsRouter);
 
 export default router;
