@@ -13,10 +13,13 @@ import {
   useGetStores, useUpdateStore, useDeleteStore,
   useGetChemicals, useUpdateChemical, useDeleteChemical,
   useGetInventoryCounts, useDeleteInventoryCount,
+  useGetNotificationContacts, useCreateNotificationContact,
+  useUpdateNotificationContact, useDeleteNotificationContact,
+  useTestNotificationContact, useGetNotificationStatus,
 } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 
-type Section = "alerts" | "stores" | "products" | "counts";
+type Section = "alerts" | "stores" | "products" | "counts" | "texts";
 
 function formatWeekOf(weekOf: string) {
   const d = new Date(weekOf + "T00:00:00");
@@ -520,6 +523,329 @@ function CountsSection({ colors, insets }: { colors: ReturnType<typeof import("@
   );
 }
 
+// ─── Texts Section ───────────────────────────────────────────────────────────
+function TextsSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: { bottom: number } }) {
+  const qc = useQueryClient();
+  const { data: contacts, isLoading, refetch } = useGetNotificationContacts();
+  const { data: status } = useGetNotificationStatus();
+  const { data: stores } = useGetStores();
+  const { mutateAsync: createContact, isPending: creating } = useCreateNotificationContact();
+  const { mutateAsync: updateContact, isPending: updatingContact } = useUpdateNotificationContact();
+  const { mutateAsync: deleteContact } = useDeleteNotificationContact();
+  const { mutateAsync: testContact } = useTestNotificationContact();
+  const [refreshing, setRefreshing] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [editTarget, setEditTarget] = useState<{
+    id: number; phoneNumber: string; label: string;
+    storeId: number | null; severity: string; active: boolean;
+  } | null>(null);
+  const [form, setForm] = useState({ phoneNumber: "", label: "", storeId: "", severity: "all", active: true });
+  const webBottom = Platform.OS === "web" ? 34 : 0;
+
+  const onRefresh = useCallback(async () => { setRefreshing(true); await refetch(); setRefreshing(false); }, [refetch]);
+
+  const resetForm = () => setForm({ phoneNumber: "", label: "", storeId: "", severity: "all", active: true });
+
+  const handleAdd = async () => {
+    if (!form.phoneNumber.trim() || !form.label.trim()) {
+      Alert.alert("Missing fields", "Phone number and label are required.");
+      return;
+    }
+    await createContact({
+      data: {
+        phoneNumber: form.phoneNumber.trim(),
+        label: form.label.trim(),
+        storeId: form.storeId ? parseInt(form.storeId) : null,
+        severity: form.severity as "all" | "warning" | "critical",
+        active: form.active,
+      },
+    });
+    qc.invalidateQueries();
+    resetForm();
+    setShowAdd(false);
+  };
+
+  const handleUpdate = async () => {
+    if (!editTarget) return;
+    await updateContact({
+      id: editTarget.id,
+      data: {
+        phoneNumber: editTarget.phoneNumber,
+        label: editTarget.label,
+        storeId: editTarget.storeId,
+        severity: editTarget.severity as "all" | "warning" | "critical",
+        active: editTarget.active,
+      },
+    });
+    qc.invalidateQueries();
+    setEditTarget(null);
+  };
+
+  const handleDelete = (id: number, label: string) => Alert.alert(
+    "Remove Contact",
+    `Remove "${label}" from SMS notifications?`,
+    [{ text: "Cancel", style: "cancel" }, {
+      text: "Remove", style: "destructive",
+      onPress: async () => { await deleteContact({ id }); qc.invalidateQueries(); },
+    }]
+  );
+
+  const handleTest = async (id: number, label: string) => {
+    try {
+      await testContact({ id });
+      Alert.alert("Test Sent", `A test SMS was sent to "${label}".`);
+    } catch {
+      Alert.alert("Failed", "Could not send test SMS. Check your Twilio credentials.");
+    }
+  };
+
+  const severityColor = (sev: string) =>
+    sev === "critical" ? colors.critical : sev === "warning" ? colors.warning : colors.teal;
+
+  const s = StyleSheet.create({
+    scroll: { flex: 1 },
+    content: { padding: 16, paddingBottom: insets.bottom + 80 + webBottom },
+    statusBanner: {
+      flexDirection: "row", alignItems: "center", gap: 8,
+      backgroundColor: colors.card, borderRadius: colors.radius,
+      borderWidth: 1, borderColor: colors.border,
+      padding: 12, marginBottom: 14,
+    },
+    statusDot: { width: 10, height: 10, borderRadius: 5 },
+    statusText: { fontSize: 13, fontFamily: "Inter_500Medium", color: colors.foreground, flex: 1 },
+    addBtn: {
+      flexDirection: "row", alignItems: "center", gap: 8,
+      backgroundColor: colors.primary, borderRadius: colors.radius,
+      padding: 13, marginBottom: 14, justifyContent: "center",
+    },
+    addBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
+    card: {
+      backgroundColor: colors.card, borderRadius: colors.radius,
+      borderWidth: 1, borderColor: colors.border, marginBottom: 10, padding: 14,
+    },
+    cardRow: { flexDirection: "row", alignItems: "flex-start" },
+    cardInfo: { flex: 1 },
+    cardLabel: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    cardPhone: { fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 },
+    cardMeta: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 },
+    cardBadgeRow: { flexDirection: "row", gap: 6, marginTop: 8 },
+    badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+    badgeText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+    cardActions: { flexDirection: "row", gap: 8, marginTop: 10 },
+    testBtn: {
+      flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+      backgroundColor: colors.secondary, borderRadius: 8, paddingVertical: 8,
+    },
+    testBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: colors.foreground },
+    editBtn: { padding: 8, borderRadius: 8, backgroundColor: colors.secondary },
+    delBtn: { padding: 8, borderRadius: 8, backgroundColor: "#fef2f2" },
+    empty: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 40 },
+    formCard: {
+      backgroundColor: colors.card, borderRadius: colors.radius,
+      borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 14,
+    },
+    formTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: colors.foreground, marginBottom: 14 },
+    fieldLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 6 },
+    fieldInput: {
+      backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border,
+      borderRadius: colors.radius, padding: 11, fontSize: 15,
+      fontFamily: "Inter_400Regular", color: colors.foreground, marginBottom: 12,
+    },
+    segRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
+    segBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: colors.secondary, alignItems: "center" },
+    segBtnActive: { backgroundColor: colors.primary },
+    segBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: colors.foreground },
+    segBtnTextActive: { color: "#fff" },
+    toggleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
+    toggleLabel: { fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground },
+    toggleBtn: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 16, backgroundColor: colors.secondary },
+    toggleBtnOn: { backgroundColor: colors.primary },
+    toggleBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground },
+    toggleBtnOnText: { color: "#fff" },
+    formBtnRow: { flexDirection: "row", gap: 10 },
+    cancelBtn: { flex: 1, backgroundColor: colors.secondary, borderRadius: colors.radius, padding: 12, alignItems: "center" },
+    cancelBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    saveBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: colors.radius, padding: 12, alignItems: "center" },
+    saveBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
+    storePickerRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
+    storeChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border },
+    storeChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    storeChipText: { fontSize: 12, fontFamily: "Inter_500Medium", color: colors.foreground },
+    storeChipTextActive: { color: "#fff" },
+  });
+
+  const ContactForm = ({
+    values, onChange, onSave, onCancel, saving, title,
+  }: {
+    values: { phoneNumber: string; label: string; storeId: string | null; severity: string; active: boolean };
+    onChange: (key: string, val: any) => void;
+    onSave: () => void;
+    onCancel: () => void;
+    saving: boolean;
+    title: string;
+  }) => (
+    <View style={s.formCard}>
+      <Text style={s.formTitle}>{title}</Text>
+      <Text style={s.fieldLabel}>Label</Text>
+      <TextInput
+        style={s.fieldInput} value={values.label}
+        onChangeText={(v) => onChange("label", v)}
+        placeholder="e.g. Store Manager" placeholderTextColor={colors.mutedForeground}
+      />
+      <Text style={s.fieldLabel}>Phone Number</Text>
+      <TextInput
+        style={s.fieldInput} value={values.phoneNumber}
+        onChangeText={(v) => onChange("phoneNumber", v)}
+        placeholder="+15551234567" placeholderTextColor={colors.mutedForeground}
+        keyboardType="phone-pad"
+      />
+      <Text style={s.fieldLabel}>Store (optional — blank = all stores)</Text>
+      <View style={s.storePickerRow}>
+        <TouchableOpacity
+          style={[s.storeChip, (!values.storeId) && s.storeChipActive]}
+          onPress={() => onChange("storeId", null)}
+        >
+          <Text style={[s.storeChipText, (!values.storeId) && s.storeChipTextActive]}>All</Text>
+        </TouchableOpacity>
+        {(stores ?? []).map((st) => (
+          <TouchableOpacity
+            key={st.id}
+            style={[s.storeChip, values.storeId === String(st.id) && s.storeChipActive]}
+            onPress={() => onChange("storeId", String(st.id))}
+          >
+            <Text style={[s.storeChipText, values.storeId === String(st.id) && s.storeChipTextActive]}>{st.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <Text style={s.fieldLabel}>Alert Severity</Text>
+      <View style={s.segRow}>
+        {(["all", "warning", "critical"] as const).map((sev) => (
+          <TouchableOpacity
+            key={sev}
+            style={[s.segBtn, values.severity === sev && s.segBtnActive]}
+            onPress={() => onChange("severity", sev)}
+          >
+            <Text style={[s.segBtnText, values.severity === sev && s.segBtnTextActive]}>
+              {sev.charAt(0).toUpperCase() + sev.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <View style={s.toggleRow}>
+        <Text style={s.toggleLabel}>Active</Text>
+        <TouchableOpacity
+          style={[s.toggleBtn, values.active && s.toggleBtnOn]}
+          onPress={() => onChange("active", !values.active)}
+        >
+          <Text style={[s.toggleBtnText, values.active && s.toggleBtnOnText]}>{values.active ? "ON" : "OFF"}</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={s.formBtnRow}>
+        <TouchableOpacity style={s.cancelBtn} onPress={onCancel}>
+          <Text style={s.cancelBtnText}>Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.saveBtn} onPress={onSave} disabled={saving}>
+          {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveBtnText}>Save</Text>}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  return (
+    <ScrollView
+      style={s.scroll}
+      contentContainerStyle={s.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+    >
+      <View style={s.statusBanner}>
+        <View style={[s.statusDot, { backgroundColor: status?.configured ? "#22c55e" : "#94a3b8" }]} />
+        <Text style={s.statusText}>
+          {status?.configured ? "Twilio SMS is configured and active" : "Twilio not configured — set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER"}
+        </Text>
+      </View>
+
+      {showAdd ? (
+        <ContactForm
+          title="Add SMS Contact"
+          values={{ ...form, storeId: form.storeId || null }}
+          onChange={(key, val) => setForm((prev) => ({ ...prev, [key]: val }))}
+          onSave={handleAdd}
+          onCancel={() => { setShowAdd(false); resetForm(); }}
+          saving={creating}
+        />
+      ) : (
+        <TouchableOpacity style={s.addBtn} onPress={() => setShowAdd(true)}>
+          <Feather name="plus" size={18} color="#fff" />
+          <Text style={s.addBtnText}>Add SMS Contact</Text>
+        </TouchableOpacity>
+      )}
+
+      {editTarget && (
+        <ContactForm
+          title="Edit SMS Contact"
+          values={{
+            phoneNumber: editTarget.phoneNumber,
+            label: editTarget.label,
+            storeId: editTarget.storeId ? String(editTarget.storeId) : null,
+            severity: editTarget.severity,
+            active: editTarget.active,
+          }}
+          onChange={(key, val) => setEditTarget((prev) => prev ? { ...prev, [key]: val } : prev)}
+          onSave={handleUpdate}
+          onCancel={() => setEditTarget(null)}
+          saving={updatingContact}
+        />
+      )}
+
+      {isLoading ? <ActivityIndicator color={colors.primary} /> : !(contacts ?? []).length ? (
+        <Text style={s.empty}>No SMS contacts configured.</Text>
+      ) : (contacts ?? []).map((c) => (
+        <View key={c.id} style={s.card}>
+          <View style={s.cardRow}>
+            <View style={s.cardInfo}>
+              <Text style={s.cardLabel}>{c.label}</Text>
+              <Text style={s.cardPhone}>{c.phoneNumber}</Text>
+              <Text style={s.cardMeta}>{c.storeName ? `Store: ${c.storeName}` : "All stores"}</Text>
+            </View>
+          </View>
+          <View style={s.cardBadgeRow}>
+            <View style={[s.badge, { backgroundColor: severityColor(c.severity) + "22" }]}>
+              <Text style={[s.badgeText, { color: severityColor(c.severity) }]}>{c.severity}</Text>
+            </View>
+            <View style={[s.badge, { backgroundColor: c.active ? "#dcfce7" : "#f1f5f9" }]}>
+              <Text style={[s.badgeText, { color: c.active ? "#16a34a" : colors.mutedForeground }]}>
+                {c.active ? "Active" : "Inactive"}
+              </Text>
+            </View>
+          </View>
+          <View style={s.cardActions}>
+            <TouchableOpacity style={s.testBtn} onPress={() => handleTest(c.id, c.label)}>
+              <Feather name="send" size={14} color={colors.foreground} />
+              <Text style={s.testBtnText}>Test</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={s.editBtn}
+              onPress={() => setEditTarget({
+                id: c.id,
+                phoneNumber: c.phoneNumber,
+                label: c.label,
+                storeId: c.storeId ?? null,
+                severity: c.severity,
+                active: c.active,
+              })}
+            >
+              <Feather name="edit-2" size={16} color={colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.delBtn} onPress={() => handleDelete(c.id, c.label)}>
+              <Feather name="trash-2" size={16} color={colors.critical} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
 // ─── Main Admin Screen ───────────────────────────────────────────────────────
 export default function AdminScreen() {
   const colors = useColors();
@@ -537,6 +863,7 @@ export default function AdminScreen() {
     { key: "stores", label: "Stores", icon: "map-pin" },
     { key: "products", label: "Products", icon: "package" },
     { key: "counts", label: "Counts", icon: "clipboard" },
+    { key: "texts", label: "Texts", icon: "message-square" },
   ];
 
   const s = StyleSheet.create({
@@ -591,6 +918,7 @@ export default function AdminScreen() {
         {activeSection === "stores" && <StoresSection colors={colors} insets={insets} />}
         {activeSection === "products" && <ProductsSection colors={colors} insets={insets} />}
         {activeSection === "counts" && <CountsSection colors={colors} insets={insets} />}
+        {activeSection === "texts" && <TextsSection colors={colors} insets={insets} />}
       </View>
     </View>
   );
