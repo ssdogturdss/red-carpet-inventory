@@ -675,7 +675,7 @@ function OrdersSection({ colors, insets }: { colors: ReturnType<typeof import("@
 }
 
 // ─── Reports helpers ──────────────────────────────────────────────────────────
-type ReportViewMode = "chemical" | "store" | "heatmap";
+type ReportViewMode = "chemical" | "store" | "heatmap" | "diverge";
 type SortMode = "name" | "qty-desc" | "qty-asc" | "alert" | "change-desc" | "change-asc";
 
 function getMondayStr(d: Date = new Date()): string {
@@ -707,6 +707,164 @@ function ChangeBadge({ pct }: { pct: number | null | undefined }) {
         <Feather name={up ? "trending-up" : "trending-down"} size={9} color={fg} />
         <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: fg }}>{Math.abs(pct).toFixed(1)}%</Text>
       </View>
+    </View>
+  );
+}
+
+// ─── Diverging Bar Chart ──────────────────────────────────────────────────────
+function DivergingChart({
+  chemReport, selectedChemIdx, colors,
+}: {
+  chemReport: ChemReportItem[] | undefined;
+  selectedChemIdx: number;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}) {
+  const chemical = chemReport?.[selectedChemIdx];
+  if (!chemical) {
+    return (
+      <View style={{ alignItems: "center", paddingTop: 60 }}>
+        <Feather name="activity" size={44} color={colors.border} />
+        <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 12, textAlign: "center" }}>
+          No data for this week yet.
+        </Text>
+      </View>
+    );
+  }
+
+  const stores = chemical.stores as { storeId: number; storeName: string; latestQuantity: number | null }[];
+  const counted = stores.filter((s) => s.latestQuantity !== null);
+  if (counted.length === 0) {
+    return (
+      <View style={{ alignItems: "center", paddingTop: 60 }}>
+        <Feather name="inbox" size={44} color={colors.border} />
+        <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 12, textAlign: "center" }}>
+          No counts recorded yet.
+        </Text>
+      </View>
+    );
+  }
+
+  const avg = counted.reduce((sum, s) => sum + s.latestQuantity!, 0) / counted.length;
+
+  const withDiff = stores.map((s) => ({
+    ...s,
+    diff: s.latestQuantity !== null ? s.latestQuantity - avg : null,
+    pct: s.latestQuantity !== null && avg !== 0 ? ((s.latestQuantity - avg) / avg) * 100 : null,
+  }));
+
+  const sorted = [...withDiff].sort((a, b) => (b.diff ?? -999999) - (a.diff ?? -999999));
+  const maxAbsDiff = Math.max(...withDiff.filter((s) => s.diff !== null).map((s) => Math.abs(s.diff!)), 0.001);
+  const aboveCount = withDiff.filter((s) => s.diff !== null && s.diff > 0).length;
+  const belowCount = withDiff.filter((s) => s.diff !== null && s.diff < 0).length;
+
+  const NAME_W = 86;
+  const HALF = 98;
+  const CHART_W = HALF * 2;
+  const VAL_W = 62;
+  const BAR_H = 26;
+  const ABOVE_COLOR = "#ef4444";
+  const BELOW_COLOR = "#0d9488";
+
+  const shortName = (name: string) => {
+    const num = name.match(/\d+/)?.[0];
+    const tail = name.replace(/Store\s*/i, "").replace(/\d+\s*/g, "").trim().split(/\s+/)[0] ?? "";
+    return num ? `#${num} ${tail}`.trim() : (tail || name.slice(0, 10));
+  };
+
+  return (
+    <View>
+      {/* Stat cards */}
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+        <View style={{ flex: 1, backgroundColor: "#f0fdfa", borderRadius: 12, padding: 10, alignItems: "center" }}>
+          <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#0d9488" }}>{avg.toFixed(1)}</Text>
+          <Text style={{ fontSize: 9, fontFamily: "Inter_600SemiBold", color: "#0d9488", textTransform: "uppercase", letterSpacing: 0.6, marginTop: 2 }}>Avg ({chemical.unit})</Text>
+        </View>
+        <View style={{ flex: 1, backgroundColor: "#fef2f2", borderRadius: 12, padding: 10, alignItems: "center" }}>
+          <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#dc2626" }}>{aboveCount}</Text>
+          <Text style={{ fontSize: 9, fontFamily: "Inter_600SemiBold", color: "#dc2626", textTransform: "uppercase", letterSpacing: 0.6, marginTop: 2 }}>Above avg</Text>
+        </View>
+        <View style={{ flex: 1, backgroundColor: "#f0fdf4", borderRadius: 12, padding: 10, alignItems: "center" }}>
+          <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#16a34a" }}>{belowCount}</Text>
+          <Text style={{ fontSize: 9, fontFamily: "Inter_600SemiBold", color: "#16a34a", textTransform: "uppercase", letterSpacing: 0.6, marginTop: 2 }}>Below avg</Text>
+        </View>
+      </View>
+
+      {/* Column labels */}
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6 }}>
+        <View style={{ width: NAME_W }} />
+        <Text style={{ width: HALF, textAlign: "right", fontSize: 9, fontFamily: "Inter_700Bold", color: BELOW_COLOR, letterSpacing: 0.5 }}>← BELOW AVG</Text>
+        <View style={{ width: 2 }} />
+        <Text style={{ width: HALF, textAlign: "left", paddingLeft: 4, fontSize: 9, fontFamily: "Inter_700Bold", color: ABOVE_COLOR, letterSpacing: 0.5 }}>ABOVE AVG →</Text>
+        <View style={{ width: VAL_W }} />
+      </View>
+
+      {/* Bars */}
+      {sorted.map((s) => {
+        const hasDiff = s.diff !== null;
+        const barWidth = hasDiff ? Math.round((Math.abs(s.diff!) / maxAbsDiff) * (HALF - 4)) : 0;
+        const isAbove = hasDiff && s.diff! > 0;
+        const isExact = hasDiff && s.diff === 0;
+        const barColor = isAbove ? ABOVE_COLOR : BELOW_COLOR;
+        const diffLabel = hasDiff
+          ? `${isAbove ? "+" : ""}${s.diff!.toFixed(1)}`
+          : "—";
+        const pctLabel = s.pct !== null ? `${s.pct! >= 0 ? "+" : ""}${s.pct!.toFixed(0)}%` : "";
+
+        return (
+          <View key={s.storeId} style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
+            {/* Store name */}
+            <Text style={{ width: NAME_W, fontSize: 11, fontFamily: "Inter_600SemiBold", color: hasDiff ? colors.foreground : colors.mutedForeground, paddingRight: 4 }} numberOfLines={1}>
+              {shortName(s.storeName)}
+            </Text>
+
+            {/* Left (below avg) half */}
+            <View style={{ width: HALF, flexDirection: "row", justifyContent: "flex-end", alignItems: "center" }}>
+              {hasDiff && !isAbove && !isExact && (
+                <View style={{ width: barWidth, height: BAR_H, backgroundColor: BELOW_COLOR, borderTopLeftRadius: 4, borderBottomLeftRadius: 4 }} />
+              )}
+            </View>
+
+            {/* Center line */}
+            <View style={{ width: 2, height: BAR_H + 4, backgroundColor: colors.border }} />
+
+            {/* Right (above avg) half */}
+            <View style={{ width: HALF, flexDirection: "row", alignItems: "center" }}>
+              {hasDiff && isAbove && (
+                <View style={{ width: barWidth, height: BAR_H, backgroundColor: ABOVE_COLOR, borderTopRightRadius: 4, borderBottomRightRadius: 4 }} />
+              )}
+              {hasDiff && isExact && (
+                <View style={{ width: 4, height: BAR_H, backgroundColor: colors.border, borderRadius: 2 }} />
+              )}
+            </View>
+
+            {/* Value + pct */}
+            <View style={{ width: VAL_W, alignItems: "flex-end" }}>
+              <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: !hasDiff ? colors.mutedForeground : isAbove ? "#dc2626" : "#0d9488" }}>
+                {diffLabel}
+              </Text>
+              {pctLabel ? (
+                <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{pctLabel}</Text>
+              ) : null}
+            </View>
+          </View>
+        );
+      })}
+
+      {/* Average label */}
+      <View style={{ flexDirection: "row", alignItems: "center", marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border }}>
+        <View style={{ width: NAME_W }} />
+        <View style={{ width: CHART_W + 2, alignItems: "center" }}>
+          <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground }}>
+            ─── avg = {avg.toFixed(2)} {chemical.unit} ───
+          </Text>
+        </View>
+        <View style={{ width: VAL_W }} />
+      </View>
+
+      {/* Note */}
+      <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 8, lineHeight: 14 }}>
+        Bars show deviation from the {counted.length}-store average. Red = above, teal = below.
+      </Text>
     </View>
   );
 }
@@ -1071,16 +1229,20 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
         <View style={s.topRow}>
           <View style={s.modeToggle}>
             <TouchableOpacity style={[s.modeBtn, viewMode === "chemical" && s.modeBtnActive]} onPress={() => setViewMode("chemical")}>
-              <Feather name="bar-chart-2" size={12} color={viewMode === "chemical" ? "#fff" : colors.mutedForeground} />
-              <Text style={[s.modeBtnText, viewMode === "chemical" && s.modeBtnTextActive]}>Chemical</Text>
+              <Feather name="bar-chart-2" size={11} color={viewMode === "chemical" ? "#fff" : colors.mutedForeground} />
+              <Text style={[s.modeBtnText, viewMode === "chemical" && s.modeBtnTextActive]}>Chem</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[s.modeBtn, viewMode === "store" && s.modeBtnActive]} onPress={() => setViewMode("store")}>
-              <Feather name="map-pin" size={12} color={viewMode === "store" ? "#fff" : colors.mutedForeground} />
+              <Feather name="map-pin" size={11} color={viewMode === "store" ? "#fff" : colors.mutedForeground} />
               <Text style={[s.modeBtnText, viewMode === "store" && s.modeBtnTextActive]}>Store</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={[s.modeBtn, viewMode === "diverge" && s.modeBtnActive]} onPress={() => setViewMode("diverge")}>
+              <Feather name="activity" size={11} color={viewMode === "diverge" ? "#fff" : colors.mutedForeground} />
+              <Text style={[s.modeBtnText, viewMode === "diverge" && s.modeBtnTextActive]}>± Avg</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={[s.modeBtn, viewMode === "heatmap" && s.modeBtnActive]} onPress={() => setViewMode("heatmap")}>
-              <Feather name="grid" size={12} color={viewMode === "heatmap" ? "#fff" : colors.mutedForeground} />
-              <Text style={[s.modeBtnText, viewMode === "heatmap" && s.modeBtnTextActive]}>Heatmap</Text>
+              <Feather name="grid" size={11} color={viewMode === "heatmap" ? "#fff" : colors.mutedForeground} />
+              <Text style={[s.modeBtnText, viewMode === "heatmap" && s.modeBtnTextActive]}>Heat</Text>
             </TouchableOpacity>
           </View>
           <View style={s.weekNav}>
@@ -1095,7 +1257,15 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
         </View>
         {viewMode !== "heatmap" && (
           <View style={s.pickerRow}>
-            {viewMode === "chemical" ? (
+            {viewMode === "store" ? (
+              <TouchableOpacity style={s.pickerBtn} onPress={() => setStorePickerOpen(true)}>
+                <Feather name="map-pin" size={14} color={colors.teal} />
+                <Text style={selectedStoreId ? s.pickerBtnText : s.pickerBtnPlaceholder} numberOfLines={1}>
+                  {selectedStoreName ?? "Select a store…"}
+                </Text>
+                <Feather name="chevron-down" size={14} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            ) : (
               <TouchableOpacity style={s.pickerBtn} onPress={() => setChemPickerOpen(true)}>
                 <Feather name="droplet" size={14} color={colors.teal} />
                 <Text style={chemical ? s.pickerBtnText : s.pickerBtnPlaceholder} numberOfLines={1}>
@@ -1104,14 +1274,6 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
                 {chemical && (
                   <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{chemical.unit}</Text>
                 )}
-                <Feather name="chevron-down" size={14} color={colors.mutedForeground} />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={s.pickerBtn} onPress={() => setStorePickerOpen(true)}>
-                <Feather name="map-pin" size={14} color={colors.teal} />
-                <Text style={selectedStoreId ? s.pickerBtnText : s.pickerBtnPlaceholder} numberOfLines={1}>
-                  {selectedStoreName ?? "Select a store…"}
-                </Text>
                 <Feather name="chevron-down" size={14} color={colors.mutedForeground} />
               </TouchableOpacity>
             )}
@@ -1141,8 +1303,8 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
         </TouchableOpacity>
       )}
 
-      {/* Sort pills — hidden in heatmap mode */}
-      {viewMode !== "heatmap" && (
+      {/* Sort pills — hidden in heatmap and diverge modes */}
+      {viewMode !== "heatmap" && viewMode !== "diverge" && (
         <View style={s.sortBarWrap}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", gap: 6, paddingHorizontal: 12, paddingVertical: 8 }}>
             {sortButtons.map((btn) => (
@@ -1160,6 +1322,8 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
           <ActivityIndicator color={colors.primary} style={{ marginTop: 60 }} />
         ) : viewMode === "heatmap" ? (
           <HeatmapView chemReport={chemReport as ChemReportItem[] | undefined} weekLabel={weekLabel} colors={colors} />
+        ) : viewMode === "diverge" ? (
+          <DivergingChart chemReport={chemReport as ChemReportItem[] | undefined} selectedChemIdx={selectedChemIdx} colors={colors} />
         ) : viewMode === "chemical" ? (
           !chemical ? (
             <View style={s.emptyIcon}>
