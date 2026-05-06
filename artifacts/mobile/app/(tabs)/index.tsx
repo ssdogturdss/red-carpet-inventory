@@ -14,6 +14,11 @@ import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useGetAlertsSummary, useGetStores, useGetInventoryCounts } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
+import { EmptyState } from "@/components/EmptyState";
+import { OfflineBanner } from "@/components/OfflineBanner";
+import { OnboardingModal } from "@/components/OnboardingModal";
+import { useOnboarding } from "@/hooks/useOnboarding";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 
 function getWeekOf(date: Date = new Date()): string {
   const d = new Date(date);
@@ -28,11 +33,25 @@ function formatWeekOf(weekOf: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function SectionHeader({ icon, label }: { icon: React.ComponentProps<typeof Feather>["name"]; label: string }) {
+  const colors = useColors();
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 28, marginBottom: 14 }}>
+      <View style={{ width: 3, height: 16, borderRadius: 2, backgroundColor: colors.teal }} />
+      <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 1 }}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 export default function DashboardScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const currentWeek = getWeekOf();
+  const { showOnboarding, completeOnboarding, openOnboarding } = useOnboarding();
+  const { queue, isOnline, syncing, syncQueue } = useOfflineQueue();
 
   const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useGetAlertsSummary();
   const { data: stores } = useGetStores();
@@ -50,201 +69,144 @@ export default function DashboardScreen() {
   const webBottom = Platform.OS === "web" ? 34 : 0;
 
   const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
+    container: { flex: 1, backgroundColor: colors.background },
     header: {
       paddingTop: insets.top + 16 + webTop,
       paddingHorizontal: 20,
-      paddingBottom: 20,
+      paddingBottom: 22,
       backgroundColor: colors.navy,
     },
+    headerTop: { flexDirection: "row", alignItems: "flex-start" },
+    headerTextBlock: { flex: 1 },
     headerLabel: {
-      fontSize: 12,
+      fontSize: 11,
       color: colors.tealLight,
       fontFamily: "Inter_600SemiBold",
-      letterSpacing: 1,
+      letterSpacing: 1.2,
       textTransform: "uppercase",
-      marginBottom: 4,
+      marginBottom: 3,
     },
-    headerTitle: {
-      fontSize: 28,
-      color: "#ffffff",
-      fontFamily: "Inter_700Bold",
-    },
+    headerTitle: { fontSize: 30, color: "#ffffff", fontFamily: "Inter_700Bold" },
     headerSubtitle: {
-      fontSize: 14,
-      color: "rgba(255,255,255,0.6)",
+      fontSize: 13,
+      color: "rgba(255,255,255,0.55)",
       fontFamily: "Inter_400Regular",
       marginTop: 4,
     },
-    scroll: {
-      flex: 1,
+    helpBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: "rgba(255,255,255,0.1)",
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: 4,
     },
-    scrollContent: {
-      padding: 20,
-      paddingBottom: insets.bottom + 90 + webBottom,
-    },
-    sectionTitle: {
-      fontSize: 13,
-      fontFamily: "Inter_600SemiBold",
-      color: colors.mutedForeground,
-      textTransform: "uppercase",
-      letterSpacing: 0.8,
-      marginBottom: 12,
-      marginTop: 24,
-    },
-    statsRow: {
-      flexDirection: "row",
-      gap: 12,
-    },
+    scroll: { flex: 1 },
+    scrollContent: { paddingHorizontal: 20, paddingBottom: insets.bottom + 90 + webBottom, paddingTop: 4 },
+    statsRow: { flexDirection: "row", gap: 10 },
     statCard: {
       flex: 1,
       backgroundColor: colors.card,
-      borderRadius: colors.radius,
+      borderRadius: 16,
       padding: 16,
       borderWidth: 1,
       borderColor: colors.border,
     },
-    statValue: {
-      fontSize: 32,
-      fontFamily: "Inter_700Bold",
-      color: colors.foreground,
-    },
-    statLabel: {
-      fontSize: 13,
-      fontFamily: "Inter_400Regular",
-      color: colors.mutedForeground,
-      marginTop: 4,
-    },
-    criticalCard: {
-      backgroundColor: "#fef2f2",
-      borderColor: "#fecaca",
-    },
-    criticalValue: {
-      color: colors.critical,
-    },
-    warningCard: {
-      backgroundColor: "#fffbeb",
-      borderColor: "#fde68a",
-    },
-    warningValue: {
-      color: colors.warning,
-    },
-    countCard: {
-      backgroundColor: colors.card,
-      borderRadius: colors.radius,
-      padding: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-      marginBottom: 10,
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    countInfo: {
-      flex: 1,
-    },
-    countStore: {
-      fontSize: 15,
-      fontFamily: "Inter_600SemiBold",
-      color: colors.foreground,
-    },
-    countWeek: {
-      fontSize: 13,
-      fontFamily: "Inter_400Regular",
-      color: colors.mutedForeground,
-      marginTop: 2,
-    },
-    countBy: {
-      fontSize: 12,
-      fontFamily: "Inter_400Regular",
-      color: colors.mutedForeground,
-      marginTop: 2,
-    },
-    actionRow: {
-      flexDirection: "row",
-      gap: 12,
-      marginTop: 8,
-    },
+    statIconRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
+    statIconBox: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+    statValue: { fontSize: 30, fontFamily: "Inter_700Bold", color: colors.foreground },
+    statLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: colors.mutedForeground, marginTop: 3 },
+    criticalCard: { backgroundColor: "#fef2f2", borderColor: "#fecaca" },
+    criticalValue: { color: colors.critical },
+    warningCard: { backgroundColor: "#fffbeb", borderColor: "#fde68a" },
+    warningValue: { color: colors.warning },
+    storesCard: { backgroundColor: "#f0fdfa", borderColor: "#99f6e4" },
+    storesValue: { color: colors.teal },
+    actionRow: { flexDirection: "row", gap: 12 },
     actionBtn: {
       flex: 1,
       backgroundColor: colors.primary,
-      borderRadius: colors.radius,
-      padding: 16,
+      borderRadius: 14,
+      paddingVertical: 16,
       alignItems: "center",
-      flexDirection: "row",
-      justifyContent: "center",
-      gap: 8,
+      gap: 6,
     },
     actionBtnSecondary: {
       backgroundColor: colors.card,
-      borderWidth: 1,
+      borderWidth: 1.5,
       borderColor: colors.border,
     },
-    actionBtnText: {
-      color: colors.primaryForeground,
-      fontFamily: "Inter_600SemiBold",
-      fontSize: 15,
+    actionBtnText: { color: colors.primaryForeground, fontFamily: "Inter_700Bold", fontSize: 15 },
+    actionBtnSub: { color: "rgba(255,255,255,0.7)", fontFamily: "Inter_400Regular", fontSize: 11 },
+    actionBtnTextSecondary: { color: colors.foreground },
+    actionBtnSubSecondary: { color: colors.mutedForeground },
+    countCard: {
+      backgroundColor: colors.card,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.teal,
+      marginBottom: 10,
+      flexDirection: "row",
+      alignItems: "center",
+      overflow: "hidden",
     },
-    actionBtnTextSecondary: {
-      color: colors.foreground,
-    },
-    emptyText: {
-      textAlign: "center",
-      color: colors.mutedForeground,
-      fontFamily: "Inter_400Regular",
-      fontSize: 14,
-      paddingVertical: 20,
-    },
+    countCardInner: { flex: 1, padding: 14 },
+    countStore: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    countWeek: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 },
+    countBy: { fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 },
+    countCheck: { paddingRight: 14 },
     storeAlertCard: {
       backgroundColor: colors.card,
-      borderRadius: colors.radius,
+      borderRadius: 14,
       padding: 14,
       borderWidth: 1,
       borderColor: colors.border,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.critical,
       marginBottom: 8,
       flexDirection: "row",
       alignItems: "center",
     },
-    storeAlertName: {
-      flex: 1,
-      fontSize: 14,
-      fontFamily: "Inter_500Medium",
-      color: colors.foreground,
+    storeAlertName: { flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    badgeCritical: { backgroundColor: "#fef2f2", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 6 },
+    badgeCriticalText: { color: colors.critical, fontSize: 12, fontFamily: "Inter_600SemiBold" },
+    badgeWarning: { backgroundColor: "#fffbeb", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 6 },
+    badgeWarningText: { color: colors.warning, fontSize: 12, fontFamily: "Inter_600SemiBold" },
+    queueCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      backgroundColor: "#fef3c7",
+      borderRadius: 14,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: "#fde68a",
+      marginBottom: 4,
     },
-    badgeCritical: {
-      backgroundColor: "#fef2f2",
-      borderRadius: 20,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      marginLeft: 8,
-    },
-    badgeCriticalText: {
-      color: colors.critical,
-      fontSize: 12,
-      fontFamily: "Inter_600SemiBold",
-    },
-    badgeWarning: {
-      backgroundColor: "#fffbeb",
-      borderRadius: 20,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      marginLeft: 8,
-    },
-    badgeWarningText: {
-      color: colors.warning,
-      fontSize: 12,
-      fontFamily: "Inter_600SemiBold",
-    },
+    queueText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#92400e" },
+    queueSync: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#92400e" },
   });
 
   return (
     <View style={styles.container}>
+      <OnboardingModal visible={showOnboarding} onComplete={completeOnboarding} />
+
+      <OfflineBanner isOnline={isOnline} queueLength={queue.length} syncing={syncing} onSync={syncQueue} />
+
       <View style={styles.header}>
-        <Text style={styles.headerLabel}>Red Carpet Inventory</Text>
-        <Text style={styles.headerTitle}>Dashboard</Text>
-        <Text style={styles.headerSubtitle}>Week of {formatWeekOf(currentWeek)}</Text>
+        <View style={styles.headerTop}>
+          <View style={styles.headerTextBlock}>
+            <Text style={styles.headerLabel}>Red Carpet Inventory</Text>
+            <Text style={styles.headerTitle}>Dashboard</Text>
+            <Text style={styles.headerSubtitle}>Week of {formatWeekOf(currentWeek)}</Text>
+          </View>
+          <TouchableOpacity style={styles.helpBtn} onPress={openOnboarding}>
+            <Feather name="help-circle" size={18} color="rgba(255,255,255,0.7)" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -252,48 +214,77 @@ export default function DashboardScreen() {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        {/* Pending queue */}
+        {isOnline && queue.length > 0 && (
+          <>
+            <SectionHeader icon="clock" label="Pending Sync" />
+            <TouchableOpacity style={styles.queueCard} onPress={() => syncQueue()}>
+              <Feather name="upload-cloud" size={18} color="#92400e" />
+              <Text style={styles.queueText}>
+                {queue.length} count{queue.length > 1 ? "s" : ""} saved offline — tap to sync now
+              </Text>
+              <Text style={styles.queueSync}>Sync →</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {/* Quick Actions */}
+        <SectionHeader icon="zap" label="Quick Actions" />
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.actionBtn} onPress={() => router.push("/(tabs)/count")}>
-            <Feather name="clipboard" size={18} color="#fff" />
+            <Feather name="clipboard" size={20} color="#fff" />
             <Text style={styles.actionBtnText}>New Count</Text>
+            <Text style={styles.actionBtnSub}>Enter manually</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionBtn, styles.actionBtnSecondary]}
             onPress={() => router.push("/(tabs)/scan")}
           >
-            <Feather name="camera" size={18} color={colors.foreground} />
+            <Feather name="camera" size={20} color={colors.foreground} />
             <Text style={[styles.actionBtnText, styles.actionBtnTextSecondary]}>Scan Sheet</Text>
+            <Text style={[styles.actionBtnSub, styles.actionBtnSubSecondary]}>AI-powered OCR</Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionTitle}>Alert Summary</Text>
+        {/* Alert Summary */}
+        <SectionHeader icon="bell" label="Alert Summary" />
         {summaryLoading ? (
-          <ActivityIndicator color={colors.primary} />
+          <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} />
         ) : (
           <>
             <View style={styles.statsRow}>
               <View style={[styles.statCard, styles.criticalCard]}>
-                <Text style={[styles.statValue, styles.criticalValue]}>
-                  {summary?.criticalCount ?? 0}
-                </Text>
+                <View style={styles.statIconRow}>
+                  <View style={[styles.statIconBox, { backgroundColor: "#fecaca" }]}>
+                    <Feather name="alert-circle" size={16} color={colors.critical} />
+                  </View>
+                </View>
+                <Text style={[styles.statValue, styles.criticalValue]}>{summary?.criticalCount ?? 0}</Text>
                 <Text style={styles.statLabel}>Critical</Text>
               </View>
               <View style={[styles.statCard, styles.warningCard]}>
-                <Text style={[styles.statValue, styles.warningValue]}>
-                  {summary?.warningCount ?? 0}
-                </Text>
+                <View style={styles.statIconRow}>
+                  <View style={[styles.statIconBox, { backgroundColor: "#fde68a" }]}>
+                    <Feather name="alert-triangle" size={16} color={colors.warning} />
+                  </View>
+                </View>
+                <Text style={[styles.statValue, styles.warningValue]}>{summary?.warningCount ?? 0}</Text>
                 <Text style={styles.statLabel}>Warnings</Text>
               </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{stores?.length ?? 11}</Text>
+              <View style={[styles.statCard, styles.storesCard]}>
+                <View style={styles.statIconRow}>
+                  <View style={[styles.statIconBox, { backgroundColor: "#99f6e4" }]}>
+                    <Feather name="map-pin" size={16} color={colors.teal} />
+                  </View>
+                </View>
+                <Text style={[styles.statValue, styles.storesValue]}>{stores?.length ?? 11}</Text>
                 <Text style={styles.statLabel}>Stores</Text>
               </View>
             </View>
 
             {(summary?.byStore ?? []).length > 0 && (
               <>
-                <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Stores with Alerts</Text>
+                <SectionHeader icon="alert-circle" label="Stores with Alerts" />
                 {summary?.byStore.map((s) => (
                   <TouchableOpacity
                     key={s.storeId}
@@ -308,12 +299,10 @@ export default function DashboardScreen() {
                     )}
                     {s.unacknowledgedCount - s.criticalCount > 0 && (
                       <View style={styles.badgeWarning}>
-                        <Text style={styles.badgeWarningText}>
-                          {s.unacknowledgedCount - s.criticalCount} warning
-                        </Text>
+                        <Text style={styles.badgeWarningText}>{s.unacknowledgedCount - s.criticalCount} warning</Text>
                       </View>
                     )}
-                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} style={{ marginLeft: 8 }} />
+                    <Feather name="chevron-right" size={16} color={colors.mutedForeground} style={{ marginLeft: 6 }} />
                   </TouchableOpacity>
                 ))}
               </>
@@ -321,22 +310,32 @@ export default function DashboardScreen() {
           </>
         )}
 
-        <Text style={styles.sectionTitle}>Recent Submissions</Text>
+        {/* Recent Submissions */}
+        <SectionHeader icon="check-circle" label="Recent Submissions" />
         {countsLoading ? (
-          <ActivityIndicator color={colors.primary} />
+          <ActivityIndicator color={colors.primary} style={{ marginVertical: 16 }} />
         ) : recentCounts && recentCounts.length > 0 ? (
           recentCounts.map((c) => (
             <View key={c.id} style={styles.countCard}>
-              <View style={styles.countInfo}>
+              <View style={styles.countCardInner}>
                 <Text style={styles.countStore}>{c.storeName}</Text>
                 <Text style={styles.countWeek}>Week of {formatWeekOf(c.weekOf)}</Text>
-                <Text style={styles.countBy}>By {c.submittedBy}</Text>
+                <Text style={styles.countBy}>Submitted by {c.submittedBy}</Text>
               </View>
-              <Feather name="check-circle" size={20} color={colors.success} />
+              <View style={styles.countCheck}>
+                <Feather name="check-circle" size={20} color={colors.success} />
+              </View>
             </View>
           ))
         ) : (
-          <Text style={styles.emptyText}>No submissions yet this week</Text>
+          <EmptyState
+            icon="inbox"
+            title="No submissions yet"
+            subtitle="When a store submits their weekly count it will appear here. Tap New Count to get started."
+            actionLabel="Submit a Count"
+            onAction={() => router.push("/(tabs)/count")}
+            compact
+          />
         )}
       </ScrollView>
     </View>

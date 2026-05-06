@@ -18,6 +18,7 @@ import {
   useTestNotificationContact, useGetNotificationStatus,
 } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
+import { EmptyState } from "@/components/EmptyState";
 
 type Section = "alerts" | "stores" | "products" | "counts" | "notifications";
 
@@ -281,7 +282,7 @@ function AlertsSection({ colors, insets }: { colors: ReturnType<typeof import("@
         ))}
       </View>
       {isLoading ? <ActivityIndicator color={colors.primary} /> : !alerts?.length ? (
-        <Text style={s.empty}>No alerts found.</Text>
+        <EmptyState icon="bell-off" title="No alerts" subtitle="When chemical levels deviate from normal you'll see alerts here. All stores look good!" compact />
       ) : alerts.map((a) => (
         <View key={a.id} style={s.card}>
           <View style={s.row}>
@@ -350,7 +351,7 @@ function StoresSection({ colors, insets }: { colors: ReturnType<typeof import("@
       <ScrollView style={s.scroll} contentContainerStyle={s.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
         {isLoading ? <ActivityIndicator color={colors.primary} /> : !stores?.length ? (
-          <Text style={s.empty}>No stores found.</Text>
+          <EmptyState icon="map-pin" title="No stores" subtitle="Add stores via the database seed or contact your administrator." compact />
         ) : stores.map((st) => (
           <View key={st.id} style={s.card}>
             <View style={s.info}>
@@ -427,7 +428,7 @@ function ProductsSection({ colors, insets }: { colors: ReturnType<typeof import(
       <ScrollView style={s.scroll} contentContainerStyle={s.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
         {isLoading ? <ActivityIndicator color={colors.primary} /> : !chemicals?.length ? (
-          <Text style={s.empty}>No products found.</Text>
+          <EmptyState icon="droplet" title="No products" subtitle="Chemical products appear here once seeded. Contact your administrator to add products." compact />
         ) : chemicals.map((c) => (
           <View key={c.id} style={s.card}>
             <View style={s.info}>

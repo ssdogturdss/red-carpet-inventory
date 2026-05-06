@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, RefreshControl, Platform, Modal,
   FlatList, Pressable, TextInput, Alert, KeyboardAvoidingView,
 } from "react-native";
+import Svg, { Polyline, Circle } from "react-native-svg";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
@@ -711,6 +712,112 @@ function ChangeBadge({ pct }: { pct: number | null | undefined }) {
   );
 }
 
+// ─── Trend Sparkline ─────────────────────────────────────────────────────────
+interface TrendPoint { weekOf: string; totalQuantity: number; storeCount: number }
+
+function useTrend(chemicalId: number | undefined) {
+  const [data, setData] = useState<TrendPoint[]>([]);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (!chemicalId) return;
+    setLoading(true);
+    fetch(`/api/reports/trend?chemicalId=${chemicalId}&weeks=8`)
+      .then((r) => r.json())
+      .then((d) => { setData(Array.isArray(d) ? d : []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [chemicalId]);
+  return { data, loading };
+}
+
+function TrendSparkline({
+  chemicalId, unit, colors,
+}: {
+  chemicalId: number;
+  unit: string;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}) {
+  const { data, loading } = useTrend(chemicalId);
+
+  if (loading) {
+    return (
+      <View style={{ height: 36, alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
+        <ActivityIndicator size="small" color={colors.primary} />
+      </View>
+    );
+  }
+  if (data.length < 2) return null;
+
+  const W = 284, H = 64, PAD = 10;
+  const vals = data.map((d) => d.totalQuantity);
+  const minV = Math.min(...vals);
+  const maxV = Math.max(...vals);
+  const range = maxV - minV || 1;
+
+  const pts = data.map((d, i) => ({
+    x: PAD + (i / (data.length - 1)) * (W - PAD * 2),
+    y: PAD + (1 - (d.totalQuantity - minV) / range) * (H - PAD * 2),
+    ...d,
+  }));
+
+  const polylinePoints = pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const last = pts[pts.length - 1]!;
+  const prev = pts[pts.length - 2]!;
+  const trending = last.totalQuantity >= prev.totalQuantity;
+  const trendColor = trending ? "#16a34a" : "#dc2626";
+  const shortWeek = (w: string) => {
+    const d = new Date(w + "T00:00:00");
+    return `${d.getMonth() + 1}/${d.getDate()}`;
+  };
+
+  const pctChange = prev.totalQuantity !== 0
+    ? ((last.totalQuantity - prev.totalQuantity) / prev.totalQuantity * 100).toFixed(1)
+    : null;
+
+  return (
+    <View style={{ backgroundColor: "#f8fafc", borderRadius: 14, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: colors.border }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+        <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.8 }}>
+          {data.length}-Week Trend (all stores)
+        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+          <Feather name={trending ? "trending-up" : "trending-down"} size={12} color={trendColor} />
+          <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: trendColor }}>
+            {last.totalQuantity.toFixed(1)} {unit}
+            {pctChange !== null ? `  ${trending ? "+" : ""}${pctChange}%` : ""}
+          </Text>
+        </View>
+      </View>
+      <Svg width={W} height={H}>
+        <Polyline
+          points={polylinePoints}
+          fill="none"
+          stroke={colors.teal}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {pts.map((p, i) => (
+          <Circle
+            key={i}
+            cx={p.x}
+            cy={p.y}
+            r={i === pts.length - 1 ? 4.5 : 2.5}
+            fill={i === pts.length - 1 ? colors.teal : "#ffffff"}
+            stroke={colors.teal}
+            strokeWidth="1.5"
+          />
+        ))}
+      </Svg>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
+        <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{shortWeek(data[0]!.weekOf)}</Text>
+        <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+          {shortWeek(data[data.length - 1]!.weekOf)} (latest)
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 // ─── Diverging Bar Chart ──────────────────────────────────────────────────────
 function DivergingChart({
   chemReport, selectedChemIdx, colors,
@@ -1332,6 +1439,9 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
             </View>
           ) : (
             <>
+              {/* 8-week sparkline trend */}
+              <TrendSparkline chemicalId={chemical.chemicalId} unit={chemical.unit} colors={colors} />
+
               {/* Stat cards */}
               {counted.length > 0 && (
                 <View style={s.summaryRow}>

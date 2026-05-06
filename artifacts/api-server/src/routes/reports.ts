@@ -225,4 +225,39 @@ router.get("/reports/missing-submissions", async (_req, res) => {
   })));
 });
 
+// ─── GET /reports/trend ───────────────────────────────────────────────────────
+router.get("/reports/trend", async (req, res) => {
+  const chemicalId = Number(req.query.chemicalId);
+  const weeks = Math.min(Number(req.query.weeks ?? 8), 26);
+  const storeId = req.query.storeId ? Number(req.query.storeId) : null;
+
+  if (!chemicalId) {
+    res.status(400).json({ error: "chemicalId is required" });
+    return;
+  }
+
+  const rows = await db.execute(sql`
+    SELECT
+      ic.week_of,
+      COALESCE(SUM(ie.quantity), 0)::numeric          AS total_quantity,
+      COUNT(DISTINCT ic.store_id)::int                AS store_count
+    FROM inventory_counts ic
+    JOIN inventory_entries ie
+      ON ie.count_id = ic.id
+     AND ie.chemical_id = ${chemicalId}
+    ${storeId ? sql`WHERE ic.store_id = ${storeId}` : sql``}
+    GROUP BY ic.week_of
+    ORDER BY ic.week_of ASC
+    LIMIT ${weeks}
+  `);
+
+  res.json(
+    (rows.rows as any[]).map((r) => ({
+      weekOf: r.week_of instanceof Date ? r.week_of.toISOString().split("T")[0] : String(r.week_of),
+      totalQuantity: Number(r.total_quantity),
+      storeCount: Number(r.store_count),
+    }))
+  );
+});
+
 export default router;
