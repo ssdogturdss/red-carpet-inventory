@@ -19,7 +19,7 @@ import {
 } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 
-type Section = "alerts" | "stores" | "products" | "counts" | "email";
+type Section = "alerts" | "stores" | "products" | "counts" | "notifications";
 
 function formatWeekOf(weekOf: string) {
   const d = new Date(weekOf + "T00:00:00");
@@ -523,8 +523,8 @@ function CountsSection({ colors, insets }: { colors: ReturnType<typeof import("@
   );
 }
 
-// ─── Email Section ───────────────────────────────────────────────────────────
-function EmailSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: { bottom: number } }) {
+// ─── Notifications Section ────────────────────────────────────────────────────
+function NotificationsSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: { bottom: number } }) {
   const qc = useQueryClient();
   const { data: contacts, isLoading, refetch } = useGetNotificationContacts();
   const { data: status } = useGetNotificationStatus();
@@ -536,24 +536,29 @@ function EmailSection({ colors, insets }: { colors: ReturnType<typeof import("@/
   const [refreshing, setRefreshing] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editTarget, setEditTarget] = useState<{
-    id: number; email: string; label: string;
+    id: number; email: string; phone: string; label: string;
     storeId: number | null; severity: string; active: boolean;
   } | null>(null);
-  const [form, setForm] = useState({ email: "", label: "", storeId: "", severity: "all", active: true });
+  const [form, setForm] = useState({ email: "", phone: "", label: "", storeId: "", severity: "all", active: true });
   const webBottom = Platform.OS === "web" ? 34 : 0;
 
   const onRefresh = useCallback(async () => { setRefreshing(true); await refetch(); setRefreshing(false); }, [refetch]);
 
-  const resetForm = () => setForm({ email: "", label: "", storeId: "", severity: "all", active: true });
+  const resetForm = () => setForm({ email: "", phone: "", label: "", storeId: "", severity: "all", active: true });
 
   const handleAdd = async () => {
-    if (!form.email.trim() || !form.label.trim()) {
-      Alert.alert("Missing fields", "Phone number and label are required.");
+    if (!form.email.trim() && !form.phone.trim()) {
+      Alert.alert("Missing fields", "Enter at least an email address or phone number.");
+      return;
+    }
+    if (!form.label.trim()) {
+      Alert.alert("Missing fields", "Label is required.");
       return;
     }
     await createContact({
       data: {
-        email: form.email.trim(),
+        email: form.email.trim() || undefined,
+        phone: form.phone.trim() || undefined,
         label: form.label.trim(),
         storeId: form.storeId ? parseInt(form.storeId) : null,
         severity: form.severity as "all" | "warning" | "critical",
@@ -570,7 +575,8 @@ function EmailSection({ colors, insets }: { colors: ReturnType<typeof import("@/
     await updateContact({
       id: editTarget.id,
       data: {
-        email: editTarget.email,
+        email: editTarget.email || null,
+        phone: editTarget.phone || null,
         label: editTarget.label,
         storeId: editTarget.storeId,
         severity: editTarget.severity as "all" | "warning" | "critical",
@@ -583,7 +589,7 @@ function EmailSection({ colors, insets }: { colors: ReturnType<typeof import("@/
 
   const handleDelete = (id: number, label: string) => Alert.alert(
     "Remove Contact",
-    `Remove "${label}" from email notifications?`,
+    `Remove "${label}" from notifications?`,
     [{ text: "Cancel", style: "cancel" }, {
       text: "Remove", style: "destructive",
       onPress: async () => { await deleteContact({ id }); qc.invalidateQueries(); },
@@ -593,9 +599,9 @@ function EmailSection({ colors, insets }: { colors: ReturnType<typeof import("@/
   const handleTest = async (id: number, label: string) => {
     try {
       await testContact({ id });
-      Alert.alert("Test Sent", `A test email was sent to "${label}".`);
+      Alert.alert("Test Sent", `A test notification was sent to "${label}".`);
     } catch {
-      Alert.alert("Failed", "Could not send test SMS. Check your SMTP credentials.");
+      Alert.alert("Failed", "Could not send test notification. Check your credentials.");
     }
   };
 
@@ -677,7 +683,7 @@ function EmailSection({ colors, insets }: { colors: ReturnType<typeof import("@/
   const ContactForm = ({
     values, onChange, onSave, onCancel, saving, title,
   }: {
-    values: { email: string; label: string; storeId: string | null; severity: string; active: boolean };
+    values: { email: string; phone: string; label: string; storeId: string | null; severity: string; active: boolean };
     onChange: (key: string, val: any) => void;
     onSave: () => void;
     onCancel: () => void;
@@ -692,12 +698,19 @@ function EmailSection({ colors, insets }: { colors: ReturnType<typeof import("@/
         onChangeText={(v) => onChange("label", v)}
         placeholder="e.g. Store Manager" placeholderTextColor={colors.mutedForeground}
       />
-      <Text style={s.fieldLabel}>Email Address</Text>
+      <Text style={s.fieldLabel}>Email Address (optional)</Text>
       <TextInput
         style={s.fieldInput} value={values.email}
         onChangeText={(v) => onChange("email", v)}
         placeholder="alerts@example.com" placeholderTextColor={colors.mutedForeground}
         keyboardType="email-address"
+      />
+      <Text style={s.fieldLabel}>Phone Number for SMS (optional)</Text>
+      <TextInput
+        style={s.fieldInput} value={values.phone}
+        onChangeText={(v) => onChange("phone", v)}
+        placeholder="+15551234567" placeholderTextColor={colors.mutedForeground}
+        keyboardType="phone-pad"
       />
       <Text style={s.fieldLabel}>Store (optional — blank = all stores)</Text>
       <View style={s.storePickerRow}>
@@ -758,15 +771,21 @@ function EmailSection({ colors, insets }: { colors: ReturnType<typeof import("@/
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
     >
       <View style={s.statusBanner}>
-        <View style={[s.statusDot, { backgroundColor: status?.configured ? "#22c55e" : "#94a3b8" }]} />
+        <View style={[s.statusDot, { backgroundColor: status?.emailConfigured ? "#22c55e" : "#94a3b8" }]} />
         <Text style={s.statusText}>
-          {status?.configured ? "Email (SMTP) is configured and active" : "Email not configured — set SMTP_HOST, SMTP_USER, SMTP_PASS, and SMTP_FROM"}
+          {status?.emailConfigured ? "Email (SMTP) configured and active" : "Email not configured — set SMTP_HOST, SMTP_USER, SMTP_PASS, SMTP_FROM"}
+        </Text>
+      </View>
+      <View style={[s.statusBanner, { marginBottom: 14 }]}>
+        <View style={[s.statusDot, { backgroundColor: status?.smsConfigured ? "#22c55e" : "#94a3b8" }]} />
+        <Text style={s.statusText}>
+          {status?.smsConfigured ? "SMS (Twilio) configured and active" : "SMS not configured — set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER"}
         </Text>
       </View>
 
       {showAdd ? (
         <ContactForm
-          title="Add Email Contact"
+          title="Add Notification Contact"
           values={{ ...form, storeId: form.storeId || null }}
           onChange={(key, val) => setForm((prev) => ({ ...prev, [key]: val }))}
           onSave={handleAdd}
@@ -776,15 +795,16 @@ function EmailSection({ colors, insets }: { colors: ReturnType<typeof import("@/
       ) : (
         <TouchableOpacity style={s.addBtn} onPress={() => setShowAdd(true)}>
           <Feather name="plus" size={18} color="#fff" />
-          <Text style={s.addBtnText}>Add Email Contact</Text>
+          <Text style={s.addBtnText}>Add Notification Contact</Text>
         </TouchableOpacity>
       )}
 
       {editTarget && (
         <ContactForm
-          title="Edit Email Contact"
+          title="Edit Notification Contact"
           values={{
             email: editTarget.email,
+            phone: editTarget.phone,
             label: editTarget.label,
             storeId: editTarget.storeId ? String(editTarget.storeId) : null,
             severity: editTarget.severity,
@@ -798,13 +818,24 @@ function EmailSection({ colors, insets }: { colors: ReturnType<typeof import("@/
       )}
 
       {isLoading ? <ActivityIndicator color={colors.primary} /> : !(contacts ?? []).length ? (
-        <Text style={s.empty}>No email contacts configured.</Text>
+        <Text style={s.empty}>No notification contacts configured.</Text>
       ) : (contacts ?? []).map((c) => (
         <View key={c.id} style={s.card}>
           <View style={s.cardRow}>
             <View style={s.cardInfo}>
               <Text style={s.cardLabel}>{c.label}</Text>
-              <Text style={s.cardPhone}>{c.email}</Text>
+              {c.email ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
+                  <Feather name="mail" size={12} color={colors.mutedForeground} />
+                  <Text style={s.cardPhone}>{c.email}</Text>
+                </View>
+              ) : null}
+              {c.phone ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
+                  <Feather name="message-square" size={12} color={colors.mutedForeground} />
+                  <Text style={s.cardPhone}>{c.phone}</Text>
+                </View>
+              ) : null}
               <Text style={s.cardMeta}>{c.storeName ? `Store: ${c.storeName}` : "All stores"}</Text>
             </View>
           </View>
@@ -812,6 +843,16 @@ function EmailSection({ colors, insets }: { colors: ReturnType<typeof import("@/
             <View style={[s.badge, { backgroundColor: severityColor(c.severity) + "22" }]}>
               <Text style={[s.badgeText, { color: severityColor(c.severity) }]}>{c.severity}</Text>
             </View>
+            {c.email ? (
+              <View style={[s.badge, { backgroundColor: "#e0f2fe" }]}>
+                <Text style={[s.badgeText, { color: "#0284c7" }]}>Email</Text>
+              </View>
+            ) : null}
+            {c.phone ? (
+              <View style={[s.badge, { backgroundColor: "#f0fdf4" }]}>
+                <Text style={[s.badgeText, { color: "#16a34a" }]}>SMS</Text>
+              </View>
+            ) : null}
             <View style={[s.badge, { backgroundColor: c.active ? "#dcfce7" : "#f1f5f9" }]}>
               <Text style={[s.badgeText, { color: c.active ? "#16a34a" : colors.mutedForeground }]}>
                 {c.active ? "Active" : "Inactive"}
@@ -827,7 +868,8 @@ function EmailSection({ colors, insets }: { colors: ReturnType<typeof import("@/
               style={s.editBtn}
               onPress={() => setEditTarget({
                 id: c.id,
-                email: c.email,
+                email: c.email ?? "",
+                phone: c.phone ?? "",
                 label: c.label,
                 storeId: c.storeId ?? null,
                 severity: c.severity,
@@ -863,7 +905,7 @@ export default function AdminScreen() {
     { key: "stores", label: "Stores", icon: "map-pin" },
     { key: "products", label: "Products", icon: "package" },
     { key: "counts", label: "Counts", icon: "clipboard" },
-    { key: "email", label: "Email", icon: "mail" },
+    { key: "notifications", label: "Notify", icon: "bell" },
   ];
 
   const s = StyleSheet.create({
@@ -918,7 +960,7 @@ export default function AdminScreen() {
         {activeSection === "stores" && <StoresSection colors={colors} insets={insets} />}
         {activeSection === "products" && <ProductsSection colors={colors} insets={insets} />}
         {activeSection === "counts" && <CountsSection colors={colors} insets={insets} />}
-        {activeSection === "email" && <EmailSection colors={colors} insets={insets} />}
+        {activeSection === "notifications" && <NotificationsSection colors={colors} insets={insets} />}
       </View>
     </View>
   );

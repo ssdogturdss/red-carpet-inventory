@@ -2935,7 +2935,7 @@ export const useDeleteNotificationContact = <
 };
 
 /**
- * @summary Send a test email to a contact
+ * @summary Send a test notification (email and/or SMS) to a contact
  */
 export const getTestNotificationContactUrl = (id: number) => {
   return `/api/notifications/contacts/${id}/test`;
@@ -2999,7 +2999,7 @@ export type TestNotificationContactMutationResult = NonNullable<
 export type TestNotificationContactMutationError = ErrorType<unknown>;
 
 /**
- * @summary Send a test email to a contact
+ * @summary Send a test notification (email and/or SMS) to a contact
  */
 export const useTestNotificationContact = <
   TError = ErrorType<unknown>,
@@ -3022,7 +3022,7 @@ export const useTestNotificationContact = <
 };
 
 /**
- * @summary Check if email is configured
+ * @summary Check if email and SMS are configured
  */
 export const getGetNotificationStatusUrl = () => {
   return `/api/notifications/status`;
@@ -3073,7 +3073,7 @@ export type GetNotificationStatusQueryResult = NonNullable<
 export type GetNotificationStatusQueryError = ErrorType<unknown>;
 
 /**
- * @summary Check if email is configured
+ * @summary Check if email and SMS are configured
  */
 
 export function useGetNotificationStatus<

@@ -300,7 +300,8 @@ export interface NotificationContact {
   id: number;
   storeId?: number | null;
   storeName?: string | null;
-  email: string;
+  email?: string | null;
+  phone?: string | null;
   label: string;
   active: boolean;
   severity: string;
@@ -309,7 +310,8 @@ export interface NotificationContact {
 
 export interface CreateNotificationContactBody {
   storeId?: number | null;
-  email: string;
+  email?: string;
+  phone?: string;
   label?: string;
   active?: boolean;
   severity?: string;
@@ -317,7 +319,8 @@ export interface CreateNotificationContactBody {
 
 export interface UpdateNotificationContactBody {
   storeId?: number | null;
-  email?: string;
+  email?: string | null;
+  phone?: string | null;
   label?: string;
   active?: boolean;
   severity?: string;
@@ -386,4 +389,6 @@ export type TestNotificationContact200 = {
 
 export type GetNotificationStatus200 = {
   configured: boolean;
+  emailConfigured: boolean;
+  smsConfigured: boolean;
 };

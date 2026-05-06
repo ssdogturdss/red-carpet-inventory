@@ -6,7 +6,8 @@ import { storesTable } from "./stores";
 export const notificationContactsTable = pgTable("notification_contacts", {
   id: serial("id").primaryKey(),
   storeId: integer("store_id").references(() => storesTable.id, { onDelete: "cascade" }),
-  email: text("email").notNull(),
+  email: text("email"),
+  phone: text("phone"),
   label: text("label").notNull().default(""),
   active: boolean("active").notNull().default(true),
   severity: text("severity").notNull().default("all"),

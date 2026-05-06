@@ -11,6 +11,7 @@ import { eq, and, desc, sql, or, isNull } from "drizzle-orm";
 import { SubmitInventoryCountBody } from "@workspace/api-zod";
 import { notificationContactsTable } from "@workspace/db";
 import { sendAlertEmail } from "../services/email";
+import { sendAlertSms } from "../services/sms";
 
 const router = Router();
 
@@ -257,10 +258,13 @@ async function generateAlerts(
 
       req.log.info({ storeId, chemicalId: entry.chemicalId, percentChange, direction }, "Alert generated");
 
-      // Send email to active contacts for this store or global contacts
+      // Send email + SMS to active contacts for this store or global contacts
       try {
         const contacts = await db
-          .select({ email: notificationContactsTable.email })
+          .select({
+            email: notificationContactsTable.email,
+            phone: notificationContactsTable.phone,
+          })
           .from(notificationContactsTable)
           .where(
             and(
@@ -279,17 +283,21 @@ async function generateAlerts(
         if (contacts.length > 0) {
           const [store] = await db.select({ name: storesTable.name }).from(storesTable).where(eq(storesTable.id, storeId));
           const chem = chemicals.find((c) => c.id === entry.chemicalId);
-          await sendAlertEmail(
-            contacts.map((c) => c.email),
-            store?.name ?? "",
-            chem?.name ?? "",
-            severity,
-            direction,
-            percentChange
-          );
+          const storeName = store?.name ?? "";
+          const chemName = chem?.name ?? "";
+
+          const emailRecipients = contacts.map((c) => c.email).filter((e): e is string => !!e);
+          if (emailRecipients.length > 0) {
+            await sendAlertEmail(emailRecipients, storeName, chemName, severity, direction, percentChange);
+          }
+
+          const phoneRecipients = contacts.map((c) => c.phone).filter((p): p is string => !!p);
+          if (phoneRecipients.length > 0) {
+            await sendAlertSms(phoneRecipients, storeName, chemName, severity, direction, percentChange);
+          }
         }
-      } catch (emailErr) {
-        req.log.warn({ emailErr }, "Email send failed (non-fatal)");
+      } catch (notifyErr) {
+        req.log.warn({ notifyErr }, "Notification send failed (non-fatal)");
       }
     }
   }

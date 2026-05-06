@@ -702,7 +702,7 @@ paths:
     post:
       operationId: testNotificationContact
       tags: [notifications]
-      summary: Send a test email to a contact
+      summary: Send a test notification (email and/or SMS) to a contact
       parameters:
         - name: id
           in: path
@@ -728,10 +728,10 @@ paths:
     get:
       operationId: getNotificationStatus
       tags: [notifications]
-      summary: Check if email is configured
+      summary: Check if email and SMS are configured
       responses:
         "200":
-          description: Email configuration status
+          description: Notification configuration status
           content:
             application/json:
               schema:
@@ -739,7 +739,11 @@ paths:
                 properties:
                   configured:
                     type: boolean
-                required: [configured]
+                  emailConfigured:
+                    type: boolean
+                  smsConfigured:
+                    type: boolean
+                required: [configured, emailConfigured, smsConfigured]
 
 components:
   schemas:
@@ -1390,6 +1394,10 @@ components:
           nullable: true
         email:
           type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
         label:
           type: string
         active:
@@ -1400,7 +1408,6 @@ components:
           type: string
       required:
         - id
-        - email
         - label
         - active
         - severity
@@ -1414,14 +1421,14 @@ components:
           nullable: true
         email:
           type: string
+        phone:
+          type: string
         label:
           type: string
         active:
           type: boolean
         severity:
           type: string
-      required:
-        - email
 
     UpdateNotificationContactBody:
       type: object
@@ -1431,6 +1438,10 @@ components:
           nullable: true
         email:
           type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
         label:
           type: string
         active:

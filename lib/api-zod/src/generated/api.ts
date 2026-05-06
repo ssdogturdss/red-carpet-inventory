@@ -611,7 +611,8 @@ export const GetNotificationContactsResponseItem = zod.object({
   id: zod.number(),
   storeId: zod.number().nullish(),
   storeName: zod.string().nullish(),
-  email: zod.string(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
   label: zod.string(),
   active: zod.boolean(),
   severity: zod.string(),
@@ -626,7 +627,8 @@ export const GetNotificationContactsResponse = zod.array(
  */
 export const CreateNotificationContactBody = zod.object({
   storeId: zod.number().nullish(),
-  email: zod.string(),
+  email: zod.string().optional(),
+  phone: zod.string().optional(),
   label: zod.string().optional(),
   active: zod.boolean().optional(),
   severity: zod.string().optional(),
@@ -641,7 +643,8 @@ export const UpdateNotificationContactParams = zod.object({
 
 export const UpdateNotificationContactBody = zod.object({
   storeId: zod.number().nullish(),
-  email: zod.string().optional(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
   label: zod.string().optional(),
   active: zod.boolean().optional(),
   severity: zod.string().optional(),
@@ -651,7 +654,8 @@ export const UpdateNotificationContactResponse = zod.object({
   id: zod.number(),
   storeId: zod.number().nullish(),
   storeName: zod.string().nullish(),
-  email: zod.string(),
+  email: zod.string().nullish(),
+  phone: zod.string().nullish(),
   label: zod.string(),
   active: zod.boolean(),
   severity: zod.string(),
@@ -671,7 +675,7 @@ export const DeleteNotificationContactResponse = zod.object({
 });
 
 /**
- * @summary Send a test email to a contact
+ * @summary Send a test notification (email and/or SMS) to a contact
  */
 export const TestNotificationContactParams = zod.object({
   id: zod.coerce.number(),
@@ -683,8 +687,10 @@ export const TestNotificationContactResponse = zod.object({
 });
 
 /**
- * @summary Check if email is configured
+ * @summary Check if email and SMS are configured
  */
 export const GetNotificationStatusResponse = zod.object({
   configured: zod.boolean(),
+  emailConfigured: zod.boolean(),
+  smsConfigured: zod.boolean(),
 });
