@@ -690,15 +690,23 @@ function addWeeks(weekStr: string, n: number): string {
   d.setDate(d.getDate() + n * 7);
   return d.toISOString().split("T")[0]!;
 }
-function ChangeBadge({ pct, colors }: { pct: number | null | undefined; colors: ReturnType<typeof import("@/hooks/useColors").useColors> }) {
+function ChangeBadge({ pct }: { pct: number | null | undefined }) {
   if (pct === null || pct === undefined) {
-    return <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, width: 60, textAlign: "right" }}>—</Text>;
+    return (
+      <View style={{ width: 58, alignItems: "flex-end" }}>
+        <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "#94a3b8" }}>—</Text>
+      </View>
+    );
   }
   const up = pct >= 0;
+  const bg = up ? "#fef2f2" : "#f0fdf4";
+  const fg = up ? "#dc2626" : "#16a34a";
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", width: 60, gap: 2 }}>
-      <Feather name={up ? "arrow-up" : "arrow-down"} size={10} color={up ? "#ef4444" : "#22c55e"} />
-      <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: up ? "#ef4444" : "#22c55e" }}>{Math.abs(pct).toFixed(1)}%</Text>
+    <View style={{ width: 58, alignItems: "flex-end" }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: bg, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 3 }}>
+        <Feather name={up ? "trending-up" : "trending-down"} size={9} color={fg} />
+        <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: fg }}>{Math.abs(pct).toFixed(1)}%</Text>
+      </View>
     </View>
   );
 }
@@ -740,7 +748,6 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
   const chemOptions = (chemReport ?? []).map((c, i) => ({ id: i, name: c.chemicalName }));
   const storeOptions = [{ id: undefined as number | undefined, name: "Select a store…" }, ...(stores ?? [])];
 
-  // Sort stores (chemical view)
   const sortedStores = [...(chemical?.stores ?? [])].sort((a, b) => {
     switch (sortMode) {
       case "qty-desc": return (b.latestQuantity ?? -1) - (a.latestQuantity ?? -1);
@@ -752,7 +759,6 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
     }
   });
 
-  // Sort chemicals (store view)
   const sortedChemicals = [...(storeReport?.chemicals ?? [])].sort((a, b) => {
     switch (sortMode) {
       case "qty-desc": return (b.quantity ?? -1) - (a.quantity ?? -1);
@@ -768,6 +774,7 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
   const avg = counted.length ? counted.reduce((sum, s) => sum + (s.latestQuantity ?? 0), 0) / counted.length : null;
   const maxQty = counted.length ? Math.max(...counted.map((s) => s.latestQuantity ?? 0)) : 0;
   const minQty = counted.length ? Math.min(...counted.map((s) => s.latestQuantity ?? 0)) : 0;
+  const alertCount = sortedStores.filter((st) => st.hasAlert).length;
 
   const weekLabel = weekOf ? formatDate(weekOf) : "Latest";
   const canGoForward = !!weekOf && weekOf < currentWeek;
@@ -782,136 +789,163 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
     if (qty == null) return colors.border;
     if (avg === null || maxQty === 0) return colors.teal;
     const ratio = qty / maxQty;
-    if (ratio < 0.25) return colors.critical;
+    if (ratio < 0.25) return "#ef4444";
     if (ratio < 0.5) return "#f59e0b";
     return colors.teal;
   };
 
   const s = StyleSheet.create({
     outer: { flex: 1 },
-    modeBar: { flexDirection: "row", padding: 10, gap: 8, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border },
-    modeBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 8, borderRadius: colors.radius, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background },
-    modeBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-    modeBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    // ── top controls ──
+    controlsWrap: { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border },
+    topRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingTop: 10, paddingBottom: 8 },
+    modeToggle: { flex: 1, flexDirection: "row", backgroundColor: colors.secondary, borderRadius: 10, padding: 3 },
+    modeBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 7, borderRadius: 8 },
+    modeBtnActive: { backgroundColor: colors.primary },
+    modeBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground },
     modeBtnTextActive: { color: "#fff" },
-    pickerRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border },
-    pickerBtn: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.primary, borderRadius: colors.radius, paddingHorizontal: 12, paddingVertical: 8 },
-    pickerBtnText: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.primary },
-    weekNav: { flexDirection: "row", alignItems: "center", backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: colors.radius, overflow: "hidden" },
-    weekNavBtn: { paddingHorizontal: 8, paddingVertical: 8 },
-    weekNavLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: colors.foreground, paddingHorizontal: 4, minWidth: 56, textAlign: "center" },
-    missingBanner: { backgroundColor: "#fffbeb", borderBottomWidth: 1, borderBottomColor: "#fde68a", paddingHorizontal: 14, paddingVertical: 10 },
-    missingHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
-    missingTitle: { flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#92400e" },
-    missingStore: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#78350f", paddingVertical: 2, paddingLeft: 4 },
+    weekNav: { flexDirection: "row", alignItems: "center", backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 10, overflow: "hidden" },
+    weekNavBtn: { paddingHorizontal: 10, paddingVertical: 8 },
+    weekNavLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.foreground, paddingHorizontal: 2, minWidth: 52, textAlign: "center" },
+    pickerRow: { paddingHorizontal: 12, paddingBottom: 10 },
+    pickerBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
+    pickerBtnText: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground },
+    pickerBtnPlaceholder: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground },
+    // ── missing banner ──
+    missingBanner: { flexDirection: "row", alignItems: "flex-start", gap: 10, backgroundColor: "#fffbeb", borderBottomWidth: 1, borderBottomColor: "#fde68a", paddingHorizontal: 14, paddingVertical: 11 },
+    missingIconWrap: { width: 28, height: 28, borderRadius: 14, backgroundColor: "#fef3c7", alignItems: "center", justifyContent: "center", marginTop: 1 },
+    missingBody: { flex: 1 },
+    missingTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#92400e" },
+    missingSubtitle: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#b45309", marginTop: 1 },
+    missingStore: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#78350f", paddingVertical: 3, borderTopWidth: 1, borderTopColor: "#fde68a", marginTop: 6 },
+    missingToggle: { paddingTop: 2 },
+    // ── sort bar ──
     sortBarWrap: { borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.background },
-    sortLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: colors.mutedForeground, alignSelf: "center" },
-    sortBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
-    sortBtnActive: { borderColor: colors.primary, backgroundColor: colors.tealLight + "22" },
-    sortBtnText: { fontSize: 11, fontFamily: "Inter_500Medium", color: colors.foreground },
-    sortBtnTextActive: { color: colors.primary, fontFamily: "Inter_600SemiBold" },
+    sortBtn: { paddingHorizontal: 11, paddingVertical: 6, borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+    sortBtnActive: { borderColor: colors.primary, backgroundColor: colors.primary + "18" },
+    sortBtnText: { fontSize: 11, fontFamily: "Inter_500Medium", color: colors.mutedForeground },
+    sortBtnTextActive: { color: colors.primary, fontFamily: "Inter_700Bold" },
+    // ── content ──
     scroll: { flex: 1 },
     content: { padding: 14, paddingBottom: insets.bottom + 90 + webBottom },
-    summaryRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
-    statCard: { flex: 1, backgroundColor: colors.card, borderRadius: colors.radius, borderWidth: 1, borderColor: colors.border, padding: 10, alignItems: "center" },
-    statValue: { fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground },
-    statLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: colors.mutedForeground, marginTop: 2, textTransform: "uppercase", letterSpacing: 0.5 },
-    sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 },
-    tableHeader: { flexDirection: "row", paddingHorizontal: 10, paddingVertical: 6, backgroundColor: colors.secondary, borderRadius: 6, marginBottom: 4 },
-    thName: { flex: 1, fontSize: 10, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.6 },
-    thQty: { width: 48, textAlign: "right", fontSize: 10, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.6 },
-    thChange: { width: 62, textAlign: "right", fontSize: 10, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.6 },
-    thBar: { width: 46, textAlign: "right", fontSize: 10, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.6 },
-    row: { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 9, backgroundColor: colors.card, borderRadius: 8, marginBottom: 4, borderWidth: 1, borderColor: colors.border },
-    rowName: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: colors.foreground },
-    rowSub: { fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground },
-    qtyText: { width: 48, textAlign: "right", fontSize: 13, fontFamily: "Inter_700Bold", color: colors.foreground },
-    qtyNull: { color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12 },
-    alertDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.critical, marginLeft: 4 },
-    barWrap: { width: 46, alignItems: "flex-end", paddingLeft: 4 },
-    barBg: { width: 40, height: 6, backgroundColor: colors.secondary, borderRadius: 3, overflow: "hidden" },
-    barFill: { height: 6, borderRadius: 3 },
-    noData: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 40 },
+    // ── stat cards ──
+    summaryRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
+    statCard: { flex: 1, borderRadius: 12, padding: 10, alignItems: "center", gap: 2 },
+    statValue: { fontSize: 18, fontFamily: "Inter_700Bold" },
+    statLabel: { fontSize: 9, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.6 },
+    // ── section heading ──
+    sectionHeading: { flexDirection: "row", alignItems: "center", marginBottom: 10, gap: 6 },
+    sectionTitle: { fontSize: 12, fontFamily: "Inter_700Bold", color: colors.foreground, flex: 1 },
+    sectionUnit: { fontSize: 11, fontFamily: "Inter_500Medium", color: colors.mutedForeground },
+    // ── table ──
+    tableHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 6, marginBottom: 6 },
+    thName: { flex: 1, fontSize: 10, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7 },
+    thQty: { width: 46, textAlign: "right", fontSize: 10, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7 },
+    thChange: { width: 62, textAlign: "right", fontSize: 10, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7 },
+    thBar: { width: 56, textAlign: "right", fontSize: 10, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7 },
+    // ── rows ──
+    row: { flexDirection: "row", alignItems: "center", paddingRight: 12, paddingVertical: 10, backgroundColor: colors.card, borderRadius: 10, marginBottom: 5, borderWidth: 1, borderColor: colors.border, overflow: "hidden" },
+    rowAlert: { borderColor: "#fecaca" },
+    rowAccent: { width: 4, alignSelf: "stretch", backgroundColor: colors.border, marginRight: 10 },
+    rowAccentAlert: { backgroundColor: "#ef4444" },
+    rowName: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    rowSub: { fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 },
+    qtyText: { width: 46, textAlign: "right", fontSize: 14, fontFamily: "Inter_700Bold", color: colors.foreground },
+    qtyNull: { color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 13 },
+    // ── bar ──
+    barWrap: { width: 56, alignItems: "flex-end", paddingLeft: 6 },
+    barBg: { width: 48, height: 8, backgroundColor: colors.secondary, borderRadius: 4, overflow: "hidden" },
+    barFill: { height: 8, borderRadius: 4 },
+    // ── empty ──
+    noData: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 60 },
+    emptyIcon: { alignItems: "center", marginBottom: 12, marginTop: 40 },
   });
 
   const sortButtons: { key: SortMode; label: string }[] = [
-    { key: "name", label: "Name" },
+    { key: "name", label: "A–Z" },
     { key: "qty-desc", label: "Qty ↓" },
     { key: "qty-asc", label: "Qty ↑" },
-    { key: "alert", label: "Alerts" },
-    { key: "change-desc", label: "▲ Chg" },
-    { key: "change-asc", label: "▼ Chg" },
+    { key: "alert", label: "⚠ Alerts" },
+    { key: "change-desc", label: "↑ Change" },
+    { key: "change-asc", label: "↓ Change" },
   ];
+
+  const selectedStoreName = selectedStoreId ? stores?.find((st) => st.id === selectedStoreId)?.name : undefined;
 
   return (
     <View style={s.outer}>
-      {/* View mode toggle */}
-      <View style={s.modeBar}>
-        <TouchableOpacity style={[s.modeBtn, viewMode === "chemical" && s.modeBtnActive]} onPress={() => setViewMode("chemical")}>
-          <Feather name="bar-chart-2" size={14} color={viewMode === "chemical" ? "#fff" : colors.foreground} />
-          <Text style={[s.modeBtnText, viewMode === "chemical" && s.modeBtnTextActive]}>By Chemical</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[s.modeBtn, viewMode === "store" && s.modeBtnActive]} onPress={() => setViewMode("store")}>
-          <Feather name="map-pin" size={14} color={viewMode === "store" ? "#fff" : colors.foreground} />
-          <Text style={[s.modeBtnText, viewMode === "store" && s.modeBtnTextActive]}>By Store</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Picker + week navigator */}
-      <View style={s.pickerRow}>
-        {viewMode === "chemical" ? (
-          <TouchableOpacity style={s.pickerBtn} onPress={() => setChemPickerOpen(true)}>
-            <Feather name="droplet" size={13} color={colors.primary} />
-            <Text style={s.pickerBtnText} numberOfLines={1}>{chemical?.chemicalName ?? "Select a chemical…"}</Text>
-            <Feather name="chevron-down" size={13} color={colors.primary} />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={s.pickerBtn} onPress={() => setStorePickerOpen(true)}>
-            <Feather name="map-pin" size={13} color={colors.primary} />
-            <Text style={s.pickerBtnText} numberOfLines={1}>
-              {selectedStoreId ? stores?.find((st) => st.id === selectedStoreId)?.name : "Select a store…"}
-            </Text>
-            <Feather name="chevron-down" size={13} color={colors.primary} />
-          </TouchableOpacity>
-        )}
-        <View style={s.weekNav}>
-          <TouchableOpacity style={s.weekNavBtn} onPress={handleWeekBack}>
-            <Feather name="chevron-left" size={15} color={colors.foreground} />
-          </TouchableOpacity>
-          <Text style={s.weekNavLabel}>{weekLabel}</Text>
-          <TouchableOpacity style={s.weekNavBtn} onPress={handleWeekForward} disabled={!canGoForward}>
-            <Feather name="chevron-right" size={15} color={canGoForward ? colors.foreground : colors.border} />
-          </TouchableOpacity>
+      {/* Controls: mode toggle + week nav + picker — all in one compact block */}
+      <View style={s.controlsWrap}>
+        <View style={s.topRow}>
+          <View style={s.modeToggle}>
+            <TouchableOpacity style={[s.modeBtn, viewMode === "chemical" && s.modeBtnActive]} onPress={() => setViewMode("chemical")}>
+              <Feather name="bar-chart-2" size={13} color={viewMode === "chemical" ? "#fff" : colors.mutedForeground} />
+              <Text style={[s.modeBtnText, viewMode === "chemical" && s.modeBtnTextActive]}>By Chemical</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[s.modeBtn, viewMode === "store" && s.modeBtnActive]} onPress={() => setViewMode("store")}>
+              <Feather name="map-pin" size={13} color={viewMode === "store" ? "#fff" : colors.mutedForeground} />
+              <Text style={[s.modeBtnText, viewMode === "store" && s.modeBtnTextActive]}>By Store</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={s.weekNav}>
+            <TouchableOpacity style={s.weekNavBtn} onPress={handleWeekBack}>
+              <Feather name="chevron-left" size={14} color={colors.foreground} />
+            </TouchableOpacity>
+            <Text style={s.weekNavLabel}>{weekLabel}</Text>
+            <TouchableOpacity style={s.weekNavBtn} onPress={handleWeekForward} disabled={!canGoForward}>
+              <Feather name="chevron-right" size={14} color={canGoForward ? colors.foreground : colors.border} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <View style={s.pickerRow}>
+          {viewMode === "chemical" ? (
+            <TouchableOpacity style={s.pickerBtn} onPress={() => setChemPickerOpen(true)}>
+              <Feather name="droplet" size={14} color={colors.teal} />
+              <Text style={chemical ? s.pickerBtnText : s.pickerBtnPlaceholder} numberOfLines={1}>
+                {chemical?.chemicalName ?? "Select a chemical…"}
+              </Text>
+              {chemical && (
+                <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{chemical.unit}</Text>
+              )}
+              <Feather name="chevron-down" size={14} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={s.pickerBtn} onPress={() => setStorePickerOpen(true)}>
+              <Feather name="map-pin" size={14} color={colors.teal} />
+              <Text style={selectedStoreId ? s.pickerBtnText : s.pickerBtnPlaceholder} numberOfLines={1}>
+                {selectedStoreName ?? "Select a store…"}
+              </Text>
+              <Feather name="chevron-down" size={14} color={colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
       {/* Missing submissions banner */}
       {(missing?.length ?? 0) > 0 && (
-        <TouchableOpacity style={s.missingBanner} onPress={() => setMissingExpanded((v) => !v)} activeOpacity={0.8}>
-          <View style={s.missingHeader}>
-            <Feather name="alert-triangle" size={13} color="#d97706" />
-            <Text style={s.missingTitle}>
-              {missing!.length} store{missing!.length !== 1 ? "s" : ""} missing this week's count
-            </Text>
-            <Feather name={missingExpanded ? "chevron-up" : "chevron-down"} size={13} color="#d97706" />
+        <TouchableOpacity style={s.missingBanner} onPress={() => setMissingExpanded((v) => !v)} activeOpacity={0.85}>
+          <View style={s.missingIconWrap}>
+            <Feather name="alert-triangle" size={14} color="#d97706" />
           </View>
-          {missingExpanded && (
-            <View style={{ marginTop: 6 }}>
-              {missing!.map((m) => (
-                <Text key={m.storeId} style={s.missingStore}>
-                  • {m.storeName}
-                  {m.weeksSinceLast ? ` — ${m.weeksSinceLast}w ago` : m.lastSubmittedWeekOf ? ` — last: ${formatDate(m.lastSubmittedWeekOf)}` : " — never submitted"}
-                </Text>
-              ))}
-            </View>
-          )}
+          <View style={s.missingBody}>
+            <Text style={s.missingTitle}>{missing!.length} store{missing!.length !== 1 ? "s" : ""} missing this week</Text>
+            <Text style={s.missingSubtitle}>{missingExpanded ? "Tap to collapse" : "Tap to see which stores"}</Text>
+            {missingExpanded && missing!.map((m) => (
+              <Text key={m.storeId} style={s.missingStore}>
+                {m.storeName}
+                {m.weeksSinceLast ? `  ·  ${m.weeksSinceLast}w overdue` : m.lastSubmittedWeekOf ? `  ·  last ${formatDate(m.lastSubmittedWeekOf)}` : "  ·  never submitted"}
+              </Text>
+            ))}
+          </View>
+          <View style={s.missingToggle}>
+            <Feather name={missingExpanded ? "chevron-up" : "chevron-down"} size={16} color="#d97706" />
+          </View>
         </TouchableOpacity>
       )}
 
-      {/* Sort bar */}
+      {/* Sort pills */}
       <View style={s.sortBarWrap}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8 }}>
-          <Text style={s.sortLabel}>Sort:</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", gap: 6, paddingHorizontal: 12, paddingVertical: 8 }}>
           {sortButtons.map((btn) => (
             <TouchableOpacity key={btn.key} style={[s.sortBtn, sortMode === btn.key && s.sortBtnActive]} onPress={() => setSortMode(btn.key)}>
               <Text style={[s.sortBtnText, sortMode === btn.key && s.sortBtnTextActive]}>{btn.label}</Text>
@@ -923,48 +957,63 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
       {/* Main content */}
       <ScrollView style={s.scroll} contentContainerStyle={s.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
         {isLoading ? (
-          <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
+          <ActivityIndicator color={colors.primary} style={{ marginTop: 60 }} />
         ) : viewMode === "chemical" ? (
           !chemical ? (
-            <Text style={s.noData}>No data yet.</Text>
+            <View style={s.emptyIcon}>
+              <Feather name="bar-chart-2" size={40} color={colors.border} />
+              <Text style={s.noData}>No report data yet.</Text>
+            </View>
           ) : (
             <>
+              {/* Stat cards */}
               {counted.length > 0 && (
                 <View style={s.summaryRow}>
-                  <View style={s.statCard}><Text style={s.statValue}>{avg !== null ? avg.toFixed(1) : "—"}</Text><Text style={s.statLabel}>Avg</Text></View>
-                  <View style={s.statCard}><Text style={s.statValue}>{maxQty}</Text><Text style={s.statLabel}>High</Text></View>
-                  <View style={s.statCard}><Text style={s.statValue}>{minQty}</Text><Text style={s.statLabel}>Low</Text></View>
-                  <View style={s.statCard}>
-                    <Text style={[s.statValue, { color: sortedStores.filter((st) => st.hasAlert).length > 0 ? colors.critical : colors.teal }]}>
-                      {sortedStores.filter((st) => st.hasAlert).length}
-                    </Text>
-                    <Text style={s.statLabel}>Alerts</Text>
+                  <View style={[s.statCard, { backgroundColor: "#f0fdfa" }]}>
+                    <Text style={[s.statValue, { color: colors.teal }]}>{avg !== null ? avg.toFixed(1) : "—"}</Text>
+                    <Text style={[s.statLabel, { color: colors.teal }]}>Avg</Text>
+                  </View>
+                  <View style={[s.statCard, { backgroundColor: "#f0fdf4" }]}>
+                    <Text style={[s.statValue, { color: "#16a34a" }]}>{maxQty}</Text>
+                    <Text style={[s.statLabel, { color: "#16a34a" }]}>High</Text>
+                  </View>
+                  <View style={[s.statCard, { backgroundColor: "#fef9f0" }]}>
+                    <Text style={[s.statValue, { color: "#d97706" }]}>{minQty}</Text>
+                    <Text style={[s.statLabel, { color: "#d97706" }]}>Low</Text>
+                  </View>
+                  <View style={[s.statCard, { backgroundColor: alertCount > 0 ? "#fef2f2" : "#f0fdfa" }]}>
+                    <Text style={[s.statValue, { color: alertCount > 0 ? "#dc2626" : colors.teal }]}>{alertCount}</Text>
+                    <Text style={[s.statLabel, { color: alertCount > 0 ? "#dc2626" : colors.teal }]}>Alerts</Text>
                   </View>
                 </View>
               )}
-              <Text style={s.sectionTitle}>All Stores — {chemical.unit}</Text>
+
+              {/* Table header */}
               <View style={s.tableHeader}>
+                <View style={{ width: 4, marginRight: 10 }} />
                 <Text style={s.thName}>Store</Text>
                 <Text style={s.thQty}>Qty</Text>
                 <Text style={s.thChange}>Chg</Text>
                 <Text style={s.thBar}>Level</Text>
               </View>
+
               {sortedStores.map((st) => {
-                const barPct = maxQty > 0 && st.latestQuantity != null ? (st.latestQuantity / maxQty) * 40 : 0;
+                const barWidth = maxQty > 0 && st.latestQuantity != null ? Math.round((st.latestQuantity / maxQty) * 48) : 0;
+                const isAlert = st.hasAlert;
                 return (
-                  <View key={st.storeId} style={s.row}>
+                  <View key={st.storeId} style={[s.row, isAlert && s.rowAlert]}>
+                    <View style={[s.rowAccent, isAlert && s.rowAccentAlert]} />
                     <View style={{ flex: 1 }}>
                       <Text style={s.rowName}>{st.storeName}</Text>
-                      <Text style={s.rowSub}>{st.weekOf ? `Wk ${formatDate(st.weekOf)}` : "No count yet"}</Text>
+                      <Text style={s.rowSub}>{st.weekOf ? formatDate(st.weekOf) : "No count yet"}</Text>
                     </View>
                     <Text style={[s.qtyText, st.latestQuantity === null && s.qtyNull]}>
                       {st.latestQuantity !== null ? st.latestQuantity : "—"}
                     </Text>
-                    {st.hasAlert && <View style={s.alertDot} />}
-                    <ChangeBadge pct={st.changePercent} colors={colors} />
+                    <ChangeBadge pct={st.changePercent} />
                     <View style={s.barWrap}>
                       <View style={s.barBg}>
-                        <View style={[s.barFill, { width: barPct, backgroundColor: getBarColor(st.latestQuantity) }]} />
+                        <View style={[s.barFill, { width: barWidth, backgroundColor: getBarColor(st.latestQuantity) }]} />
                       </View>
                     </View>
                   </View>
@@ -974,45 +1023,62 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
           )
         ) : (
           !selectedStoreId ? (
-            <Text style={s.noData}>Select a store to view its report.</Text>
+            <View style={s.emptyIcon}>
+              <Feather name="map-pin" size={40} color={colors.border} />
+              <Text style={s.noData}>Select a store above to view its report.</Text>
+            </View>
           ) : !storeReport ? (
-            <Text style={s.noData}>No count data found for this store.</Text>
+            <View style={s.emptyIcon}>
+              <Feather name="inbox" size={40} color={colors.border} />
+              <Text style={s.noData}>No count data found for this store.</Text>
+            </View>
           ) : (
             <>
-              {storeReport.weekOf && (
-                <View style={s.summaryRow}>
-                  <View style={s.statCard}><Text style={s.statValue}>{sortedChemicals.filter((c) => c.quantity !== null).length}</Text><Text style={s.statLabel}>Products</Text></View>
-                  <View style={s.statCard}>
-                    <Text style={[s.statValue, { color: sortedChemicals.filter((c) => c.hasAlert).length > 0 ? colors.critical : colors.teal }]}>
-                      {sortedChemicals.filter((c) => c.hasAlert).length}
-                    </Text>
-                    <Text style={s.statLabel}>Alerts</Text>
+              {/* Stat cards */}
+              {storeReport.weekOf && (() => {
+                const chemAlerts = sortedChemicals.filter((c) => c.hasAlert).length;
+                return (
+                  <View style={s.summaryRow}>
+                    <View style={[s.statCard, { backgroundColor: "#f0fdfa" }]}>
+                      <Text style={[s.statValue, { color: colors.teal }]}>{sortedChemicals.filter((c) => c.quantity !== null).length}</Text>
+                      <Text style={[s.statLabel, { color: colors.teal }]}>Products</Text>
+                    </View>
+                    <View style={[s.statCard, { backgroundColor: chemAlerts > 0 ? "#fef2f2" : "#f0fdfa" }]}>
+                      <Text style={[s.statValue, { color: chemAlerts > 0 ? "#dc2626" : colors.teal }]}>{chemAlerts}</Text>
+                      <Text style={[s.statLabel, { color: chemAlerts > 0 ? "#dc2626" : colors.teal }]}>Alerts</Text>
+                    </View>
+                    <View style={[s.statCard, { flex: 2, backgroundColor: colors.secondary }]}>
+                      <Text style={[s.statValue, { fontSize: 13, color: colors.foreground }]}>{formatDate(storeReport.weekOf)}</Text>
+                      <Text style={[s.statLabel, { color: colors.mutedForeground }]}>Latest Week</Text>
+                    </View>
                   </View>
-                  <View style={[s.statCard, { flex: 2 }]}>
-                    <Text style={[s.statValue, { fontSize: 13 }]}>{formatDate(storeReport.weekOf)}</Text>
-                    <Text style={s.statLabel}>Week</Text>
-                  </View>
-                </View>
-              )}
-              <Text style={s.sectionTitle}>{storeReport.storeName} — All Chemicals</Text>
+                );
+              })()}
+
+              {/* Table header */}
               <View style={s.tableHeader}>
+                <View style={{ width: 4, marginRight: 10 }} />
                 <Text style={s.thName}>Chemical</Text>
                 <Text style={s.thQty}>Qty</Text>
                 <Text style={s.thChange}>Chg</Text>
               </View>
-              {sortedChemicals.map((c) => (
-                <View key={c.chemicalId} style={s.row}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.rowName}>{c.chemicalName}</Text>
-                    <Text style={s.rowSub}>{c.unit}</Text>
+
+              {sortedChemicals.map((c) => {
+                const isAlert = c.hasAlert;
+                return (
+                  <View key={c.chemicalId} style={[s.row, isAlert && s.rowAlert]}>
+                    <View style={[s.rowAccent, isAlert && s.rowAccentAlert]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.rowName}>{c.chemicalName}</Text>
+                      <Text style={s.rowSub}>{c.unit}</Text>
+                    </View>
+                    <Text style={[s.qtyText, c.quantity === null && s.qtyNull]}>
+                      {c.quantity !== null ? c.quantity : "—"}
+                    </Text>
+                    <ChangeBadge pct={c.changePercent} />
                   </View>
-                  <Text style={[s.qtyText, c.quantity === null && s.qtyNull]}>
-                    {c.quantity !== null ? c.quantity : "—"}
-                  </Text>
-                  {c.hasAlert && <View style={s.alertDot} />}
-                  <ChangeBadge pct={c.changePercent} colors={colors} />
-                </View>
-              ))}
+                );
+              })}
             </>
           )
         )}
