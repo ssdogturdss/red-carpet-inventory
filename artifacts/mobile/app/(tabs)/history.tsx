@@ -11,7 +11,7 @@ import {
   useGetInventoryCounts, useGetStores, useGetChemicals,
   useGetOnHand, useGetReceived, useLogReceived, useDeleteReceived,
   useGetOrders, useCreateOrder, useUpdateOrder, useDeleteOrder,
-  useGetChemicalReport,
+  useGetChemicalReport, useGetStoreReport, useGetMissingSubmissions,
 } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 
@@ -205,7 +205,7 @@ function OnHandSection({ colors, insets }: { colors: ReturnType<typeof import("@
   const { data: stores } = useGetStores();
   const { data: onHand, isLoading, refetch } = useGetOnHand(
     { storeId: storeId! },
-    { query: { enabled: !!storeId } }
+    { query: { enabled: !!storeId } as any }
   );
   const storeOptions = [{ id: undefined as number | undefined, name: "Select a store…" }, ...(stores ?? [])];
   const s = StyleSheet.create({
@@ -674,54 +674,112 @@ function OrdersSection({ colors, insets }: { colors: ReturnType<typeof import("@
   );
 }
 
+// ─── Reports helpers ──────────────────────────────────────────────────────────
+type ReportViewMode = "chemical" | "store";
+type SortMode = "name" | "qty-desc" | "qty-asc" | "alert" | "change-desc" | "change-asc";
+
+function getMondayStr(d: Date = new Date()): string {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  date.setDate(diff);
+  return date.toISOString().split("T")[0]!;
+}
+function addWeeks(weekStr: string, n: number): string {
+  const d = new Date(weekStr + "T00:00:00");
+  d.setDate(d.getDate() + n * 7);
+  return d.toISOString().split("T")[0]!;
+}
+function ChangeBadge({ pct, colors }: { pct: number | null | undefined; colors: ReturnType<typeof import("@/hooks/useColors").useColors> }) {
+  if (pct === null || pct === undefined) {
+    return <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, width: 60, textAlign: "right" }}>—</Text>;
+  }
+  const up = pct >= 0;
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", width: 60, gap: 2 }}>
+      <Feather name={up ? "arrow-up" : "arrow-down"} size={10} color={up ? "#ef4444" : "#22c55e"} />
+      <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: up ? "#ef4444" : "#22c55e" }}>{Math.abs(pct).toFixed(1)}%</Text>
+    </View>
+  );
+}
+
 // ─── Reports Section ─────────────────────────────────────────────────────────
 function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: ReturnType<typeof useSafeAreaInsets> }) {
   const webBottom = Platform.OS === "web" ? 34 : 0;
+  const [viewMode, setViewMode] = useState<ReportViewMode>("chemical");
   const [selectedChemIdx, setSelectedChemIdx] = useState(0);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [selectedStoreId, setSelectedStoreId] = useState<number | undefined>();
+  const [weekOf, setWeekOf] = useState<string | undefined>();
+  const [sortMode, setSortMode] = useState<SortMode>("name");
+  const [chemPickerOpen, setChemPickerOpen] = useState(false);
+  const [storePickerOpen, setStorePickerOpen] = useState(false);
+  const [missingExpanded, setMissingExpanded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const { data: report, isLoading, refetch } = useGetChemicalReport();
-  const onRefresh = useCallback(async () => { setRefreshing(true); await refetch(); setRefreshing(false); }, [refetch]);
 
-  const chemical = report?.[selectedChemIdx];
-  const chemOptions = (report ?? []).map((c, i) => ({ id: i, name: c.chemicalName }));
+  const currentWeek = getMondayStr();
 
-  const stores = chemical?.stores ?? [];
-  const counted = stores.filter((s) => s.latestQuantity !== null);
+  const { data: stores } = useGetStores();
+  const { data: chemReport, isLoading: chemLoading, refetch: refetchChem } = useGetChemicalReport(weekOf ? { weekOf } : {});
+  const { data: storeReport, isLoading: storeLoading, refetch: refetchStore } = useGetStoreReport(
+    selectedStoreId!,
+    weekOf ? { weekOf } : {},
+    { query: { enabled: !!selectedStoreId } as any }
+  );
+  const { data: missing } = useGetMissingSubmissions();
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    if (viewMode === "chemical") await refetchChem();
+    else if (selectedStoreId) await refetchStore();
+    setRefreshing(false);
+  }, [viewMode, selectedStoreId, refetchChem, refetchStore]);
+
+  const isLoading = viewMode === "chemical" ? chemLoading : storeLoading;
+
+  const chemical = chemReport?.[selectedChemIdx];
+  const chemOptions = (chemReport ?? []).map((c, i) => ({ id: i, name: c.chemicalName }));
+  const storeOptions = [{ id: undefined as number | undefined, name: "Select a store…" }, ...(stores ?? [])];
+
+  // Sort stores (chemical view)
+  const sortedStores = [...(chemical?.stores ?? [])].sort((a, b) => {
+    switch (sortMode) {
+      case "qty-desc": return (b.latestQuantity ?? -1) - (a.latestQuantity ?? -1);
+      case "qty-asc": return (a.latestQuantity ?? 999999) - (b.latestQuantity ?? 999999);
+      case "alert": return (b.hasAlert ? 1 : 0) - (a.hasAlert ? 1 : 0);
+      case "change-desc": return (b.changePercent ?? -999) - (a.changePercent ?? -999);
+      case "change-asc": return (a.changePercent ?? 999) - (b.changePercent ?? 999);
+      default: return a.storeName.localeCompare(b.storeName);
+    }
+  });
+
+  // Sort chemicals (store view)
+  const sortedChemicals = [...(storeReport?.chemicals ?? [])].sort((a, b) => {
+    switch (sortMode) {
+      case "qty-desc": return (b.quantity ?? -1) - (a.quantity ?? -1);
+      case "qty-asc": return (a.quantity ?? 999999) - (b.quantity ?? 999999);
+      case "alert": return (b.hasAlert ? 1 : 0) - (a.hasAlert ? 1 : 0);
+      case "change-desc": return (b.changePercent ?? -999) - (a.changePercent ?? -999);
+      case "change-asc": return (a.changePercent ?? 999) - (b.changePercent ?? 999);
+      default: return a.chemicalName.localeCompare(b.chemicalName);
+    }
+  });
+
+  const counted = sortedStores.filter((s) => s.latestQuantity !== null);
   const avg = counted.length ? counted.reduce((sum, s) => sum + (s.latestQuantity ?? 0), 0) / counted.length : null;
   const maxQty = counted.length ? Math.max(...counted.map((s) => s.latestQuantity ?? 0)) : 0;
   const minQty = counted.length ? Math.min(...counted.map((s) => s.latestQuantity ?? 0)) : 0;
 
-  const s = StyleSheet.create({
-    outer: { flex: 1 },
-    pickerRow: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border },
-    pickerBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.primary, borderRadius: colors.radius, paddingHorizontal: 14, paddingVertical: 9, alignSelf: "flex-start" },
-    pickerBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.primary, flex: 1 },
-    scroll: { flex: 1 },
-    content: { padding: 16, paddingBottom: insets.bottom + 90 + webBottom },
-    summaryRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
-    statCard: { flex: 1, backgroundColor: colors.card, borderRadius: colors.radius, borderWidth: 1, borderColor: colors.border, padding: 12, alignItems: "center" },
-    statValue: { fontSize: 20, fontFamily: "Inter_700Bold", color: colors.foreground },
-    statLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: colors.mutedForeground, marginTop: 3, textTransform: "uppercase", letterSpacing: 0.6 },
-    sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 },
-    tableHeader: { flexDirection: "row", paddingHorizontal: 12, paddingVertical: 7, backgroundColor: colors.secondary, borderRadius: 6, marginBottom: 4 },
-    thStore: { flex: 1, fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.6 },
-    thQty: { width: 64, textAlign: "right", fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.6 },
-    thBar: { width: 72, textAlign: "right", fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.6 },
-    storeRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 10, backgroundColor: colors.card, borderRadius: 8, marginBottom: 4, borderWidth: 1, borderColor: colors.border },
-    storeName: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground },
-    storeNum: { fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground },
-    qtyText: { width: 64, textAlign: "right", fontSize: 14, fontFamily: "Inter_700Bold", color: colors.foreground },
-    qtyNull: { color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 13 },
-    alertDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.critical, marginLeft: 6 },
-    barWrap: { width: 72, alignItems: "flex-end", paddingLeft: 8 },
-    barBg: { width: 60, height: 7, backgroundColor: colors.secondary, borderRadius: 4, overflow: "hidden" },
-    barFill: { height: 7, borderRadius: 4 },
-    noData: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 40 },
-  });
+  const weekLabel = weekOf ? formatDate(weekOf) : "Latest";
+  const canGoForward = !!weekOf && weekOf < currentWeek;
+  const handleWeekBack = () => setWeekOf(addWeeks(weekOf ?? currentWeek, -1));
+  const handleWeekForward = () => {
+    if (!weekOf) return;
+    const next = addWeeks(weekOf, 1);
+    setWeekOf(next >= currentWeek ? undefined : next);
+  };
 
-  const getBarColor = (qty: number | null) => {
-    if (qty === null) return colors.border;
+  const getBarColor = (qty: number | null | undefined) => {
+    if (qty == null) return colors.border;
     if (avg === null || maxQty === 0) return colors.teal;
     const ratio = qty / maxQty;
     if (ratio < 0.25) return colors.critical;
@@ -729,87 +787,241 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
     return colors.teal;
   };
 
+  const s = StyleSheet.create({
+    outer: { flex: 1 },
+    modeBar: { flexDirection: "row", padding: 10, gap: 8, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border },
+    modeBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 8, borderRadius: colors.radius, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background },
+    modeBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    modeBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    modeBtnTextActive: { color: "#fff" },
+    pickerRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border },
+    pickerBtn: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.primary, borderRadius: colors.radius, paddingHorizontal: 12, paddingVertical: 8 },
+    pickerBtnText: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.primary },
+    weekNav: { flexDirection: "row", alignItems: "center", backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: colors.radius, overflow: "hidden" },
+    weekNavBtn: { paddingHorizontal: 8, paddingVertical: 8 },
+    weekNavLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: colors.foreground, paddingHorizontal: 4, minWidth: 56, textAlign: "center" },
+    missingBanner: { backgroundColor: "#fffbeb", borderBottomWidth: 1, borderBottomColor: "#fde68a", paddingHorizontal: 14, paddingVertical: 10 },
+    missingHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+    missingTitle: { flex: 1, fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#92400e" },
+    missingStore: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#78350f", paddingVertical: 2, paddingLeft: 4 },
+    sortBarWrap: { borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.background },
+    sortLabel: { fontSize: 11, fontFamily: "Inter_500Medium", color: colors.mutedForeground, alignSelf: "center" },
+    sortBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
+    sortBtnActive: { borderColor: colors.primary, backgroundColor: colors.tealLight + "22" },
+    sortBtnText: { fontSize: 11, fontFamily: "Inter_500Medium", color: colors.foreground },
+    sortBtnTextActive: { color: colors.primary, fontFamily: "Inter_600SemiBold" },
+    scroll: { flex: 1 },
+    content: { padding: 14, paddingBottom: insets.bottom + 90 + webBottom },
+    summaryRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
+    statCard: { flex: 1, backgroundColor: colors.card, borderRadius: colors.radius, borderWidth: 1, borderColor: colors.border, padding: 10, alignItems: "center" },
+    statValue: { fontSize: 17, fontFamily: "Inter_700Bold", color: colors.foreground },
+    statLabel: { fontSize: 10, fontFamily: "Inter_500Medium", color: colors.mutedForeground, marginTop: 2, textTransform: "uppercase", letterSpacing: 0.5 },
+    sectionTitle: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 },
+    tableHeader: { flexDirection: "row", paddingHorizontal: 10, paddingVertical: 6, backgroundColor: colors.secondary, borderRadius: 6, marginBottom: 4 },
+    thName: { flex: 1, fontSize: 10, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.6 },
+    thQty: { width: 48, textAlign: "right", fontSize: 10, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.6 },
+    thChange: { width: 62, textAlign: "right", fontSize: 10, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.6 },
+    thBar: { width: 46, textAlign: "right", fontSize: 10, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.6 },
+    row: { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 9, backgroundColor: colors.card, borderRadius: 8, marginBottom: 4, borderWidth: 1, borderColor: colors.border },
+    rowName: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: colors.foreground },
+    rowSub: { fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground },
+    qtyText: { width: 48, textAlign: "right", fontSize: 13, fontFamily: "Inter_700Bold", color: colors.foreground },
+    qtyNull: { color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 12 },
+    alertDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.critical, marginLeft: 4 },
+    barWrap: { width: 46, alignItems: "flex-end", paddingLeft: 4 },
+    barBg: { width: 40, height: 6, backgroundColor: colors.secondary, borderRadius: 3, overflow: "hidden" },
+    barFill: { height: 6, borderRadius: 3 },
+    noData: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 40 },
+  });
+
+  const sortButtons: { key: SortMode; label: string }[] = [
+    { key: "name", label: "Name" },
+    { key: "qty-desc", label: "Qty ↓" },
+    { key: "qty-asc", label: "Qty ↑" },
+    { key: "alert", label: "Alerts" },
+    { key: "change-desc", label: "▲ Chg" },
+    { key: "change-asc", label: "▼ Chg" },
+  ];
+
   return (
     <View style={s.outer}>
-      <View style={s.pickerRow}>
-        <TouchableOpacity style={s.pickerBtn} onPress={() => setPickerOpen(true)}>
-          <Feather name="bar-chart-2" size={14} color={colors.primary} />
-          <Text style={s.pickerBtnText} numberOfLines={1}>{chemical?.chemicalName ?? "Select a chemical…"}</Text>
-          <Feather name="chevron-down" size={14} color={colors.primary} />
+      {/* View mode toggle */}
+      <View style={s.modeBar}>
+        <TouchableOpacity style={[s.modeBtn, viewMode === "chemical" && s.modeBtnActive]} onPress={() => setViewMode("chemical")}>
+          <Feather name="bar-chart-2" size={14} color={viewMode === "chemical" ? "#fff" : colors.foreground} />
+          <Text style={[s.modeBtnText, viewMode === "chemical" && s.modeBtnTextActive]}>By Chemical</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.modeBtn, viewMode === "store" && s.modeBtnActive]} onPress={() => setViewMode("store")}>
+          <Feather name="map-pin" size={14} color={viewMode === "store" ? "#fff" : colors.foreground} />
+          <Text style={[s.modeBtnText, viewMode === "store" && s.modeBtnTextActive]}>By Store</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Picker + week navigator */}
+      <View style={s.pickerRow}>
+        {viewMode === "chemical" ? (
+          <TouchableOpacity style={s.pickerBtn} onPress={() => setChemPickerOpen(true)}>
+            <Feather name="droplet" size={13} color={colors.primary} />
+            <Text style={s.pickerBtnText} numberOfLines={1}>{chemical?.chemicalName ?? "Select a chemical…"}</Text>
+            <Feather name="chevron-down" size={13} color={colors.primary} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={s.pickerBtn} onPress={() => setStorePickerOpen(true)}>
+            <Feather name="map-pin" size={13} color={colors.primary} />
+            <Text style={s.pickerBtnText} numberOfLines={1}>
+              {selectedStoreId ? stores?.find((st) => st.id === selectedStoreId)?.name : "Select a store…"}
+            </Text>
+            <Feather name="chevron-down" size={13} color={colors.primary} />
+          </TouchableOpacity>
+        )}
+        <View style={s.weekNav}>
+          <TouchableOpacity style={s.weekNavBtn} onPress={handleWeekBack}>
+            <Feather name="chevron-left" size={15} color={colors.foreground} />
+          </TouchableOpacity>
+          <Text style={s.weekNavLabel}>{weekLabel}</Text>
+          <TouchableOpacity style={s.weekNavBtn} onPress={handleWeekForward} disabled={!canGoForward}>
+            <Feather name="chevron-right" size={15} color={canGoForward ? colors.foreground : colors.border} />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Missing submissions banner */}
+      {(missing?.length ?? 0) > 0 && (
+        <TouchableOpacity style={s.missingBanner} onPress={() => setMissingExpanded((v) => !v)} activeOpacity={0.8}>
+          <View style={s.missingHeader}>
+            <Feather name="alert-triangle" size={13} color="#d97706" />
+            <Text style={s.missingTitle}>
+              {missing!.length} store{missing!.length !== 1 ? "s" : ""} missing this week's count
+            </Text>
+            <Feather name={missingExpanded ? "chevron-up" : "chevron-down"} size={13} color="#d97706" />
+          </View>
+          {missingExpanded && (
+            <View style={{ marginTop: 6 }}>
+              {missing!.map((m) => (
+                <Text key={m.storeId} style={s.missingStore}>
+                  • {m.storeName}
+                  {m.weeksSinceLast ? ` — ${m.weeksSinceLast}w ago` : m.lastSubmittedWeekOf ? ` — last: ${formatDate(m.lastSubmittedWeekOf)}` : " — never submitted"}
+                </Text>
+              ))}
+            </View>
+          )}
+        </TouchableOpacity>
+      )}
+
+      {/* Sort bar */}
+      <View style={s.sortBarWrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8 }}>
+          <Text style={s.sortLabel}>Sort:</Text>
+          {sortButtons.map((btn) => (
+            <TouchableOpacity key={btn.key} style={[s.sortBtn, sortMode === btn.key && s.sortBtnActive]} onPress={() => setSortMode(btn.key)}>
+              <Text style={[s.sortBtnText, sortMode === btn.key && s.sortBtnTextActive]}>{btn.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
+      {/* Main content */}
       <ScrollView style={s.scroll} contentContainerStyle={s.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
-        ) : !chemical ? (
-          <Text style={s.noData}>No data yet.</Text>
-        ) : (
-          <>
-            {/* Summary stats */}
-            {counted.length > 0 && (
-              <View style={s.summaryRow}>
-                <View style={s.statCard}>
-                  <Text style={s.statValue}>{avg !== null ? avg.toFixed(1) : "—"}</Text>
-                  <Text style={s.statLabel}>Avg {chemical.unit}</Text>
-                </View>
-                <View style={s.statCard}>
-                  <Text style={s.statValue}>{maxQty}</Text>
-                  <Text style={s.statLabel}>Highest</Text>
-                </View>
-                <View style={s.statCard}>
-                  <Text style={s.statValue}>{minQty}</Text>
-                  <Text style={s.statLabel}>Lowest</Text>
-                </View>
-                <View style={s.statCard}>
-                  <Text style={[s.statValue, { color: stores.filter((s) => s.hasAlert).length > 0 ? colors.critical : colors.teal }]}>
-                    {stores.filter((s) => s.hasAlert).length}
-                  </Text>
-                  <Text style={s.statLabel}>Alerts</Text>
-                </View>
-              </View>
-            )}
-
-            {/* Store comparison table */}
-            <Text style={s.sectionTitle}>All Stores — {chemical.unit}</Text>
-            <View style={s.tableHeader}>
-              <Text style={s.thStore}>Store</Text>
-              <Text style={s.thQty}>Qty</Text>
-              <Text style={s.thBar}>Level</Text>
-            </View>
-            {stores.map((st) => {
-              const barPct = maxQty > 0 && st.latestQuantity !== null ? (st.latestQuantity / maxQty) * 60 : 0;
-              const barColor = getBarColor(st.latestQuantity);
-              return (
-                <View key={st.storeId} style={s.storeRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.storeName}>{st.storeName}</Text>
-                    {st.weekOf ? <Text style={s.storeNum}>Wk {formatDate(st.weekOf)}</Text> : <Text style={s.storeNum}>No count yet</Text>}
+        ) : viewMode === "chemical" ? (
+          !chemical ? (
+            <Text style={s.noData}>No data yet.</Text>
+          ) : (
+            <>
+              {counted.length > 0 && (
+                <View style={s.summaryRow}>
+                  <View style={s.statCard}><Text style={s.statValue}>{avg !== null ? avg.toFixed(1) : "—"}</Text><Text style={s.statLabel}>Avg</Text></View>
+                  <View style={s.statCard}><Text style={s.statValue}>{maxQty}</Text><Text style={s.statLabel}>High</Text></View>
+                  <View style={s.statCard}><Text style={s.statValue}>{minQty}</Text><Text style={s.statLabel}>Low</Text></View>
+                  <View style={s.statCard}>
+                    <Text style={[s.statValue, { color: sortedStores.filter((st) => st.hasAlert).length > 0 ? colors.critical : colors.teal }]}>
+                      {sortedStores.filter((st) => st.hasAlert).length}
+                    </Text>
+                    <Text style={s.statLabel}>Alerts</Text>
                   </View>
-                  <Text style={[s.qtyText, st.latestQuantity === null && s.qtyNull]}>
-                    {st.latestQuantity !== null ? st.latestQuantity : "—"}
-                  </Text>
-                  {st.hasAlert && <View style={s.alertDot} />}
-                  <View style={s.barWrap}>
-                    <View style={s.barBg}>
-                      <View style={[s.barFill, { width: barPct, backgroundColor: barColor }]} />
+                </View>
+              )}
+              <Text style={s.sectionTitle}>All Stores — {chemical.unit}</Text>
+              <View style={s.tableHeader}>
+                <Text style={s.thName}>Store</Text>
+                <Text style={s.thQty}>Qty</Text>
+                <Text style={s.thChange}>Chg</Text>
+                <Text style={s.thBar}>Level</Text>
+              </View>
+              {sortedStores.map((st) => {
+                const barPct = maxQty > 0 && st.latestQuantity != null ? (st.latestQuantity / maxQty) * 40 : 0;
+                return (
+                  <View key={st.storeId} style={s.row}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.rowName}>{st.storeName}</Text>
+                      <Text style={s.rowSub}>{st.weekOf ? `Wk ${formatDate(st.weekOf)}` : "No count yet"}</Text>
+                    </View>
+                    <Text style={[s.qtyText, st.latestQuantity === null && s.qtyNull]}>
+                      {st.latestQuantity !== null ? st.latestQuantity : "—"}
+                    </Text>
+                    {st.hasAlert && <View style={s.alertDot} />}
+                    <ChangeBadge pct={st.changePercent} colors={colors} />
+                    <View style={s.barWrap}>
+                      <View style={s.barBg}>
+                        <View style={[s.barFill, { width: barPct, backgroundColor: getBarColor(st.latestQuantity) }]} />
+                      </View>
                     </View>
                   </View>
+                );
+              })}
+            </>
+          )
+        ) : (
+          !selectedStoreId ? (
+            <Text style={s.noData}>Select a store to view its report.</Text>
+          ) : !storeReport ? (
+            <Text style={s.noData}>No count data found for this store.</Text>
+          ) : (
+            <>
+              {storeReport.weekOf && (
+                <View style={s.summaryRow}>
+                  <View style={s.statCard}><Text style={s.statValue}>{sortedChemicals.filter((c) => c.quantity !== null).length}</Text><Text style={s.statLabel}>Products</Text></View>
+                  <View style={s.statCard}>
+                    <Text style={[s.statValue, { color: sortedChemicals.filter((c) => c.hasAlert).length > 0 ? colors.critical : colors.teal }]}>
+                      {sortedChemicals.filter((c) => c.hasAlert).length}
+                    </Text>
+                    <Text style={s.statLabel}>Alerts</Text>
+                  </View>
+                  <View style={[s.statCard, { flex: 2 }]}>
+                    <Text style={[s.statValue, { fontSize: 13 }]}>{formatDate(storeReport.weekOf)}</Text>
+                    <Text style={s.statLabel}>Week</Text>
+                  </View>
                 </View>
-              );
-            })}
-          </>
+              )}
+              <Text style={s.sectionTitle}>{storeReport.storeName} — All Chemicals</Text>
+              <View style={s.tableHeader}>
+                <Text style={s.thName}>Chemical</Text>
+                <Text style={s.thQty}>Qty</Text>
+                <Text style={s.thChange}>Chg</Text>
+              </View>
+              {sortedChemicals.map((c) => (
+                <View key={c.chemicalId} style={s.row}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.rowName}>{c.chemicalName}</Text>
+                    <Text style={s.rowSub}>{c.unit}</Text>
+                  </View>
+                  <Text style={[s.qtyText, c.quantity === null && s.qtyNull]}>
+                    {c.quantity !== null ? c.quantity : "—"}
+                  </Text>
+                  {c.hasAlert && <View style={s.alertDot} />}
+                  <ChangeBadge pct={c.changePercent} colors={colors} />
+                </View>
+              ))}
+            </>
+          )
         )}
       </ScrollView>
-      <PickerModal
-        visible={pickerOpen}
-        title="Select Chemical"
-        items={chemOptions}
-        selected={selectedChemIdx}
-        onSelect={(id) => { if (id !== undefined) setSelectedChemIdx(id); }}
-        onClose={() => setPickerOpen(false)}
-        colors={colors}
-        insets={insets}
-      />
+
+      <PickerModal visible={chemPickerOpen} title="Select Chemical" items={chemOptions} selected={selectedChemIdx}
+        onSelect={(id) => { if (id !== undefined) setSelectedChemIdx(id); }} onClose={() => setChemPickerOpen(false)} colors={colors} insets={insets} />
+      <PickerModal visible={storePickerOpen} title="Select Store" items={storeOptions} selected={selectedStoreId}
+        onSelect={(id) => setSelectedStoreId(id)} onClose={() => setStorePickerOpen(false)} colors={colors} insets={insets} />
     </View>
   );
 }

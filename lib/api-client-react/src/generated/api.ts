@@ -30,20 +30,24 @@ import type {
   DeleteNotificationContact200,
   DeleteResult,
   GetAlertsParams,
+  GetChemicalReportParams,
   GetInventoryCountsParams,
   GetNotificationContactsParams,
   GetNotificationStatus200,
   GetOnHandParams,
   GetOrdersParams,
   GetReceivedParams,
+  GetStoreReportParams,
   HealthStatus,
   InventoryCount,
   InventoryReceived,
+  MissingSubmission,
   NotificationContact,
   OnHandResult,
   ScanInventorySheetBody,
   ScanInventorySheetResult,
   Store,
+  StoreReport,
   SubmitInventoryCountBody,
   TestNotificationContact200,
   UpdateChemicalBody,
@@ -2284,41 +2288,60 @@ export function useGetOnHand<
 /**
  * @summary Usage comparison for all chemicals across all stores
  */
-export const getGetChemicalReportUrl = () => {
-  return `/api/reports/chemicals`;
+export const getGetChemicalReportUrl = (params?: GetChemicalReportParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports/chemicals?${stringifiedParams}`
+    : `/api/reports/chemicals`;
 };
 
 export const getChemicalReport = async (
+  params?: GetChemicalReportParams,
   options?: RequestInit,
 ): Promise<ChemicalReport[]> => {
-  return customFetch<ChemicalReport[]>(getGetChemicalReportUrl(), {
+  return customFetch<ChemicalReport[]>(getGetChemicalReportUrl(params), {
     ...options,
     method: "GET",
   });
 };
 
-export const getGetChemicalReportQueryKey = () => {
-  return [`/api/reports/chemicals`] as const;
+export const getGetChemicalReportQueryKey = (
+  params?: GetChemicalReportParams,
+) => {
+  return [`/api/reports/chemicals`, ...(params ? [params] : [])] as const;
 };
 
 export const getGetChemicalReportQueryOptions = <
   TData = Awaited<ReturnType<typeof getChemicalReport>>,
   TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof getChemicalReport>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
+>(
+  params?: GetChemicalReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getChemicalReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getGetChemicalReportQueryKey();
+  const queryKey =
+    queryOptions?.queryKey ?? getGetChemicalReportQueryKey(params);
 
   const queryFn: QueryFunction<
     Awaited<ReturnType<typeof getChemicalReport>>
-  > = ({ signal }) => getChemicalReport({ signal, ...requestOptions });
+  > = ({ signal }) => getChemicalReport(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof getChemicalReport>>,
@@ -2339,15 +2362,205 @@ export type GetChemicalReportQueryError = ErrorType<unknown>;
 export function useGetChemicalReport<
   TData = Awaited<ReturnType<typeof getChemicalReport>>,
   TError = ErrorType<unknown>,
+>(
+  params?: GetChemicalReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getChemicalReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetChemicalReportQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary All chemicals for a single store with week-over-week change
+ */
+export const getGetStoreReportUrl = (
+  storeId: number,
+  params?: GetStoreReportParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/reports/store/${storeId}?${stringifiedParams}`
+    : `/api/reports/store/${storeId}`;
+};
+
+export const getStoreReport = async (
+  storeId: number,
+  params?: GetStoreReportParams,
+  options?: RequestInit,
+): Promise<StoreReport> => {
+  return customFetch<StoreReport>(getGetStoreReportUrl(storeId, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetStoreReportQueryKey = (
+  storeId: number,
+  params?: GetStoreReportParams,
+) => {
+  return [
+    `/api/reports/store/${storeId}`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetStoreReportQueryOptions = <
+  TData = Awaited<ReturnType<typeof getStoreReport>>,
+  TError = ErrorType<unknown>,
+>(
+  storeId: number,
+  params?: GetStoreReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStoreReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetStoreReportQueryKey(storeId, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getStoreReport>>> = ({
+    signal,
+  }) => getStoreReport(storeId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!storeId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getStoreReport>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetStoreReportQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getStoreReport>>
+>;
+export type GetStoreReportQueryError = ErrorType<unknown>;
+
+/**
+ * @summary All chemicals for a single store with week-over-week change
+ */
+
+export function useGetStoreReport<
+  TData = Awaited<ReturnType<typeof getStoreReport>>,
+  TError = ErrorType<unknown>,
+>(
+  storeId: number,
+  params?: GetStoreReportParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getStoreReport>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetStoreReportQueryOptions(storeId, params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Stores that have not submitted a count for the current week
+ */
+export const getGetMissingSubmissionsUrl = () => {
+  return `/api/reports/missing-submissions`;
+};
+
+export const getMissingSubmissions = async (
+  options?: RequestInit,
+): Promise<MissingSubmission[]> => {
+  return customFetch<MissingSubmission[]>(getGetMissingSubmissionsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMissingSubmissionsQueryKey = () => {
+  return [`/api/reports/missing-submissions`] as const;
+};
+
+export const getGetMissingSubmissionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMissingSubmissions>>,
+  TError = ErrorType<unknown>,
 >(options?: {
   query?: UseQueryOptions<
-    Awaited<ReturnType<typeof getChemicalReport>>,
+    Awaited<ReturnType<typeof getMissingSubmissions>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMissingSubmissionsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMissingSubmissions>>
+  > = ({ signal }) => getMissingSubmissions({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMissingSubmissions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMissingSubmissionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMissingSubmissions>>
+>;
+export type GetMissingSubmissionsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Stores that have not submitted a count for the current week
+ */
+
+export function useGetMissingSubmissions<
+  TData = Awaited<ReturnType<typeof getMissingSubmissions>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMissingSubmissions>>,
     TError,
     TData
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetChemicalReportQueryOptions(options);
+  const queryOptions = getGetMissingSubmissionsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

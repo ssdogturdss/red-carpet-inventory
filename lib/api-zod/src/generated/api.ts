@@ -529,6 +529,10 @@ export const GetOnHandResponse = zod.object({
 /**
  * @summary Usage comparison for all chemicals across all stores
  */
+export const GetChemicalReportQueryParams = zod.object({
+  weekOf: zod.coerce.string().optional(),
+});
+
 export const GetChemicalReportResponseItem = zod.object({
   chemicalId: zod.number(),
   chemicalName: zod.string(),
@@ -541,12 +545,59 @@ export const GetChemicalReportResponseItem = zod.object({
       storeNumber: zod.string(),
       latestQuantity: zod.number().nullish(),
       weekOf: zod.string().nullish(),
+      previousQuantity: zod.number().nullish(),
+      changePercent: zod.number().nullish(),
+      previousWeekOf: zod.string().nullish(),
       hasAlert: zod.boolean(),
     }),
   ),
 });
 export const GetChemicalReportResponse = zod.array(
   GetChemicalReportResponseItem,
+);
+
+/**
+ * @summary All chemicals for a single store with week-over-week change
+ */
+export const GetStoreReportParams = zod.object({
+  storeId: zod.coerce.number(),
+});
+
+export const GetStoreReportQueryParams = zod.object({
+  weekOf: zod.coerce.string().optional(),
+});
+
+export const GetStoreReportResponse = zod.object({
+  storeId: zod.number(),
+  storeName: zod.string(),
+  storeNumber: zod.string(),
+  weekOf: zod.string().nullish(),
+  chemicals: zod.array(
+    zod.object({
+      chemicalId: zod.number(),
+      chemicalName: zod.string(),
+      unit: zod.string(),
+      alertThresholdPercent: zod.number(),
+      quantity: zod.number().nullish(),
+      previousQuantity: zod.number().nullish(),
+      changePercent: zod.number().nullish(),
+      hasAlert: zod.boolean(),
+    }),
+  ),
+});
+
+/**
+ * @summary Stores that have not submitted a count for the current week
+ */
+export const GetMissingSubmissionsResponseItem = zod.object({
+  storeId: zod.number(),
+  storeName: zod.string(),
+  storeNumber: zod.string(),
+  lastSubmittedWeekOf: zod.string().nullish(),
+  weeksSinceLast: zod.number().nullish(),
+});
+export const GetMissingSubmissionsResponse = zod.array(
+  GetMissingSubmissionsResponseItem,
 );
 
 /**

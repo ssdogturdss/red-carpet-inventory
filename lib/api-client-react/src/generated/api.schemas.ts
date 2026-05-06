@@ -255,6 +255,9 @@ export type ChemicalReportStoresItem = {
   storeNumber: string;
   latestQuantity?: number | null;
   weekOf?: string | null;
+  previousQuantity?: number | null;
+  changePercent?: number | null;
+  previousWeekOf?: string | null;
   hasAlert: boolean;
 };
 
@@ -264,6 +267,33 @@ export interface ChemicalReport {
   unit: string;
   alertThresholdPercent: number;
   stores: ChemicalReportStoresItem[];
+}
+
+export type StoreReportChemicalsItem = {
+  chemicalId: number;
+  chemicalName: string;
+  unit: string;
+  alertThresholdPercent: number;
+  quantity?: number | null;
+  previousQuantity?: number | null;
+  changePercent?: number | null;
+  hasAlert: boolean;
+};
+
+export interface StoreReport {
+  storeId: number;
+  storeName: string;
+  storeNumber: string;
+  weekOf?: string | null;
+  chemicals: StoreReportChemicalsItem[];
+}
+
+export interface MissingSubmission {
+  storeId: number;
+  storeName: string;
+  storeNumber: string;
+  lastSubmittedWeekOf?: string | null;
+  weeksSinceLast?: number | null;
 }
 
 export interface NotificationContact {
@@ -324,6 +354,20 @@ export type GetReceivedParams = {
 
 export type GetOnHandParams = {
   storeId: number;
+};
+
+export type GetChemicalReportParams = {
+  /**
+   * ISO date (YYYY-MM-DD) — defaults to latest per store
+   */
+  weekOf?: string;
+};
+
+export type GetStoreReportParams = {
+  /**
+   * ISO date (YYYY-MM-DD) — defaults to latest count
+   */
+  weekOf?: string;
 };
 
 export type GetNotificationContactsParams = {

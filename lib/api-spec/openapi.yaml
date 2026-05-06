@@ -555,6 +555,13 @@ paths:
       operationId: getChemicalReport
       tags: [reports]
       summary: Usage comparison for all chemicals across all stores
+      parameters:
+        - name: weekOf
+          in: query
+          required: false
+          schema:
+            type: string
+            description: ISO date (YYYY-MM-DD) — defaults to latest per store
       responses:
         "200":
           description: List of chemicals each with per-store latest count data
@@ -564,6 +571,46 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ChemicalReport"
+
+  /reports/store/{storeId}:
+    get:
+      operationId: getStoreReport
+      tags: [reports]
+      summary: All chemicals for a single store with week-over-week change
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: weekOf
+          in: query
+          required: false
+          schema:
+            type: string
+            description: ISO date (YYYY-MM-DD) — defaults to latest count
+      responses:
+        "200":
+          description: Store report with per-chemical quantities and changes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreReport"
+
+  /reports/missing-submissions:
+    get:
+      operationId: getMissingSubmissions
+      tags: [reports]
+      summary: Stores that have not submitted a count for the current week
+      responses:
+        "200":
+          description: List of stores missing this week's count
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MissingSubmission"
 
   /notifications/contacts:
     get:
@@ -1239,6 +1286,15 @@ components:
               weekOf:
                 type: string
                 nullable: true
+              previousQuantity:
+                type: number
+                nullable: true
+              changePercent:
+                type: number
+                nullable: true
+              previousWeekOf:
+                type: string
+                nullable: true
               hasAlert:
                 type: boolean
             required:
@@ -1252,6 +1308,74 @@ components:
         - unit
         - alertThresholdPercent
         - stores
+
+    StoreReport:
+      type: object
+      properties:
+        storeId:
+          type: integer
+        storeName:
+          type: string
+        storeNumber:
+          type: string
+        weekOf:
+          type: string
+          nullable: true
+        chemicals:
+          type: array
+          items:
+            type: object
+            properties:
+              chemicalId:
+                type: integer
+              chemicalName:
+                type: string
+              unit:
+                type: string
+              alertThresholdPercent:
+                type: number
+              quantity:
+                type: number
+                nullable: true
+              previousQuantity:
+                type: number
+                nullable: true
+              changePercent:
+                type: number
+                nullable: true
+              hasAlert:
+                type: boolean
+            required:
+              - chemicalId
+              - chemicalName
+              - unit
+              - alertThresholdPercent
+              - hasAlert
+      required:
+        - storeId
+        - storeName
+        - storeNumber
+        - chemicals
+
+    MissingSubmission:
+      type: object
+      properties:
+        storeId:
+          type: integer
+        storeName:
+          type: string
+        storeNumber:
+          type: string
+        lastSubmittedWeekOf:
+          type: string
+          nullable: true
+        weeksSinceLast:
+          type: integer
+          nullable: true
+      required:
+        - storeId
+        - storeName
+        - storeNumber
 
     NotificationContact:
       type: object
