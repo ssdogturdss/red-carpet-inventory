@@ -14,9 +14,21 @@ export async function sendEmail(to: string, subject: string, body: string): Prom
   if (!isEmailConfigured()) {
     return { success: false, error: "Email credentials not configured" };
   }
+  const timeoutMs = 10_000;
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error(`SMTP request timed out after ${timeoutMs / 1000}s`)), timeoutMs)
+  );
   try {
-    const transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
-    await transporter.sendMail({ from, to, subject, text: body });
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass },
+      connectionTimeout: timeoutMs,
+      greetingTimeout: timeoutMs,
+      socketTimeout: timeoutMs,
+    });
+    await Promise.race([transporter.sendMail({ from, to, subject, text: body }), timeout]);
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err?.message ?? "Unknown error" };
