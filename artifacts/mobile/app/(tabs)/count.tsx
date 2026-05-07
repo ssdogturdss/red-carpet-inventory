@@ -327,7 +327,7 @@ export default function CountScreen() {
       <View style={styles.header}>
         <Text style={styles.headerLabel}>Red Carpet Inventory</Text>
         <Text style={styles.headerTitle}>Count Entry</Text>
-        <Text style={styles.headerSubtitle}>Week of {currentWeek}</Text>
+        <Text style={styles.headerSubtitle}>Week of {formatWeekOf(currentWeek)}</Text>
       </View>
 
       {/* Progress bar */}
