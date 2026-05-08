@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, RefreshControl, Platform, Modal,
   FlatList, Pressable, TextInput, Alert, KeyboardAvoidingView,
+  useWindowDimensions,
 } from "react-native";
 import Svg, { Polyline, Circle } from "react-native-svg";
 import { Feather } from "@expo/vector-icons";
@@ -737,17 +738,21 @@ function TrendSparkline({
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
 }) {
   const { data, loading } = useTrend(chemicalId);
+  const { width: screenW } = useWindowDimensions();
+  const cardPad = 28; // 12 card padding × 2 + 4 outer margin
+  const W = Math.max(200, screenW - cardPad - 28);
+  const H = 72;
+  const PAD = 10;
 
   if (loading) {
     return (
-      <View style={{ height: 36, alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
+      <View style={{ height: 40, alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
         <ActivityIndicator size="small" color={colors.primary} />
       </View>
     );
   }
   if (data.length < 2) return null;
 
-  const W = 284, H = 64, PAD = 10;
   const vals = data.map((d) => d.totalQuantity);
   const minV = Math.min(...vals);
   const maxV = Math.max(...vals);
@@ -764,6 +769,7 @@ function TrendSparkline({
   const prev = pts[pts.length - 2]!;
   const trending = last.totalQuantity >= prev.totalQuantity;
   const trendColor = trending ? "#16a34a" : "#dc2626";
+  const trendBg = trending ? "#f0fdf4" : "#fef2f2";
   const shortWeek = (w: string) => {
     const d = new Date(w + "T00:00:00");
     return `${d.getMonth() + 1}/${d.getDate()}`;
@@ -774,16 +780,15 @@ function TrendSparkline({
     : null;
 
   return (
-    <View style={{ backgroundColor: "#f8fafc", borderRadius: 14, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: colors.border }}>
-      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-        <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.8 }}>
-          {data.length}-Week Trend (all stores)
+    <View style={{ backgroundColor: colors.card, borderRadius: 14, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: colors.border }}>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+        <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.9 }}>
+          {data.length}-Week Trend · All Stores
         </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-          <Feather name={trending ? "trending-up" : "trending-down"} size={12} color={trendColor} />
-          <Text style={{ fontSize: 12, fontFamily: "Inter_700Bold", color: trendColor }}>
-            {last.totalQuantity.toFixed(1)} {unit}
-            {pctChange !== null ? `  ${trending ? "+" : ""}${pctChange}%` : ""}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: trendBg, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 }}>
+          <Feather name={trending ? "trending-up" : "trending-down"} size={11} color={trendColor} />
+          <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: trendColor }}>
+            {pctChange !== null ? `${trending ? "+" : ""}${pctChange}%` : last.totalQuantity.toFixed(1)}
           </Text>
         </View>
       </View>
@@ -792,7 +797,7 @@ function TrendSparkline({
           points={polylinePoints}
           fill="none"
           stroke={colors.teal}
-          strokeWidth="2"
+          strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
@@ -801,17 +806,17 @@ function TrendSparkline({
             key={i}
             cx={p.x}
             cy={p.y}
-            r={i === pts.length - 1 ? 4.5 : 2.5}
-            fill={i === pts.length - 1 ? colors.teal : "#ffffff"}
+            r={i === pts.length - 1 ? 5 : 3}
+            fill={i === pts.length - 1 ? colors.teal : colors.card}
             stroke={colors.teal}
-            strokeWidth="1.5"
+            strokeWidth="2"
           />
         ))}
       </Svg>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 2 }}>
-        <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{shortWeek(data[0]!.weekOf)}</Text>
-        <Text style={{ fontSize: 9, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
-          {shortWeek(data[data.length - 1]!.weekOf)} (latest)
+      <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 4 }}>
+        <Text style={{ fontSize: 9, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>{shortWeek(data[0]!.weekOf)}</Text>
+        <Text style={{ fontSize: 9, fontFamily: "Inter_500Medium", color: colors.primary }}>
+          {last.totalQuantity.toFixed(1)} {unit} · {shortWeek(data[data.length - 1]!.weekOf)}
         </Text>
       </View>
     </View>
@@ -880,19 +885,36 @@ function DivergingChart({
 
   return (
     <View>
+      {/* Chemical hero card */}
+      <View style={{ backgroundColor: colors.navy, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 16, marginBottom: 14, flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(13,148,136,0.25)", alignItems: "center", justifyContent: "center" }}>
+          <Feather name="activity" size={18} color={colors.teal} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" }}>{chemical.chemicalName}</Text>
+          <Text style={{ fontSize: 12, fontFamily: "Inter_400Regular", color: colors.tealLight, marginTop: 2 }}>
+            Deviation from {counted.length}-store average · {chemical.unit}
+          </Text>
+        </View>
+        <View style={{ backgroundColor: "rgba(13,148,136,0.2)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: "center" }}>
+          <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: colors.teal }}>{avg.toFixed(1)}</Text>
+          <Text style={{ fontSize: 9, fontFamily: "Inter_600SemiBold", color: colors.tealLight, textTransform: "uppercase", letterSpacing: 0.5 }}>avg</Text>
+        </View>
+      </View>
+
       {/* Stat cards */}
       <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
-        <View style={{ flex: 1, backgroundColor: "#f0fdfa", borderRadius: 12, padding: 10, alignItems: "center" }}>
-          <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#0d9488" }}>{avg.toFixed(1)}</Text>
-          <Text style={{ fontSize: 9, fontFamily: "Inter_600SemiBold", color: "#0d9488", textTransform: "uppercase", letterSpacing: 0.6, marginTop: 2 }}>Avg ({chemical.unit})</Text>
-        </View>
-        <View style={{ flex: 1, backgroundColor: "#fef2f2", borderRadius: 12, padding: 10, alignItems: "center" }}>
+        <View style={{ flex: 1, backgroundColor: "#fef2f2", borderRadius: 12, padding: 10, alignItems: "center", borderWidth: 1, borderColor: "#fecaca" }}>
           <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#dc2626" }}>{aboveCount}</Text>
           <Text style={{ fontSize: 9, fontFamily: "Inter_600SemiBold", color: "#dc2626", textTransform: "uppercase", letterSpacing: 0.6, marginTop: 2 }}>Above avg</Text>
         </View>
-        <View style={{ flex: 1, backgroundColor: "#f0fdf4", borderRadius: 12, padding: 10, alignItems: "center" }}>
+        <View style={{ flex: 1, backgroundColor: "#f0fdf4", borderRadius: 12, padding: 10, alignItems: "center", borderWidth: 1, borderColor: "#bbf7d0" }}>
           <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: "#16a34a" }}>{belowCount}</Text>
           <Text style={{ fontSize: 9, fontFamily: "Inter_600SemiBold", color: "#16a34a", textTransform: "uppercase", letterSpacing: 0.6, marginTop: 2 }}>Below avg</Text>
+        </View>
+        <View style={{ flex: 1, backgroundColor: colors.secondary, borderRadius: 12, padding: 10, alignItems: "center", borderWidth: 1, borderColor: colors.border }}>
+          <Text style={{ fontSize: 18, fontFamily: "Inter_700Bold", color: colors.foreground }}>{counted.length}</Text>
+          <Text style={{ fontSize: 9, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 2 }}>Stores</Text>
         </View>
       </View>
 
@@ -1072,7 +1094,7 @@ function HeatmapView({
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
         <Feather name="calendar" size={13} color={colors.mutedForeground} />
         <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground }}>
-          {weekLabel === "Latest" ? "Latest week on record" : `Week of ${weekLabel}`}
+          {weekLabel === "This Week" ? "Latest week on record" : `Week of ${weekLabel}`}
         </Text>
       </View>
 
@@ -1233,7 +1255,7 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
   const minQty = counted.length ? Math.min(...counted.map((s) => s.latestQuantity ?? 0)) : 0;
   const alertCount = sortedStores.filter((st) => st.hasAlert).length;
 
-  const weekLabel = weekOf ? formatDate(weekOf) : "Latest";
+  const weekLabel = weekOf ? formatDate(weekOf) : "This Week";
   const canGoForward = !!weekOf && weekOf < currentWeek;
   const handleWeekBack = () => setWeekOf(addWeeks(weekOf ?? currentWeek, -1));
   const handleWeekForward = () => {
@@ -1257,37 +1279,45 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
     controlsWrap: { backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border },
     topRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingTop: 10, paddingBottom: 8 },
     modeToggle: { flex: 1, flexDirection: "row", backgroundColor: colors.secondary, borderRadius: 10, padding: 3 },
-    modeBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 7, borderRadius: 8 },
-    modeBtnActive: { backgroundColor: colors.primary },
-    modeBtnText: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground },
+    modeBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 8, borderRadius: 8 },
+    modeBtnActive: { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 3 },
+    modeBtnText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground },
     modeBtnTextActive: { color: "#fff" },
     weekNav: { flexDirection: "row", alignItems: "center", backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 10, overflow: "hidden" },
-    weekNavBtn: { paddingHorizontal: 10, paddingVertical: 8 },
-    weekNavLabel: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.foreground, paddingHorizontal: 2, minWidth: 52, textAlign: "center" },
+    weekNavBtn: { paddingHorizontal: 10, paddingVertical: 9 },
+    weekNavLabel: { fontSize: 11, fontFamily: "Inter_700Bold", color: colors.foreground, paddingHorizontal: 2, minWidth: 48, textAlign: "center" },
     pickerRow: { paddingHorizontal: 12, paddingBottom: 10 },
-    pickerBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10 },
-    pickerBtnText: { flex: 1, fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground },
+    pickerBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11 },
+    pickerBtnText: { flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground },
     pickerBtnPlaceholder: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground },
     // ── missing banner ──
     missingBanner: { flexDirection: "row", alignItems: "flex-start", gap: 10, backgroundColor: "#fffbeb", borderBottomWidth: 1, borderBottomColor: "#fde68a", paddingHorizontal: 14, paddingVertical: 11 },
-    missingIconWrap: { width: 28, height: 28, borderRadius: 14, backgroundColor: "#fef3c7", alignItems: "center", justifyContent: "center", marginTop: 1 },
+    missingIconWrap: { width: 30, height: 30, borderRadius: 15, backgroundColor: "#fef3c7", alignItems: "center", justifyContent: "center", marginTop: 1 },
     missingBody: { flex: 1 },
-    missingTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#92400e" },
+    missingTitle: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#92400e" },
     missingSubtitle: { fontSize: 11, fontFamily: "Inter_400Regular", color: "#b45309", marginTop: 1 },
-    missingStore: { fontSize: 12, fontFamily: "Inter_400Regular", color: "#78350f", paddingVertical: 3, borderTopWidth: 1, borderTopColor: "#fde68a", marginTop: 6 },
+    missingStore: { fontSize: 12, fontFamily: "Inter_500Medium", color: "#78350f", paddingVertical: 4, borderTopWidth: 1, borderTopColor: "#fde68a", marginTop: 6 },
     missingToggle: { paddingTop: 2 },
     // ── sort bar ──
     sortBarWrap: { borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.background },
-    sortBtn: { paddingHorizontal: 11, paddingVertical: 6, borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+    sortBtn: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
     sortBtnActive: { borderColor: colors.primary, backgroundColor: colors.primary + "18" },
     sortBtnText: { fontSize: 11, fontFamily: "Inter_500Medium", color: colors.mutedForeground },
     sortBtnTextActive: { color: colors.primary, fontFamily: "Inter_700Bold" },
     // ── content ──
     scroll: { flex: 1 },
     content: { padding: 14, paddingBottom: insets.bottom + 90 + webBottom },
+    // ── hero card ──
+    heroCard: { backgroundColor: colors.navy, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 16, marginBottom: 14, flexDirection: "row", alignItems: "center", gap: 12 },
+    heroIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(13,148,136,0.25)", alignItems: "center", justifyContent: "center" },
+    heroName: { fontSize: 16, fontFamily: "Inter_700Bold", color: "#fff" },
+    heroSub: { fontSize: 12, fontFamily: "Inter_400Regular", color: "rgba(94,234,212,0.9)", marginTop: 2 },
+    heroBadge: { backgroundColor: "rgba(13,148,136,0.2)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: "center" },
+    heroBadgeVal: { fontSize: 15, fontFamily: "Inter_700Bold", color: "#2dd4bf" },
+    heroBadgeLabel: { fontSize: 9, fontFamily: "Inter_600SemiBold", color: "rgba(94,234,212,0.8)", textTransform: "uppercase", letterSpacing: 0.5 },
     // ── stat cards ──
     summaryRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
-    statCard: { flex: 1, borderRadius: 12, padding: 10, alignItems: "center", gap: 2 },
+    statCard: { flex: 1, borderRadius: 12, padding: 10, alignItems: "center", gap: 2, borderWidth: 1 },
     statValue: { fontSize: 18, fontFamily: "Inter_700Bold" },
     statLabel: { fontSize: 9, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.6 },
     // ── section heading ──
@@ -1301,21 +1331,23 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
     thChange: { width: 62, textAlign: "right", fontSize: 10, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7 },
     thBar: { width: 56, textAlign: "right", fontSize: 10, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7 },
     // ── rows ──
-    row: { flexDirection: "row", alignItems: "center", paddingRight: 12, paddingVertical: 10, backgroundColor: colors.card, borderRadius: 10, marginBottom: 5, borderWidth: 1, borderColor: colors.border, overflow: "hidden" },
-    rowAlert: { borderColor: "#fecaca" },
+    row: { flexDirection: "row", alignItems: "center", paddingRight: 12, paddingVertical: 11, backgroundColor: colors.card, borderRadius: 10, marginBottom: 5, borderWidth: 1, borderColor: colors.border, overflow: "hidden" },
+    rowAlert: { borderColor: "#fecaca", backgroundColor: "#fff5f5" },
     rowAccent: { width: 4, alignSelf: "stretch", backgroundColor: colors.border, marginRight: 10 },
     rowAccentAlert: { backgroundColor: "#ef4444" },
+    rowAccentGood: { backgroundColor: colors.teal },
     rowName: { flex: 1, fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground },
     rowSub: { fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 },
-    qtyText: { width: 46, textAlign: "right", fontSize: 14, fontFamily: "Inter_700Bold", color: colors.foreground },
+    qtyText: { width: 50, textAlign: "right", fontSize: 14, fontFamily: "Inter_700Bold", color: colors.foreground },
     qtyNull: { color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 13 },
     // ── bar ──
     barWrap: { width: 56, alignItems: "flex-end", paddingLeft: 6 },
     barBg: { width: 48, height: 8, backgroundColor: colors.secondary, borderRadius: 4, overflow: "hidden" },
     barFill: { height: 8, borderRadius: 4 },
     // ── empty ──
-    noData: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 60 },
-    emptyIcon: { alignItems: "center", marginBottom: 12, marginTop: 40 },
+    noData: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 20 },
+    emptyIcon: { alignItems: "center", marginBottom: 8, marginTop: 48 },
+    emptyText: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, marginTop: 10, lineHeight: 20 },
   });
 
   const sortButtons: { key: SortMode; label: string }[] = [
@@ -1434,32 +1466,51 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
         ) : viewMode === "chemical" ? (
           !chemical ? (
             <View style={s.emptyIcon}>
-              <Feather name="bar-chart-2" size={40} color={colors.border} />
-              <Text style={s.noData}>No report data yet.</Text>
+              <Feather name="bar-chart-2" size={44} color={colors.border} />
+              <Text style={s.emptyText}>No report data yet.{"\n"}Submit a count to see analytics here.</Text>
             </View>
           ) : (
             <>
+              {/* Chemical hero card */}
+              <View style={s.heroCard}>
+                <View style={s.heroIcon}>
+                  <Feather name="droplet" size={20} color={colors.teal} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.heroName}>{chemical.chemicalName}</Text>
+                  <Text style={s.heroSub}>
+                    {chemical.unit} · threshold {chemical.alertThresholdPercent ?? "—"}%
+                  </Text>
+                </View>
+                {avg !== null && (
+                  <View style={s.heroBadge}>
+                    <Text style={s.heroBadgeVal}>{avg.toFixed(1)}</Text>
+                    <Text style={s.heroBadgeLabel}>avg</Text>
+                  </View>
+                )}
+              </View>
+
               {/* 8-week sparkline trend */}
               <TrendSparkline chemicalId={chemical.chemicalId} unit={chemical.unit} colors={colors} />
 
               {/* Stat cards */}
               {counted.length > 0 && (
                 <View style={s.summaryRow}>
-                  <View style={[s.statCard, { backgroundColor: "#f0fdfa" }]}>
-                    <Text style={[s.statValue, { color: colors.teal }]}>{avg !== null ? avg.toFixed(1) : "—"}</Text>
-                    <Text style={[s.statLabel, { color: colors.teal }]}>Avg</Text>
-                  </View>
-                  <View style={[s.statCard, { backgroundColor: "#f0fdf4" }]}>
+                  <View style={[s.statCard, { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" }]}>
                     <Text style={[s.statValue, { color: "#16a34a" }]}>{maxQty}</Text>
                     <Text style={[s.statLabel, { color: "#16a34a" }]}>High</Text>
                   </View>
-                  <View style={[s.statCard, { backgroundColor: "#fef9f0" }]}>
+                  <View style={[s.statCard, { backgroundColor: "#fef9f0", borderColor: "#fed7aa" }]}>
                     <Text style={[s.statValue, { color: "#d97706" }]}>{minQty}</Text>
                     <Text style={[s.statLabel, { color: "#d97706" }]}>Low</Text>
                   </View>
-                  <View style={[s.statCard, { backgroundColor: alertCount > 0 ? "#fef2f2" : "#f0fdfa" }]}>
+                  <View style={[s.statCard, { backgroundColor: alertCount > 0 ? "#fef2f2" : "#f0fdfa", borderColor: alertCount > 0 ? "#fecaca" : "#99f6e4" }]}>
                     <Text style={[s.statValue, { color: alertCount > 0 ? "#dc2626" : colors.teal }]}>{alertCount}</Text>
                     <Text style={[s.statLabel, { color: alertCount > 0 ? "#dc2626" : colors.teal }]}>Alerts</Text>
+                  </View>
+                  <View style={[s.statCard, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+                    <Text style={[s.statValue, { color: colors.foreground }]}>{counted.length}</Text>
+                    <Text style={[s.statLabel, { color: colors.mutedForeground }]}>Stores</Text>
                   </View>
                 </View>
               )}
@@ -1478,7 +1529,7 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
                 const isAlert = st.hasAlert;
                 return (
                   <View key={st.storeId} style={[s.row, isAlert && s.rowAlert]}>
-                    <View style={[s.rowAccent, isAlert && s.rowAccentAlert]} />
+                    <View style={[s.rowAccent, isAlert ? s.rowAccentAlert : s.rowAccentGood]} />
                     <View style={{ flex: 1 }}>
                       <Text style={s.rowName}>{st.storeName}</Text>
                       <Text style={s.rowSub}>{st.weekOf ? formatDate(st.weekOf) : "No count yet"}</Text>
@@ -1500,30 +1551,47 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
         ) : (
           !selectedStoreId ? (
             <View style={s.emptyIcon}>
-              <Feather name="map-pin" size={40} color={colors.border} />
-              <Text style={s.noData}>Select a store above to view its report.</Text>
+              <Feather name="map-pin" size={44} color={colors.border} />
+              <Text style={s.emptyText}>Select a store above{"\n"}to view its chemical report.</Text>
             </View>
           ) : !storeReport ? (
             <View style={s.emptyIcon}>
-              <Feather name="inbox" size={40} color={colors.border} />
-              <Text style={s.noData}>No count data found for this store.</Text>
+              <Feather name="inbox" size={44} color={colors.border} />
+              <Text style={s.emptyText}>No count data found for this store yet.</Text>
             </View>
           ) : (
             <>
+              {/* Store hero card */}
+              <View style={s.heroCard}>
+                <View style={s.heroIcon}>
+                  <Feather name="map-pin" size={20} color={colors.teal} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.heroName}>{selectedStoreName}</Text>
+                  <Text style={s.heroSub}>
+                    {storeReport.weekOf ? `Latest: ${formatDate(storeReport.weekOf)}` : "Store Report"}
+                  </Text>
+                </View>
+                <View style={s.heroBadge}>
+                  <Text style={s.heroBadgeVal}>{sortedChemicals.filter((c) => c.quantity !== null).length}</Text>
+                  <Text style={s.heroBadgeLabel}>chems</Text>
+                </View>
+              </View>
+
               {/* Stat cards */}
               {storeReport.weekOf && (() => {
                 const chemAlerts = sortedChemicals.filter((c) => c.hasAlert).length;
                 return (
                   <View style={s.summaryRow}>
-                    <View style={[s.statCard, { backgroundColor: "#f0fdfa" }]}>
+                    <View style={[s.statCard, { backgroundColor: "#f0fdfa", borderColor: "#99f6e4" }]}>
                       <Text style={[s.statValue, { color: colors.teal }]}>{sortedChemicals.filter((c) => c.quantity !== null).length}</Text>
                       <Text style={[s.statLabel, { color: colors.teal }]}>Products</Text>
                     </View>
-                    <View style={[s.statCard, { backgroundColor: chemAlerts > 0 ? "#fef2f2" : "#f0fdfa" }]}>
+                    <View style={[s.statCard, { backgroundColor: chemAlerts > 0 ? "#fef2f2" : "#f0fdfa", borderColor: chemAlerts > 0 ? "#fecaca" : "#99f6e4" }]}>
                       <Text style={[s.statValue, { color: chemAlerts > 0 ? "#dc2626" : colors.teal }]}>{chemAlerts}</Text>
                       <Text style={[s.statLabel, { color: chemAlerts > 0 ? "#dc2626" : colors.teal }]}>Alerts</Text>
                     </View>
-                    <View style={[s.statCard, { flex: 2, backgroundColor: colors.secondary }]}>
+                    <View style={[s.statCard, { flex: 2, backgroundColor: colors.secondary, borderColor: colors.border }]}>
                       <Text style={[s.statValue, { fontSize: 13, color: colors.foreground }]}>{formatDate(storeReport.weekOf)}</Text>
                       <Text style={[s.statLabel, { color: colors.mutedForeground }]}>Latest Week</Text>
                     </View>
@@ -1543,7 +1611,7 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
                 const isAlert = c.hasAlert;
                 return (
                   <View key={c.chemicalId} style={[s.row, isAlert && s.rowAlert]}>
-                    <View style={[s.rowAccent, isAlert && s.rowAccentAlert]} />
+                    <View style={[s.rowAccent, isAlert ? s.rowAccentAlert : s.rowAccentGood]} />
                     <View style={{ flex: 1 }}>
                       <Text style={s.rowName}>{c.chemicalName}</Text>
                       <Text style={s.rowSub}>{c.unit}</Text>

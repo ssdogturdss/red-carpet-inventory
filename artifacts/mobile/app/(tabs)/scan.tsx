@@ -110,7 +110,7 @@ export default function ScanScreen() {
           reader.readAsDataURL(blob);
         });
       } else {
-        const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+        const b64 = await FileSystem.readAsStringAsync(uri, { encoding: "base64" });
         base64 = b64;
       }
 

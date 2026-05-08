@@ -27,6 +27,11 @@ function getWeekOf(date: Date = new Date()): string {
   return d.toISOString().split("T")[0]!;
 }
 
+function formatWeekOf(weekOf: string): string {
+  const dt = new Date(weekOf + "T00:00:00");
+  return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 export default function CountScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
