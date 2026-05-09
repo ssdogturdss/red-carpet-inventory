@@ -1207,10 +1207,16 @@ function GridView({
   weekLabel: string;
   colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
 }) {
-  const chemList = chemReport ?? [];
-  const storeList = chemList[0]?.stores ?? [];
+  const allChemList = chemReport ?? [];
+  const [hiddenChems, setHiddenChems] = useState<Set<number>>(new Set());
 
-  if (!chemList.length || !storeList.length) {
+  const toggleChem = (id: number) =>
+    setHiddenChems((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const chemList = allChemList.filter((c) => !hiddenChems.has(c.chemicalId));
+  const storeList = allChemList[0]?.stores ?? [];
+
+  if (!allChemList.length || !storeList.length) {
     return (
       <View style={{ alignItems: "center", paddingTop: 60 }}>
         <Feather name="layout" size={44} color={colors.border} />
@@ -1218,6 +1224,34 @@ function GridView({
           No data for this week yet.{"\n"}Submit a count to see the full grid.
         </Text>
       </View>
+    );
+  }
+
+  if (chemList.length === 0) {
+    return (
+      <>
+        <View style={{ marginBottom: 10 }}>
+          <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 6 }}>
+            Hide chemicals ({hiddenChems.size} hidden)
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: "row", gap: 6 }}>
+              <TouchableOpacity onPress={() => setHiddenChems(new Set())} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: colors.primary }}>
+                <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff" }}>Show All</Text>
+              </TouchableOpacity>
+              {allChemList.map((c) => (
+                <TouchableOpacity key={c.chemicalId} onPress={() => toggleChem(c.chemicalId)} style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border }}>
+                  <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>{abbrev(c.chemicalName)}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+        <View style={{ alignItems: "center", paddingTop: 40 }}>
+          <Feather name="eye-off" size={36} color={colors.border} />
+          <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 10 }}>All chemicals hidden. Tap chips above to show.</Text>
+        </View>
+      </>
     );
   }
 
@@ -1273,6 +1307,39 @@ function GridView({
         <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground }}>
           {weekLabel === "This Week" ? "Latest week on record" : `Week of ${weekLabel}`}
         </Text>
+      </View>
+
+      {/* Chemical filter chips */}
+      <View style={{ marginBottom: 10 }}>
+        <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 6 }}>
+          Hide chemicals ({hiddenChems.size} hidden)
+        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={{ flexDirection: "row", gap: 6 }}>
+            {hiddenChems.size > 0 && (
+              <TouchableOpacity
+                onPress={() => setHiddenChems(new Set())}
+                style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: colors.primary, borderWidth: 1, borderColor: colors.primary }}
+              >
+                <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff" }}>Show All</Text>
+              </TouchableOpacity>
+            )}
+            {allChemList.map((c) => {
+              const hidden = hiddenChems.has(c.chemicalId);
+              return (
+                <TouchableOpacity
+                  key={c.chemicalId}
+                  onPress={() => toggleChem(c.chemicalId)}
+                  style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: hidden ? colors.secondary : colors.card, borderWidth: 1, borderColor: hidden ? colors.border : colors.primary + "60" }}
+                >
+                  <Text style={{ fontSize: 10, fontFamily: hidden ? "Inter_400Regular" : "Inter_600SemiBold", color: hidden ? colors.mutedForeground : colors.primary }}>
+                    {abbrev(c.chemicalName)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </ScrollView>
       </View>
 
       {/* Legend */}
@@ -1619,6 +1686,29 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
           <View style={s.missingToggle}>
             <Feather name={missingExpanded ? "chevron-up" : "chevron-down"} size={16} color="#d97706" />
           </View>
+        </TouchableOpacity>
+      )}
+
+      {/* CSV Export button — shown in grid, heatmap, and diverge modes */}
+      {(viewMode === "grid" || viewMode === "heatmap" || viewMode === "diverge") && (
+        <TouchableOpacity
+          onPress={() => {
+            const base = typeof window !== "undefined" ? window.location.origin : `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+            const url = viewMode === "grid"
+              ? `${base}/api/export/grid-csv${weekOf ? `?weekOf=${weekOf}` : ""}`
+              : `${base}/api/export/csv${weekOf ? `?weekOf=${weekOf}` : ""}`;
+            if (typeof window !== "undefined") {
+              window.open(url, "_blank");
+            } else {
+              import("expo-linking").then(({ openURL }) => openURL(url));
+            }
+          }}
+          style={{ flexDirection: "row", alignItems: "center", gap: 6, marginHorizontal: 12, marginBottom: 8, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, backgroundColor: colors.navy, alignSelf: "flex-start" }}
+        >
+          <Feather name="download" size={13} color="#fff" />
+          <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: "#fff" }}>
+            Export {viewMode === "grid" ? "Grid" : "Data"} CSV
+          </Text>
         </TouchableOpacity>
       )}
 

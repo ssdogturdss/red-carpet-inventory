@@ -12,6 +12,8 @@ import { SubmitInventoryCountBody } from "@workspace/api-zod";
 import { notificationContactsTable } from "@workspace/db";
 import { sendAlertEmail } from "../services/email";
 import { sendAlertSms } from "../services/sms";
+import { sendAlertPush } from "../services/push";
+import { pushTokensTable } from "@workspace/db";
 
 const router = Router();
 
@@ -294,6 +296,12 @@ async function generateAlerts(
           const phoneRecipients = contacts.map((c) => c.phone).filter((p): p is string => !!p);
           if (phoneRecipients.length > 0) {
             await sendAlertSms(phoneRecipients, storeName, chemName, severity, direction, percentChange);
+          }
+
+          const allTokens = await db.select({ token: pushTokensTable.token }).from(pushTokensTable);
+          const pushTokens = allTokens.map((t) => t.token);
+          if (pushTokens.length > 0) {
+            await sendAlertPush(pushTokens, storeName, chemName, severity, direction, percentChange);
           }
         }
       } catch (notifyErr) {

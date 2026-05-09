@@ -11,6 +11,8 @@ import receivedRouter from "./received";
 import onhandRouter from "./onhand";
 import reportsRouter from "./reports";
 import notificationsRouter from "./notifications";
+import pushRouter from "./push";
+import exportRouter from "./export";
 
 const router: IRouter = Router();
 
@@ -26,5 +28,7 @@ router.use(receivedRouter);
 router.use(onhandRouter);
 router.use(reportsRouter);
 router.use(notificationsRouter);
+router.use(pushRouter);
+router.use(exportRouter);
 
 export default router;
