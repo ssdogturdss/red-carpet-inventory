@@ -56,6 +56,6 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
-    "expo-file-system": "^55.0.19"
+    "expo-file-system": "^19.0.22"
   }
 }

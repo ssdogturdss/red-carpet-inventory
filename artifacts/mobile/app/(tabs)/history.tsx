@@ -677,7 +677,7 @@ function OrdersSection({ colors, insets }: { colors: ReturnType<typeof import("@
 }
 
 // ─── Reports helpers ──────────────────────────────────────────────────────────
-type ReportViewMode = "chemical" | "store" | "heatmap" | "diverge";
+type ReportViewMode = "chemical" | "store" | "heatmap" | "diverge" | "grid";
 type SortMode = "name" | "qty-desc" | "qty-asc" | "alert" | "change-desc" | "change-asc";
 
 function getMondayStr(d: Date = new Date()): string {
@@ -1000,9 +1000,18 @@ function DivergingChart({
 
 // ─── Heatmap View ────────────────────────────────────────────────────────────
 type ChemReportItem = {
+  chemicalId: number;
   chemicalName: string;
   unit: string;
-  stores: { storeId: number; storeName: string; latestQuantity: number | null; weekOf?: string | null }[];
+  alertThresholdPercent: number;
+  stores: {
+    storeId: number;
+    storeName: string;
+    latestQuantity: number | null;
+    weekOf?: string | null;
+    changePercent?: number | null;
+    hasAlert?: boolean;
+  }[];
 };
 
 function heatTealColor(ratio: number): string {
@@ -1185,6 +1194,173 @@ function HeatmapView({
       {/* Note */}
       <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 8 }}>
         Color intensity is per-chemical (each column scaled independently).
+      </Text>
+    </View>
+  );
+}
+
+// ─── Grid View ────────────────────────────────────────────────────────────────
+function GridView({
+  chemReport, weekLabel, colors,
+}: {
+  chemReport: ChemReportItem[] | undefined;
+  weekLabel: string;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}) {
+  const chemList = chemReport ?? [];
+  const storeList = chemList[0]?.stores ?? [];
+
+  if (!chemList.length || !storeList.length) {
+    return (
+      <View style={{ alignItems: "center", paddingTop: 60 }}>
+        <Feather name="layout" size={44} color={colors.border} />
+        <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 12, textAlign: "center", lineHeight: 20 }}>
+          No data for this week yet.{"\n"}Submit a count to see the full grid.
+        </Text>
+      </View>
+    );
+  }
+
+  const CELL_W = 40;
+  const NAME_W = 82;
+  const TOTAL_W = 50;
+  const CELL_H = 40;
+  const HEADER_H = 70;
+
+  const storeTotals = storeList.map((st) =>
+    chemList.reduce((sum, chem) => {
+      const s = chem.stores.find((s) => s.storeId === st.storeId);
+      return sum + (s?.latestQuantity ?? 0);
+    }, 0)
+  );
+  const chemTotals = chemList.map((chem) =>
+    chem.stores.reduce((sum, s) => sum + (s.latestQuantity ?? 0), 0)
+  );
+  const grandTotal = storeTotals.reduce((a, b) => a + b, 0);
+
+  const abbrev = (name: string) => {
+    const w = name.trim().split(/\s+/);
+    if (w.length === 1) return name.slice(0, 7);
+    if (w.length === 2) return `${w[0]!.slice(0, 4)} ${w[1]!.slice(0, 3)}`;
+    return w.map((x) => x[0]).join("").slice(0, 5).toUpperCase();
+  };
+  const shortStore = (name: string) => {
+    const m = name.match(/\d+/);
+    const num = m ? `#${m[0]}` : "";
+    const words = name.replace(/Store\s*/i, "").replace(/\d+/, "").trim().split(/\s+/);
+    const label = words[0] ?? "";
+    return num ? `${num} ${label}`.trim() : label || name.slice(0, 8);
+  };
+
+  const getCellColors = (
+    qty: number | null,
+    hasAlert: boolean,
+    changePercent: number | null,
+    threshold: number
+  ): { bg: string; fg: string; border: string } => {
+    if (qty === null) return { bg: "#f8fafc", fg: "#cbd5e1", border: "#e2e8f0" };
+    if (!hasAlert) return { bg: colors.card, fg: colors.foreground, border: colors.border };
+    const absPct = Math.abs(changePercent ?? threshold);
+    if (absPct >= threshold * 2) return { bg: "#fee2e2", fg: "#dc2626", border: "#fecaca" };
+    return { bg: "#fefce8", fg: "#ca8a04", border: "#fde68a" };
+  };
+
+  return (
+    <View>
+      {/* Week label */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
+        <Feather name="calendar" size={13} color={colors.mutedForeground} />
+        <Text style={{ fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground }}>
+          {weekLabel === "This Week" ? "Latest week on record" : `Week of ${weekLabel}`}
+        </Text>
+      </View>
+
+      {/* Legend */}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 12 }}>
+        {[
+          { bg: colors.card, border: colors.border, label: "Normal" },
+          { bg: "#fefce8", border: "#fde68a", label: "Warning" },
+          { bg: "#fee2e2", border: "#fecaca", label: "Critical" },
+          { bg: "#f8fafc", border: "#e2e8f0", label: "No count" },
+        ].map((item) => (
+          <View key={item.label} style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+            <View style={{ width: 14, height: 14, borderRadius: 3, backgroundColor: item.bg, borderWidth: 1, borderColor: item.border }} />
+            <Text style={{ fontSize: 10, fontFamily: "Inter_500Medium", color: colors.mutedForeground }}>{item.label}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Matrix — scrolls horizontally */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View>
+          {/* Chemical header row */}
+          <View style={{ flexDirection: "row", alignItems: "flex-end", marginBottom: 3 }}>
+            <View style={{ width: NAME_W }} />
+            {chemList.map((c, ci) => (
+              <View key={ci} style={{ width: CELL_W, height: HEADER_H, alignItems: "center", justifyContent: "flex-end", paddingBottom: 5 }}>
+                <View style={{ transform: [{ rotate: "-55deg" }], width: 68, overflow: "visible" }}>
+                  <Text style={{ fontSize: 9, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, whiteSpace: "nowrap" } as any} numberOfLines={1}>
+                    {abbrev(c.chemicalName)}
+                  </Text>
+                </View>
+              </View>
+            ))}
+            <View style={{ width: TOTAL_W, height: HEADER_H, alignItems: "center", justifyContent: "flex-end", paddingBottom: 5, marginLeft: 3 }}>
+              <Text style={{ fontSize: 9, fontFamily: "Inter_700Bold", color: colors.foreground }}>Total</Text>
+            </View>
+          </View>
+
+          {/* Store rows */}
+          {storeList.map((st, ri) => {
+            const stTotal = storeTotals[ri] ?? 0;
+            return (
+              <View key={st.storeId} style={{ flexDirection: "row", alignItems: "center", marginBottom: 2 }}>
+                <View style={{ width: NAME_W, paddingRight: 6 }}>
+                  <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.foreground }} numberOfLines={1}>
+                    {shortStore(st.storeName)}
+                  </Text>
+                </View>
+                {chemList.map((chem, ci) => {
+                  const sd = chem.stores.find((s) => s.storeId === st.storeId);
+                  const qty = sd?.latestQuantity ?? null;
+                  const cell = getCellColors(qty, sd?.hasAlert ?? false, sd?.changePercent ?? null, chem.alertThresholdPercent);
+                  const fontSize = qty !== null && qty >= 10000 ? 8 : qty !== null && qty >= 1000 ? 9 : 11;
+                  return (
+                    <View key={ci} style={{ width: CELL_W - 2, height: CELL_H - 2, borderRadius: 5, backgroundColor: cell.bg, borderWidth: 1, borderColor: cell.border, alignItems: "center", justifyContent: "center", margin: 1 }}>
+                      <Text style={{ fontSize, fontFamily: qty === null ? "Inter_400Regular" : "Inter_700Bold", color: cell.fg }}>
+                        {qty === null ? "—" : fmtQty(qty)}
+                      </Text>
+                    </View>
+                  );
+                })}
+                {/* Row total */}
+                <View style={{ width: TOTAL_W - 2, height: CELL_H - 2, borderRadius: 5, backgroundColor: colors.navy, alignItems: "center", justifyContent: "center", margin: 1, marginLeft: 4 }}>
+                  <Text style={{ fontSize: 10, fontFamily: "Inter_700Bold", color: "#fff" }}>{fmtQty(stTotal)}</Text>
+                </View>
+              </View>
+            );
+          })}
+
+          {/* Totals footer row */}
+          <View style={{ flexDirection: "row", alignItems: "center", marginTop: 5, paddingTop: 5, borderTopWidth: 1.5, borderTopColor: colors.border }}>
+            <View style={{ width: NAME_W, paddingRight: 6 }}>
+              <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: colors.foreground }}>Totals</Text>
+            </View>
+            {chemTotals.map((t, i) => (
+              <View key={i} style={{ width: CELL_W - 2, height: CELL_H - 6, borderRadius: 5, backgroundColor: colors.navy, alignItems: "center", justifyContent: "center", margin: 1 }}>
+                <Text style={{ fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff" }}>{fmtQty(t)}</Text>
+              </View>
+            ))}
+            <View style={{ width: TOTAL_W - 2, height: CELL_H - 6, borderRadius: 5, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", margin: 1, marginLeft: 4 }}>
+              <Text style={{ fontSize: 9, fontFamily: "Inter_700Bold", color: "#fff" }}>{fmtQty(grandTotal)}</Text>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Caption */}
+      <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 10, lineHeight: 14 }}>
+        Shows latest count per store. Yellow = warning alert, red = critical alert (change exceeds threshold × 2). Scroll right to see all {chemList.length} chemicals.
       </Text>
     </View>
   );
@@ -1383,6 +1559,10 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
               <Feather name="grid" size={11} color={viewMode === "heatmap" ? "#fff" : colors.mutedForeground} />
               <Text style={[s.modeBtnText, viewMode === "heatmap" && s.modeBtnTextActive]}>Heat</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={[s.modeBtn, viewMode === "grid" && s.modeBtnActive]} onPress={() => setViewMode("grid")}>
+              <Feather name="layout" size={11} color={viewMode === "grid" ? "#fff" : colors.mutedForeground} />
+              <Text style={[s.modeBtnText, viewMode === "grid" && s.modeBtnTextActive]}>Grid</Text>
+            </TouchableOpacity>
           </View>
           <View style={s.weekNav}>
             <TouchableOpacity style={s.weekNavBtn} onPress={handleWeekBack}>
@@ -1394,7 +1574,7 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
             </TouchableOpacity>
           </View>
         </View>
-        {viewMode !== "heatmap" && (
+        {viewMode !== "heatmap" && viewMode !== "grid" && (
           <View style={s.pickerRow}>
             {viewMode === "store" ? (
               <TouchableOpacity style={s.pickerBtn} onPress={() => setStorePickerOpen(true)}>
@@ -1443,7 +1623,7 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
       )}
 
       {/* Sort pills — hidden in heatmap and diverge modes */}
-      {viewMode !== "heatmap" && viewMode !== "diverge" && (
+      {viewMode !== "heatmap" && viewMode !== "diverge" && viewMode !== "grid" && (
         <View style={s.sortBarWrap}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", gap: 6, paddingHorizontal: 12, paddingVertical: 8 }}>
             {sortButtons.map((btn) => (
@@ -1461,6 +1641,8 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
           <ActivityIndicator color={colors.primary} style={{ marginTop: 60 }} />
         ) : viewMode === "heatmap" ? (
           <HeatmapView chemReport={chemReport as ChemReportItem[] | undefined} weekLabel={weekLabel} colors={colors} />
+        ) : viewMode === "grid" ? (
+          <GridView chemReport={chemReport as ChemReportItem[] | undefined} weekLabel={weekLabel} colors={colors} />
         ) : viewMode === "diverge" ? (
           <DivergingChart chemReport={chemReport as ChemReportItem[] | undefined} selectedChemIdx={selectedChemIdx} colors={colors} />
         ) : viewMode === "chemical" ? (
