@@ -5,10 +5,7 @@ import { Platform } from "react-native";
 
 const QUEUE_KEY = "@rci_offline_queue_v1";
 
-const BASE_URL =
-  typeof window !== "undefined"
-    ? window.location.origin
-    : `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 
 export interface QueuedCount {
   id: string;

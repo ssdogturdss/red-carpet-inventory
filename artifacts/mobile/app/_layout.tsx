@@ -17,13 +17,11 @@ import { setBaseUrl } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
-// In the browser the API is always on the same origin (dev preview or production).
-// On native devices fall back to the env var set by the dev workflow.
-setBaseUrl(
-  typeof window !== "undefined"
-    ? window.location.origin
-    : `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-);
+// Always use EXPO_PUBLIC_DOMAIN — it's set to the main Replit dev/prod domain
+// by the workflow, and is the only domain that routes /api correctly.
+// window.location.origin can't be used because the Expo web bundle is served
+// from a different subdomain than the API server.
+setBaseUrl(`https://${process.env.EXPO_PUBLIC_DOMAIN}`);
 
 SplashScreen.preventAutoHideAsync();
 
