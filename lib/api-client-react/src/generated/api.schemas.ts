@@ -100,6 +100,30 @@ export interface CreateReceivedBody {
   notes?: string;
 }
 
+export interface ChemicalPull {
+  id: number;
+  storeId: number;
+  storeName: string;
+  chemicalId: number;
+  chemicalName: string;
+  quantity: number;
+  unit: string;
+  pulledAt: string;
+  initials: string;
+  notes?: string | null;
+  createdAt: string;
+}
+
+export interface CreatePullBody {
+  storeId: number;
+  chemicalId: number;
+  quantity: number;
+  unit?: string;
+  pulledAt?: string;
+  initials: string;
+  notes?: string;
+}
+
 export interface OnHandEntry {
   chemicalId: number;
   chemicalName: string;
@@ -350,6 +374,12 @@ export type GetOrdersParams = {
 };
 
 export type GetReceivedParams = {
+  storeId?: number;
+  chemicalId?: number;
+  limit?: number;
+};
+
+export type GetPullsParams = {
   storeId?: number;
   chemicalId?: number;
   limit?: number;

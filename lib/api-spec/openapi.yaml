@@ -531,6 +531,70 @@ paths:
               schema:
                 $ref: "#/components/schemas/DeleteResult"
 
+  /pulls:
+    get:
+      operationId: getPulls
+      tags: [pulls]
+      summary: List chemical pull-to-online log entries
+      parameters:
+        - name: storeId
+          in: query
+          schema:
+            type: integer
+        - name: chemicalId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of pull log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChemicalPull"
+    post:
+      operationId: logPull
+      tags: [pulls]
+      summary: Log a chemical pulled to online
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePullBody"
+      responses:
+        "200":
+          description: Created pull log entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChemicalPull"
+
+  /pulls/{pullId}:
+    delete:
+      operationId: deletePull
+      tags: [pulls]
+      summary: Delete a pull log entry
+      parameters:
+        - name: pullId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
   /on-hand:
     get:
       operationId: getOnHand
@@ -967,6 +1031,67 @@ components:
         - chemicalId
         - quantityReceived
         - receivedDate
+
+    ChemicalPull:
+      type: object
+      properties:
+        id:
+          type: integer
+        storeId:
+          type: integer
+        storeName:
+          type: string
+        chemicalId:
+          type: integer
+        chemicalName:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        pulledAt:
+          type: string
+        initials:
+          type: string
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - storeId
+        - storeName
+        - chemicalId
+        - chemicalName
+        - quantity
+        - unit
+        - pulledAt
+        - initials
+        - createdAt
+
+    CreatePullBody:
+      type: object
+      properties:
+        storeId:
+          type: integer
+        chemicalId:
+          type: integer
+        quantity:
+          type: number
+        unit:
+          type: string
+        pulledAt:
+          type: string
+        initials:
+          type: string
+        notes:
+          type: string
+      required:
+        - storeId
+        - chemicalId
+        - quantity
+        - initials
 
     OnHandEntry:
       type: object

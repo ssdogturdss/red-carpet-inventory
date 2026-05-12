@@ -23,9 +23,11 @@ import type {
   AlertsSummary,
   Chemical,
   ChemicalOrder,
+  ChemicalPull,
   ChemicalReport,
   CreateNotificationContactBody,
   CreateOrderBody,
+  CreatePullBody,
   CreateReceivedBody,
   DeleteNotificationContact200,
   DeleteResult,
@@ -36,6 +38,7 @@ import type {
   GetNotificationStatus200,
   GetOnHandParams,
   GetOrdersParams,
+  GetPullsParams,
   GetReceivedParams,
   GetStoreReportParams,
   HealthStatus,
@@ -2189,6 +2192,270 @@ export const useDeleteReceived = <
   TContext
 > => {
   return useMutation(getDeleteReceivedMutationOptions(options));
+};
+
+/**
+ * @summary List chemical pull-to-online log entries
+ */
+export const getGetPullsUrl = (params?: GetPullsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/pulls?${stringifiedParams}`
+    : `/api/pulls`;
+};
+
+export const getPulls = async (
+  params?: GetPullsParams,
+  options?: RequestInit,
+): Promise<ChemicalPull[]> => {
+  return customFetch<ChemicalPull[]>(getGetPullsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPullsQueryKey = (params?: GetPullsParams) => {
+  return [`/api/pulls`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetPullsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPulls>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetPullsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPulls>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPullsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPulls>>> = ({
+    signal,
+  }) => getPulls(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPulls>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPullsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPulls>>
+>;
+export type GetPullsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List chemical pull-to-online log entries
+ */
+
+export function useGetPulls<
+  TData = Awaited<ReturnType<typeof getPulls>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetPullsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPulls>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPullsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Log a chemical pulled to online
+ */
+export const getLogPullUrl = () => {
+  return `/api/pulls`;
+};
+
+export const logPull = async (
+  createPullBody: CreatePullBody,
+  options?: RequestInit,
+): Promise<ChemicalPull> => {
+  return customFetch<ChemicalPull>(getLogPullUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPullBody),
+  });
+};
+
+export const getLogPullMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof logPull>>,
+    TError,
+    { data: BodyType<CreatePullBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof logPull>>,
+  TError,
+  { data: BodyType<CreatePullBody> },
+  TContext
+> => {
+  const mutationKey = ["logPull"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof logPull>>,
+    { data: BodyType<CreatePullBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return logPull(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LogPullMutationResult = NonNullable<
+  Awaited<ReturnType<typeof logPull>>
+>;
+export type LogPullMutationBody = BodyType<CreatePullBody>;
+export type LogPullMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Log a chemical pulled to online
+ */
+export const useLogPull = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof logPull>>,
+    TError,
+    { data: BodyType<CreatePullBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof logPull>>,
+  TError,
+  { data: BodyType<CreatePullBody> },
+  TContext
+> => {
+  return useMutation(getLogPullMutationOptions(options));
+};
+
+/**
+ * @summary Delete a pull log entry
+ */
+export const getDeletePullUrl = (pullId: number) => {
+  return `/api/pulls/${pullId}`;
+};
+
+export const deletePull = async (
+  pullId: number,
+  options?: RequestInit,
+): Promise<DeleteResult> => {
+  return customFetch<DeleteResult>(getDeletePullUrl(pullId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeletePullMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePull>>,
+    TError,
+    { pullId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deletePull>>,
+  TError,
+  { pullId: number },
+  TContext
+> => {
+  const mutationKey = ["deletePull"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deletePull>>,
+    { pullId: number }
+  > = (props) => {
+    const { pullId } = props ?? {};
+
+    return deletePull(pullId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePullMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deletePull>>
+>;
+
+export type DeletePullMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a pull log entry
+ */
+export const useDeletePull = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePull>>,
+    TError,
+    { pullId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deletePull>>,
+  TError,
+  { pullId: number },
+  TContext
+> => {
+  return useMutation(getDeletePullMutationOptions(options));
 };
 
 /**

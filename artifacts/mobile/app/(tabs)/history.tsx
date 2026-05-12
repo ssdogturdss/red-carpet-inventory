@@ -14,10 +14,11 @@ import {
   useGetOnHand, useGetReceived, useLogReceived, useDeleteReceived,
   useGetOrders, useCreateOrder, useUpdateOrder, useDeleteOrder,
   useGetChemicalReport, useGetStoreReport, useGetMissingSubmissions,
+  useGetPulls, useLogPull, useDeletePull,
 } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 
-type SubTab = "history" | "onhand" | "received" | "orders" | "reports";
+type SubTab = "history" | "onhand" | "received" | "orders" | "online" | "reports";
 
 function todayString() {
   return new Date().toISOString().split("T")[0]!;
@@ -88,6 +89,7 @@ function SubTabBar({ active, onChange, colors }: { active: SubTab; onChange: (t:
     { key: "onhand", label: "On Hand", icon: "package" },
     { key: "received", label: "Received", icon: "download" },
     { key: "orders", label: "Orders", icon: "shopping-cart" },
+    { key: "online", label: "Online Log", icon: "droplet" },
     { key: "reports", label: "Reports", icon: "bar-chart-2" },
   ];
   const s = StyleSheet.create({
@@ -672,6 +674,196 @@ function OrdersSection({ colors, insets }: { colors: ReturnType<typeof import("@
       </Modal>
       <PickerModal visible={storePickOpen} title="Select Store" items={storeFormOptions} selected={formStore} onSelect={setFormStore} onClose={() => setStorePickOpen(false)} colors={colors} insets={insets} />
       <PickerModal visible={productPickOpen} title="Select Product" items={chemOptions} selected={formProduct} onSelect={setFormProduct} onClose={() => setProductPickOpen(false)} colors={colors} insets={insets} />
+    </>
+  );
+}
+
+// ─── Online Log Section ───────────────────────────────────────────────────────
+function nowISOLocal(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function OnlineSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: ReturnType<typeof useSafeAreaInsets> }) {
+  const webBottom = Platform.OS === "web" ? 34 : 0;
+  const qc = useQueryClient();
+  const [storeFilter, setStoreFilter] = useState<number | undefined>();
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [storePickOpen, setStorePickOpen] = useState(false);
+  const [productPickOpen, setProductPickOpen] = useState(false);
+  const [formStore, setFormStore] = useState<number | undefined>();
+  const [formProduct, setFormProduct] = useState<number | undefined>();
+  const [formQty, setFormQty] = useState("");
+  const [formPulledAt, setFormPulledAt] = useState(nowISOLocal());
+  const [formInitials, setFormInitials] = useState("");
+  const [formNotes, setFormNotes] = useState("");
+  const { data: stores } = useGetStores();
+  const { data: chemicals } = useGetChemicals();
+  const { data: records, isLoading, refetch } = useGetPulls({ storeId: storeFilter, limit: 300 });
+  const { mutateAsync: logPull, isPending: submitting } = useLogPull();
+  const { mutateAsync: deletePull } = useDeletePull();
+  const onRefresh = useCallback(async () => { setRefreshing(true); await refetch(); setRefreshing(false); }, [refetch]);
+  const storeOptions = [{ id: undefined as number | undefined, name: "All Stores" }, ...(stores ?? [])];
+  const storeFormOptions = stores ?? [];
+  const chemOptions = chemicals ?? [];
+  const resetForm = () => {
+    setFormStore(undefined); setFormProduct(undefined); setFormQty("");
+    setFormPulledAt(nowISOLocal()); setFormInitials(""); setFormNotes("");
+  };
+  const handleSubmit = async () => {
+    if (!formStore || !formProduct || !formQty || !formInitials.trim()) {
+      Alert.alert("Missing Fields", "Store, product, quantity, and initials are required.");
+      return;
+    }
+    await logPull({
+      data: {
+        storeId: formStore,
+        chemicalId: formProduct,
+        quantity: parseFloat(formQty),
+        pulledAt: formPulledAt ? new Date(formPulledAt).toISOString() : undefined,
+        initials: formInitials.trim().toUpperCase(),
+        notes: formNotes || undefined,
+      },
+    });
+    qc.invalidateQueries();
+    resetForm();
+    setFormOpen(false);
+  };
+  const confirmDelete = (id: number) => Alert.alert("Delete Entry", "Remove this pull log entry?", [
+    { text: "Cancel", style: "cancel" },
+    { text: "Delete", style: "destructive", onPress: async () => { await deletePull({ pullId: id }); qc.invalidateQueries(); } },
+  ]);
+  const s = StyleSheet.create({
+    filterRow: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    filterBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: colors.radius, paddingHorizontal: 14, paddingVertical: 9 },
+    filterBtnActive: { borderColor: colors.primary, backgroundColor: colors.tealLight + "22" },
+    filterBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: colors.foreground },
+    filterBtnTextActive: { color: colors.primary },
+    addBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.primary, borderRadius: colors.radius, paddingHorizontal: 14, paddingVertical: 9 },
+    addBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#fff" },
+    scroll: { flex: 1 },
+    content: { padding: 16, paddingBottom: insets.bottom + 90 + webBottom },
+    card: { backgroundColor: colors.card, borderRadius: colors.radius, borderWidth: 1, borderColor: colors.border, marginBottom: 10, padding: 14, flexDirection: "row", alignItems: "center" },
+    info: { flex: 1 },
+    product: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    meta: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 3 },
+    qtyBadge: { backgroundColor: "#e0f2fe", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 10, alignItems: "center" },
+    qtyText: { fontSize: 13, fontFamily: "Inter_700Bold", color: "#0369a1" },
+    initBadge: { backgroundColor: colors.navy + "22", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginLeft: 6 },
+    initText: { fontSize: 12, fontFamily: "Inter_700Bold", color: colors.navy },
+    delBtn: { padding: 8, borderRadius: 8, backgroundColor: "#fef2f2", marginLeft: 8 },
+    empty: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 40 },
+    overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+    sheet: { backgroundColor: colors.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: insets.bottom + 16 },
+    handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border, alignSelf: "center", marginTop: 12, marginBottom: 8 },
+    formHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
+    formTitle: { flex: 1, fontSize: 17, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    formScroll: { maxHeight: 440 },
+    field: { paddingHorizontal: 20, paddingTop: 14 },
+    label: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 6 },
+    input: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: colors.radius, padding: 12, fontSize: 15, fontFamily: "Inter_400Regular", color: colors.foreground },
+    pickerBtn: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: colors.radius, padding: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    pickerBtnText: { fontSize: 15, fontFamily: "Inter_400Regular", color: colors.foreground },
+    pickerPlaceholder: { color: colors.mutedForeground },
+    btnRow: { flexDirection: "row", gap: 12, paddingHorizontal: 20, paddingTop: 18 },
+    cancelBtn: { flex: 1, backgroundColor: colors.secondary, borderRadius: colors.radius, padding: 14, alignItems: "center" },
+    cancelText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    submitBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: colors.radius, padding: 14, alignItems: "center" },
+    submitText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
+  });
+  return (
+    <>
+      <View style={s.filterRow}>
+        <TouchableOpacity style={[s.filterBtn, !!storeFilter && s.filterBtnActive]} onPress={() => setFilterOpen(true)}>
+          <Feather name="filter" size={14} color={storeFilter ? colors.primary : colors.mutedForeground} />
+          <Text style={[s.filterBtnText, !!storeFilter && s.filterBtnTextActive]}>
+            {storeFilter ? stores?.find((st) => st.id === storeFilter)?.name : "All Stores"}
+          </Text>
+          <Feather name="chevron-down" size={14} color={storeFilter ? colors.primary : colors.mutedForeground} />
+        </TouchableOpacity>
+        <TouchableOpacity style={s.addBtn} onPress={() => { resetForm(); setFormOpen(true); }}>
+          <Feather name="plus" size={16} color="#fff" />
+          <Text style={s.addBtnText}>Log Pull</Text>
+        </TouchableOpacity>
+      </View>
+      <ScrollView style={s.scroll} contentContainerStyle={s.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+        {isLoading ? <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} /> : !records?.length ? (
+          <Text style={s.empty}>No pull-to-online entries logged yet.</Text>
+        ) : records.map((r) => (
+          <View key={r.id} style={s.card}>
+            <View style={s.info}>
+              <Text style={s.product}>{r.chemicalName}</Text>
+              <Text style={s.meta}>{r.storeName} · {formatDateTime(r.pulledAt)}</Text>
+              {r.notes ? <Text style={s.meta}>{r.notes}</Text> : null}
+            </View>
+            <View style={s.qtyBadge}>
+              <Text style={s.qtyText}>{r.quantity} {r.unit}</Text>
+            </View>
+            <View style={s.initBadge}>
+              <Text style={s.initText}>{r.initials}</Text>
+            </View>
+            <TouchableOpacity style={s.delBtn} onPress={() => confirmDelete(r.id)}>
+              <Feather name="trash-2" size={15} color={colors.critical} />
+            </TouchableOpacity>
+          </View>
+        ))}
+      </ScrollView>
+      <PickerModal visible={filterOpen} title="Filter by Store" items={storeOptions} selected={storeFilter} onSelect={setStoreFilter} onClose={() => setFilterOpen(false)} colors={colors} insets={insets} />
+      <Modal visible={formOpen} transparent animationType="slide" onRequestClose={() => { resetForm(); setFormOpen(false); }}>
+        <KeyboardAvoidingView style={s.overlay} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+          <Pressable style={{ flex: 1 }} onPress={() => { resetForm(); setFormOpen(false); }} />
+          <View style={s.sheet}>
+            <View style={s.handle} />
+            <View style={s.formHeader}>
+              <Text style={s.formTitle}>Log Chemical Pull to Online</Text>
+              <TouchableOpacity onPress={() => { resetForm(); setFormOpen(false); }}><Feather name="x" size={20} color={colors.mutedForeground} /></TouchableOpacity>
+            </View>
+            <ScrollView style={s.formScroll} keyboardShouldPersistTaps="handled">
+              <View style={s.field}>
+                <Text style={s.label}>Store</Text>
+                <TouchableOpacity style={s.pickerBtn} onPress={() => setStorePickOpen(true)}>
+                  <Text style={[s.pickerBtnText, !formStore && s.pickerPlaceholder]}>{formStore ? storeFormOptions.find((st) => st.id === formStore)?.name : "Select store…"}</Text>
+                  <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+              <View style={s.field}>
+                <Text style={s.label}>Chemical</Text>
+                <TouchableOpacity style={s.pickerBtn} onPress={() => setProductPickOpen(true)}>
+                  <Text style={[s.pickerBtnText, !formProduct && s.pickerPlaceholder]}>{formProduct ? chemOptions.find((c) => c.id === formProduct)?.name : "Select chemical…"}</Text>
+                  <Feather name="chevron-down" size={16} color={colors.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+              <View style={s.field}>
+                <Text style={s.label}>Quantity</Text>
+                <TextInput style={s.input} value={formQty} onChangeText={setFormQty} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={colors.mutedForeground} />
+              </View>
+              <View style={s.field}>
+                <Text style={s.label}>Date &amp; Time</Text>
+                <TextInput style={s.input} value={formPulledAt} onChangeText={setFormPulledAt} placeholder="YYYY-MM-DDTHH:MM" placeholderTextColor={colors.mutedForeground} />
+              </View>
+              <View style={s.field}>
+                <Text style={s.label}>Initials</Text>
+                <TextInput style={s.input} value={formInitials} onChangeText={setFormInitials} placeholder="e.g. JD" placeholderTextColor={colors.mutedForeground} maxLength={6} autoCapitalize="characters" />
+              </View>
+              <View style={s.field}>
+                <Text style={s.label}>Notes (optional)</Text>
+                <TextInput style={[s.input, { minHeight: 60 }]} value={formNotes} onChangeText={setFormNotes} placeholder="Optional" placeholderTextColor={colors.mutedForeground} multiline />
+              </View>
+            </ScrollView>
+            <View style={s.btnRow}>
+              <TouchableOpacity style={s.cancelBtn} onPress={() => { resetForm(); setFormOpen(false); }}><Text style={s.cancelText}>Cancel</Text></TouchableOpacity>
+              <TouchableOpacity style={s.submitBtn} onPress={handleSubmit} disabled={submitting}>
+                {submitting ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.submitText}>Save Entry</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+      <PickerModal visible={storePickOpen} title="Select Store" items={storeFormOptions} selected={formStore} onSelect={setFormStore} onClose={() => setStorePickOpen(false)} colors={colors} insets={insets} />
+      <PickerModal visible={productPickOpen} title="Select Chemical" items={chemOptions} selected={formProduct} onSelect={setFormProduct} onClose={() => setProductPickOpen(false)} colors={colors} insets={insets} />
     </>
   );
 }
@@ -2107,6 +2299,7 @@ export default function InventoryScreen() {
         {activeTab === "onhand" && <OnHandSection colors={colors} insets={insets} />}
         {activeTab === "received" && <ReceivedSection colors={colors} insets={insets} />}
         {activeTab === "orders" && <OrdersSection colors={colors} insets={insets} />}
+        {activeTab === "online" && <OnlineSection colors={colors} insets={insets} />}
         {activeTab === "reports" && <ReportsSection colors={colors} insets={insets} />}
       </View>
     </View>

@@ -2,6 +2,18 @@ import { pgTable, serial, integer, text, real, timestamp, date } from "drizzle-o
 import { storesTable } from "./stores";
 import { chemicalsTable } from "./chemicals";
 
+export const chemicalPullsTable = pgTable("chemical_pulls", {
+  id: serial("id").primaryKey(),
+  storeId: integer("store_id").notNull().references(() => storesTable.id),
+  chemicalId: integer("chemical_id").notNull().references(() => chemicalsTable.id),
+  quantity: real("quantity").notNull(),
+  unit: text("unit").notNull().default("gallons"),
+  pulledAt: timestamp("pulled_at").notNull().defaultNow(),
+  initials: text("initials").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const chemicalOrdersTable = pgTable("chemical_orders", {
   id: serial("id").primaryKey(),
   storeId: integer("store_id").notNull().references(() => storesTable.id),

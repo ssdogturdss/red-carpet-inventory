@@ -506,6 +506,69 @@ export const DeleteReceivedResponse = zod.object({
 });
 
 /**
+ * @summary List chemical pull-to-online log entries
+ */
+export const GetPullsQueryParams = zod.object({
+  storeId: zod.coerce.number().optional(),
+  chemicalId: zod.coerce.number().optional(),
+  limit: zod.coerce.number().optional(),
+});
+
+export const GetPullsResponseItem = zod.object({
+  id: zod.number(),
+  storeId: zod.number(),
+  storeName: zod.string(),
+  chemicalId: zod.number(),
+  chemicalName: zod.string(),
+  quantity: zod.number(),
+  unit: zod.string(),
+  pulledAt: zod.string(),
+  initials: zod.string(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+export const GetPullsResponse = zod.array(GetPullsResponseItem);
+
+/**
+ * @summary Log a chemical pulled to online
+ */
+export const LogPullBody = zod.object({
+  storeId: zod.number(),
+  chemicalId: zod.number(),
+  quantity: zod.number(),
+  unit: zod.string().optional(),
+  pulledAt: zod.string().optional(),
+  initials: zod.string(),
+  notes: zod.string().optional(),
+});
+
+export const LogPullResponse = zod.object({
+  id: zod.number(),
+  storeId: zod.number(),
+  storeName: zod.string(),
+  chemicalId: zod.number(),
+  chemicalName: zod.string(),
+  quantity: zod.number(),
+  unit: zod.string(),
+  pulledAt: zod.string(),
+  initials: zod.string(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Delete a pull log entry
+ */
+export const DeletePullParams = zod.object({
+  pullId: zod.coerce.number(),
+});
+
+export const DeletePullResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
+});
+
+/**
  * @summary Get current on-hand quantities for a store
  */
 export const GetOnHandQueryParams = zod.object({
