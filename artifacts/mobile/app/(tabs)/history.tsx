@@ -677,8 +677,8 @@ function OrdersSection({ colors, insets }: { colors: ReturnType<typeof import("@
 }
 
 // ─── Reports helpers ──────────────────────────────────────────────────────────
-type ReportViewMode = "chemical" | "store" | "heatmap" | "diverge" | "grid";
-type SortMode = "name" | "qty-desc" | "qty-asc" | "alert" | "change-desc" | "change-asc";
+type ReportViewMode = "chemical" | "store" | "heatmap" | "diverge" | "grid" | "usage";
+type SortMode = "name" | "qty-desc" | "qty-asc" | "alert" | "change-desc" | "change-asc" | "usage-desc" | "usage-asc";
 
 function getMondayStr(d: Date = new Date()): string {
   const date = new Date(d);
@@ -1008,6 +1008,7 @@ type ChemReportItem = {
     storeId: number;
     storeName: string;
     latestQuantity: number | null;
+    previousQuantity?: number | null;
     weekOf?: string | null;
     changePercent?: number | null;
     hasAlert?: boolean;
@@ -1199,7 +1200,158 @@ function HeatmapView({
   );
 }
 
-// ─── Grid View ────────────────────────────────────────────────────────────────
+// ─── Usage Report ─────────────────────────────────────────────────────────────
+function UsageView({
+  chemReport, selectedStoreId, sortMode, weekLabel, colors,
+}: {
+  chemReport: ChemReportItem[] | undefined;
+  selectedStoreId: number | undefined;
+  sortMode: SortMode;
+  weekLabel: string;
+  colors: ReturnType<typeof import("@/hooks/useColors").useColors>;
+}) {
+  if (!chemReport?.length) {
+    return (
+      <View style={{ alignItems: "center", paddingTop: 60 }}>
+        <Feather name="trending-down" size={44} color={colors.border} />
+        <Text style={{ fontSize: 14, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 12, textAlign: "center", lineHeight: 20 }}>
+          No data yet.{"\n"}Submit a count to see usage.
+        </Text>
+      </View>
+    );
+  }
+
+  type UsageRow = {
+    chemicalId: number;
+    chemicalName: string;
+    unit: string;
+    prevTotal: number | null;
+    currTotal: number | null;
+    usage: number | null;
+    pctConsumed: number | null;
+    hasAlert: boolean;
+  };
+
+  const rows: UsageRow[] = chemReport.map((chem) => {
+    const storeData = selectedStoreId
+      ? chem.stores.filter((s) => s.storeId === selectedStoreId)
+      : chem.stores;
+    const withPrev = storeData.filter((s) => s.previousQuantity !== null);
+    const withCurr = storeData.filter((s) => s.latestQuantity !== null);
+    const prevTotal = withPrev.length > 0 ? withPrev.reduce((sum, s) => sum + (s.previousQuantity ?? 0), 0) : null;
+    const currTotal = withCurr.length > 0 ? withCurr.reduce((sum, s) => sum + (s.latestQuantity ?? 0), 0) : null;
+    const usage = prevTotal !== null && currTotal !== null ? prevTotal - currTotal : null;
+    const pctConsumed = usage !== null && prevTotal !== null && prevTotal > 0
+      ? Math.round((usage / prevTotal) * 1000) / 10 : null;
+    return {
+      chemicalId: chem.chemicalId,
+      chemicalName: chem.chemicalName,
+      unit: chem.unit,
+      prevTotal,
+      currTotal,
+      usage,
+      pctConsumed,
+      hasAlert: storeData.some((s) => s.hasAlert),
+    };
+  });
+
+  const sorted = [...rows].sort((a, b) => {
+    switch (sortMode) {
+      case "usage-desc": return (b.usage ?? -999999) - (a.usage ?? -999999);
+      case "usage-asc":  return (a.usage ?? 999999) - (b.usage ?? 999999);
+      case "alert":      return (b.hasAlert ? 1 : 0) - (a.hasAlert ? 1 : 0);
+      case "qty-desc":   return (b.currTotal ?? -1) - (a.currTotal ?? -1);
+      case "qty-asc":    return (a.currTotal ?? 999999) - (b.currTotal ?? 999999);
+      default:           return a.chemicalName.localeCompare(b.chemicalName);
+    }
+  });
+
+  const totalUsage = rows.reduce((sum, r) => sum + (r.usage ?? 0), 0);
+  const maxAbs = Math.max(1, ...rows.map((r) => Math.abs(r.usage ?? 0)));
+
+  return (
+    <View>
+      {/* Hero summary card */}
+      <View style={{ backgroundColor: colors.navy, borderRadius: 14, padding: 14, marginBottom: 14, flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(13,148,136,0.25)", alignItems: "center", justifyContent: "center" }}>
+          <Feather name="trending-down" size={20} color={colors.teal} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 15, fontFamily: "Inter_700Bold", color: "#fff" }}>Usage Since Prior Count</Text>
+          <Text style={{ fontSize: 11, fontFamily: "Inter_400Regular", color: "rgba(94,234,212,0.85)", marginTop: 2 }}>
+            {weekLabel === "This Week" ? "Latest week on record" : `Week of ${weekLabel}`}
+            {selectedStoreId ? " · 1 store" : " · all stores combined"}
+          </Text>
+        </View>
+        <View style={{ backgroundColor: "rgba(13,148,136,0.2)", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: "center" }}>
+          <Text style={{ fontSize: 16, fontFamily: "Inter_700Bold", color: "#2dd4bf" }}>
+            {totalUsage < 0 ? `-${fmtQty(Math.abs(totalUsage))}` : fmtQty(totalUsage)}
+          </Text>
+          <Text style={{ fontSize: 9, fontFamily: "Inter_600SemiBold", color: "rgba(94,234,212,0.8)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+            total used
+          </Text>
+        </View>
+      </View>
+
+      {/* Column headers */}
+      <View style={{ flexDirection: "row", paddingHorizontal: 4, paddingBottom: 6 }}>
+        <Text style={{ flex: 1, fontSize: 10, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7 }}>Chemical</Text>
+        <Text style={{ width: 52, textAlign: "right", fontSize: 10, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7 }}>Prior</Text>
+        <Text style={{ width: 52, textAlign: "right", fontSize: 10, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7 }}>Now</Text>
+        <Text style={{ width: 62, textAlign: "right", fontSize: 10, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7 }}>Used</Text>
+      </View>
+
+      {/* Chemical rows */}
+      {sorted.map((row) => {
+        const isGain   = row.usage !== null && row.usage < 0;
+        const barPct   = maxAbs > 0 && row.usage !== null ? Math.abs(row.usage) / maxAbs : 0;
+        const barColor = row.hasAlert ? "#dc2626" : isGain ? "#7c3aed" : row.usage !== null && row.usage > 0 ? colors.teal : colors.border;
+        const accentColor = row.hasAlert ? "#ef4444" : isGain ? "#7c3aed" : row.usage !== null && row.usage > 0 ? colors.teal : colors.border;
+
+        return (
+          <View
+            key={row.chemicalId}
+            style={{ backgroundColor: row.hasAlert ? "#fff5f5" : colors.card, borderRadius: 10, marginBottom: 5, borderWidth: 1, borderColor: row.hasAlert ? "#fecaca" : colors.border, overflow: "hidden" }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", paddingRight: 12, paddingVertical: 11 }}>
+              <View style={{ width: 4, alignSelf: "stretch", backgroundColor: accentColor, marginRight: 10 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground }} numberOfLines={1}>
+                  {row.chemicalName}
+                </Text>
+                <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 }}>
+                  {row.unit}
+                  {row.pctConsumed !== null
+                    ? `  ·  ${Math.abs(row.pctConsumed)}% ${row.pctConsumed >= 0 ? "consumed" : "restocked"}`
+                    : ""}
+                </Text>
+              </View>
+              <Text style={{ width: 52, textAlign: "right", fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground }}>
+                {row.prevTotal !== null ? fmtQty(row.prevTotal) : "—"}
+              </Text>
+              <Text style={{ width: 52, textAlign: "right", fontSize: 13, fontFamily: "Inter_400Regular", color: colors.foreground }}>
+                {row.currTotal !== null ? fmtQty(row.currTotal) : "—"}
+              </Text>
+              <Text style={{ width: 62, textAlign: "right", fontSize: 15, fontFamily: "Inter_700Bold", color: barColor }}>
+                {row.usage === null ? "—" : row.usage === 0 ? "0" : isGain ? `-${fmtQty(Math.abs(row.usage))}` : `+${fmtQty(row.usage)}`}
+              </Text>
+            </View>
+            {row.usage !== null && (
+              <View style={{ height: 3, backgroundColor: colors.secondary }}>
+                <View style={{ height: 3, width: `${Math.round(barPct * 100)}%`, backgroundColor: barColor, opacity: 0.65 }} />
+              </View>
+            )}
+          </View>
+        );
+      })}
+
+      <Text style={{ fontSize: 10, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 12, lineHeight: 15 }}>
+        Usage = prior count minus current count. Teal = consumed. Purple = restocked above prior level. Red = alert triggered.
+      </Text>
+    </View>
+  );
+}
+
 function GridView({
   chemReport, weekLabel, colors,
 }: {
@@ -1593,14 +1745,23 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
     emptyText: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, marginTop: 10, lineHeight: 20 },
   });
 
-  const sortButtons: { key: SortMode; label: string }[] = [
-    { key: "name", label: "A–Z" },
-    { key: "qty-desc", label: "Qty ↓" },
-    { key: "qty-asc", label: "Qty ↑" },
-    { key: "alert", label: "⚠ Alerts" },
-    { key: "change-desc", label: "↑ Change" },
-    { key: "change-asc", label: "↓ Change" },
-  ];
+  const sortButtons: { key: SortMode; label: string }[] = viewMode === "usage"
+    ? [
+        { key: "name",        label: "A–Z" },
+        { key: "usage-desc",  label: "Most Used" },
+        { key: "usage-asc",   label: "Least Used" },
+        { key: "alert",       label: "⚠ Alerts" },
+        { key: "qty-desc",    label: "On Hand ↓" },
+        { key: "qty-asc",     label: "On Hand ↑" },
+      ]
+    : [
+        { key: "name",        label: "A–Z" },
+        { key: "qty-desc",    label: "Qty ↓" },
+        { key: "qty-asc",     label: "Qty ↑" },
+        { key: "alert",       label: "⚠ Alerts" },
+        { key: "change-desc", label: "↑ Change" },
+        { key: "change-asc",  label: "↓ Change" },
+      ];
 
   const selectedStoreName = selectedStoreId ? stores?.find((st) => st.id === selectedStoreId)?.name : undefined;
 
@@ -1630,6 +1791,10 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
               <Feather name="layout" size={11} color={viewMode === "grid" ? "#fff" : colors.mutedForeground} />
               <Text style={[s.modeBtnText, viewMode === "grid" && s.modeBtnTextActive]}>Grid</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={[s.modeBtn, viewMode === "usage" && s.modeBtnActive]} onPress={() => setViewMode("usage")}>
+              <Feather name="trending-down" size={11} color={viewMode === "usage" ? "#fff" : colors.mutedForeground} />
+              <Text style={[s.modeBtnText, viewMode === "usage" && s.modeBtnTextActive]}>Usage</Text>
+            </TouchableOpacity>
           </View>
           <View style={s.weekNav}>
             <TouchableOpacity style={s.weekNavBtn} onPress={handleWeekBack}>
@@ -1643,12 +1808,17 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
         </View>
         {viewMode !== "heatmap" && viewMode !== "grid" && (
           <View style={s.pickerRow}>
-            {viewMode === "store" ? (
+            {viewMode === "store" || viewMode === "usage" ? (
               <TouchableOpacity style={s.pickerBtn} onPress={() => setStorePickerOpen(true)}>
                 <Feather name="map-pin" size={14} color={colors.teal} />
                 <Text style={selectedStoreId ? s.pickerBtnText : s.pickerBtnPlaceholder} numberOfLines={1}>
-                  {selectedStoreName ?? "Select a store…"}
+                  {selectedStoreName ?? (viewMode === "usage" ? "All stores (tap to filter)" : "Select a store…")}
                 </Text>
+                {viewMode === "usage" && selectedStoreId && (
+                  <TouchableOpacity onPress={() => setSelectedStoreId(undefined)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Feather name="x" size={14} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+                )}
                 <Feather name="chevron-down" size={14} color={colors.mutedForeground} />
               </TouchableOpacity>
             ) : (
@@ -1729,6 +1899,8 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
       <ScrollView style={s.scroll} contentContainerStyle={s.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
         {isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 60 }} />
+        ) : viewMode === "usage" ? (
+          <UsageView chemReport={chemReport as ChemReportItem[] | undefined} selectedStoreId={selectedStoreId} sortMode={sortMode} weekLabel={weekLabel} colors={colors} />
         ) : viewMode === "heatmap" ? (
           <HeatmapView chemReport={chemReport as ChemReportItem[] | undefined} weekLabel={weekLabel} colors={colors} />
         ) : viewMode === "grid" ? (
