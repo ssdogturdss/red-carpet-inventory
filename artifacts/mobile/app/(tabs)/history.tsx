@@ -89,7 +89,7 @@ function SubTabBar({ active, onChange, colors }: { active: SubTab; onChange: (t:
     { key: "onhand", label: "On Hand", icon: "package" },
     { key: "received", label: "Received", icon: "download" },
     { key: "orders", label: "Orders", icon: "shopping-cart" },
-    { key: "online", label: "Online Log", icon: "droplet" },
+    { key: "online", label: "Online", icon: "droplet" },
     { key: "reports", label: "Reports", icon: "bar-chart-2" },
   ];
   const s = StyleSheet.create({
@@ -841,7 +841,7 @@ function OnlineSection({ colors, insets }: { colors: ReturnType<typeof import("@
                 <TextInput style={s.input} value={formQty} onChangeText={setFormQty} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={colors.mutedForeground} />
               </View>
               <View style={s.field}>
-                <Text style={s.label}>Date &amp; Time</Text>
+                <Text style={s.label}>Date & Time Pulled</Text>
                 <TextInput style={s.input} value={formPulledAt} onChangeText={setFormPulledAt} placeholder="YYYY-MM-DDTHH:MM" placeholderTextColor={colors.mutedForeground} />
               </View>
               <View style={s.field}>
