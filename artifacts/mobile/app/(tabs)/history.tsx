@@ -1255,11 +1255,11 @@ function GridView({
     );
   }
 
-  const CELL_W = 40;
-  const NAME_W = 82;
+  const CELL_W = 44;
+  const NAME_W = 86;
   const TOTAL_W = 50;
   const CELL_H = 40;
-  const HEADER_H = 70;
+  const HEADER_H = 90;
 
   const storeTotals = storeList.map((st) =>
     chemList.reduce((sum, chem) => {
@@ -1364,10 +1364,10 @@ function GridView({
           <View style={{ flexDirection: "row", alignItems: "flex-end", marginBottom: 3 }}>
             <View style={{ width: NAME_W }} />
             {chemList.map((c, ci) => (
-              <View key={ci} style={{ width: CELL_W, height: HEADER_H, alignItems: "center", justifyContent: "flex-end", paddingBottom: 5 }}>
-                <View style={{ transform: [{ rotate: "-55deg" }], width: 68, overflow: "visible" }}>
-                  <Text style={{ fontSize: 9, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, whiteSpace: "nowrap" } as any} numberOfLines={1}>
-                    {abbrev(c.chemicalName)}
+              <View key={ci} style={{ width: CELL_W, height: HEADER_H, alignItems: "center", justifyContent: "flex-end", paddingBottom: 5, overflow: "visible", zIndex: 10 }}>
+                <View style={{ transform: [{ rotate: "-55deg" }], width: 80, overflow: "visible", alignItems: "flex-start" }}>
+                  <Text style={{ fontSize: 9, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground }} numberOfLines={2}>
+                    {c.chemicalName}
                   </Text>
                 </View>
               </View>
