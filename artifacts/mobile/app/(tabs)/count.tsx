@@ -40,7 +40,7 @@ export default function CountScreen() {
 
   const { data: stores } = useGetStores();
   const { data: chemicals } = useGetChemicals();
-  const { mutateAsync: submitCount, isPending: submitting } = useSubmitInventoryCount();
+  const { mutateAsync: submitCount } = useSubmitInventoryCount();
 
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
   const [submittedBy, setSubmittedBy] = useState("");
@@ -49,6 +49,7 @@ export default function CountScreen() {
   const [showStorePicker, setShowStorePicker] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [savedOffline, setSavedOffline] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const currentWeek = getWeekOf();
   const selectedStore = stores?.find((s) => s.id === selectedStoreId);
@@ -78,24 +79,30 @@ export default function CountScreen() {
       quantity: parseFloat(quantities[c.id] ?? "0") || 0,
     }));
 
+    const submitData = {
+      storeId: selectedStoreId,
+      weekOf: currentWeek,
+      submittedBy: submittedBy.trim(),
+      notes: notes.trim() || null,
+      entries,
+    };
+
+    setSubmitting(true);
     try {
-      await submitCount({
-        data: {
-          storeId: selectedStoreId,
-          weekOf: currentWeek,
-          submittedBy: submittedBy.trim(),
-          notes: notes.trim() || null,
-          entries,
-        },
-      });
+      await Promise.race([
+        submitCount({ data: submitData }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Network timeout: server did not respond")), 25000)
+        ),
+      ]);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries();
       setSubmitted(true);
     } catch (e) {
       if (isNetworkError(e)) {
         Alert.alert(
-          "You're Offline",
-          "Can't reach the server right now. Save this count locally and it will sync automatically when you're back online.",
+          "Can't Reach Server",
+          "The server didn't respond. Save this count locally and it will sync automatically when you're back online.",
           [
             { text: "Discard", style: "destructive" },
             {
@@ -105,8 +112,8 @@ export default function CountScreen() {
                   storeId: selectedStoreId,
                   storeName: selectedStore?.name ?? "Unknown",
                   weekOf: currentWeek,
-                  submittedBy: submittedBy.trim(),
-                  notes: notes.trim() || null,
+                  submittedBy: submitData.submittedBy,
+                  notes: submitData.notes,
                   entries,
                 });
                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -118,6 +125,8 @@ export default function CountScreen() {
       } else {
         Alert.alert("Error", "Failed to submit count. Please try again.");
       }
+    } finally {
+      setSubmitting(false);
     }
   };
 
