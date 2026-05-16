@@ -236,19 +236,23 @@ router.get("/reports/trend", async (req, res) => {
     return;
   }
 
+  // Fetch the most-recent N weeks first (DESC), then re-sort ASC for charting.
   const rows = await db.execute(sql`
-    SELECT
-      ic.week_of,
-      COALESCE(SUM(ie.quantity), 0)::numeric          AS total_quantity,
-      COUNT(DISTINCT ic.store_id)::int                AS store_count
-    FROM inventory_counts ic
-    JOIN inventory_entries ie
-      ON ie.count_id = ic.id
-     AND ie.chemical_id = ${chemicalId}
-    ${storeId ? sql`WHERE ic.store_id = ${storeId}` : sql``}
-    GROUP BY ic.week_of
-    ORDER BY ic.week_of ASC
-    LIMIT ${weeks}
+    WITH recent AS (
+      SELECT
+        ic.week_of,
+        COALESCE(SUM(ie.quantity), 0)::numeric          AS total_quantity,
+        COUNT(DISTINCT ic.store_id)::int                AS store_count
+      FROM inventory_counts ic
+      JOIN inventory_entries ie
+        ON ie.count_id = ic.id
+       AND ie.chemical_id = ${chemicalId}
+      ${storeId ? sql`WHERE ic.store_id = ${storeId}` : sql``}
+      GROUP BY ic.week_of
+      ORDER BY ic.week_of DESC
+      LIMIT ${weeks}
+    )
+    SELECT * FROM recent ORDER BY week_of ASC
   `);
 
   res.json(

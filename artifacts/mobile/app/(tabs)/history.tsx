@@ -1428,10 +1428,11 @@ function UsageView({
     const storeData = selectedStoreId
       ? chem.stores.filter((s) => s.storeId === selectedStoreId)
       : chem.stores;
-    const withPrev = storeData.filter((s) => s.previousQuantity !== null);
-    const withCurr = storeData.filter((s) => s.latestQuantity !== null);
-    const prevTotal = withPrev.length > 0 ? withPrev.reduce((sum, s) => sum + (s.previousQuantity ?? 0), 0) : null;
-    const currTotal = withCurr.length > 0 ? withCurr.reduce((sum, s) => sum + (s.latestQuantity ?? 0), 0) : null;
+    // Only compare stores that have BOTH a current and previous count.
+    // Mixing different store sets would produce meaningless totals.
+    const withBoth = storeData.filter((s) => s.previousQuantity !== null && s.latestQuantity !== null);
+    const prevTotal = withBoth.length > 0 ? withBoth.reduce((sum, s) => sum + s.previousQuantity!, 0) : null;
+    const currTotal = withBoth.length > 0 ? withBoth.reduce((sum, s) => sum + s.latestQuantity!, 0) : null;
     const usage = prevTotal !== null && currTotal !== null ? prevTotal - currTotal : null;
     const pctConsumed = usage !== null && prevTotal !== null && prevTotal > 0
       ? Math.round((usage / prevTotal) * 1000) / 10 : null;
