@@ -1,0 +1,70 @@
+Got it. You want a quick, visual way to compare each of the 11 locations across ~23 chemicals to spot small differences in usage or stock. Here are practical charting approaches and how to set them up quickly.
+
+1. Heatmap matrix: location vs. chemical with quantity on hand or usage
+
+What it shows: a color-coded grid where each cell represents a location–chemical pair. Color intensity highlights higher or lower values.
+How to set it up:
+  Rows: 11 locations.
+  Columns: 23 chemicals.
+  Cells: Quantity on hand (or recent usage).
+  Apply a color scale (e.g., light to dark blue) where darker means higher quantity/usage.
+Why it helps: you can instantly spot locations that are under- or over-stocked for specific chemicals and see subtle differences across many chemicals at a glance.
+Quick tip: add a small legend and a totals row/column for quick summaries.
+
+2. Clustered bar chart: compare each chemical across locations
+
+What it shows: for a chosen chemical, show a bar for each location side by side; repeat for multiple chemicals.
+How to set up:
+  Data: one sheet with columns [Chemical, Location, Quantity].
+  Create a clustered bar chart with:
+    Series: Locations
+    Categories: Chemicals (or vice versa)
+  Optionally, create separate small multiples (one chart per chemical) or a combined chart with filters.
+Why it helps: quickly identify which locations are using more or less of a given chemical, and you can scan across several chemicals by flipping between charts.
+
+3. Conditional formatting table with sparklines
+
+What it shows: a grid of numbers (11x23) with color cues and tiny trend indicators.
+How to set up:
+  Table: Location in rows, Chemicals in columns, cells filled with Quantity on Hand or Usage.
+  Apply:
+    Color scale: low (light) to high (dark).
+    Sparklines: small line charts in each row or column to show usage trend over time.
+Why it helps: compact, at-a-glance comparison across all pairs, plus quick trend signals.
+
+4. Summary dashboards with key metrics per location
+
+What it shows: a focused view that aggregates the big picture.
+Key widgets:
+  Total chemicals per location
+  Total quantity per location
+  Number of chemicals below minimum per location
+  Top 5 chemicals by total usage across all locations (ranked)
+How to set up:
+  Use a pivot-style summary:
+    Rows: Location
+    Values: Sum of Quantity, Count of Chemicals, Min/Max checks
+  Add charts:
+    Bar chart: Total quantity by location
+    Horizontal bar chart: Top chemicals by overall usage
+Why it helps: quickly spot which stores are consuming more or fewer chemicals overall and identify outliers.
+
+5. Quick steps to implement (no heavy setup)
+
+Choose your tool: Excel or Google Sheets.
+Create a data sheet with:
+  Location (11 named items)
+  Chemical (23 items)
+  Quantity_On_Hand (or Usage)
+Build a 11x23 matrix view for the heatmap option.
+Add a chart or two:
+  A clustered bar chart per chemical (or small multiples)
+  A location-total bar chart
+Apply consistent labeling and a simple, shared color scheme.
+
+If you’d like, tell me:
+Which tool you’re using (Excel, Google Sheets, Airtable, etc.).
+Whether you want to focus on Quantity on Hand or Usage (or both).
+If you want alerts or automatic updates included.
+
+I can provide a ready-to-import template or step-by-step formulas and chart configurations tailored to your exact setup.
