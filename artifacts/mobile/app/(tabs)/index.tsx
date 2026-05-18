@@ -76,6 +76,17 @@ export default function DashboardScreen() {
       paddingBottom: 22,
       backgroundColor: colors.navy,
     },
+    headerSlogan: {
+      position: "absolute",
+      bottom: 10,
+      left: 16,
+      right: 16,
+      fontSize: 22,
+      fontFamily: "Inter_700Bold",
+      color: "rgba(255,255,255,0.06)",
+      letterSpacing: 0.5,
+      textAlign: "right",
+    },
     headerTop: { flexDirection: "row", alignItems: "flex-start" },
     headerTextBlock: { flex: 1 },
     headerLabel: {
@@ -197,6 +208,9 @@ export default function DashboardScreen() {
       <OfflineBanner isOnline={isOnline} queueLength={queue.length} syncing={syncing} onSync={syncQueue} />
 
       <View style={styles.header}>
+        <Text style={styles.headerSlogan} numberOfLines={1} adjustsFontSizeToFit>
+          Let's get'em clean, dry and shiny!
+        </Text>
         <View style={styles.headerTop}>
           <View style={styles.headerTextBlock}>
             <Text style={styles.headerLabel}>Red Carpet Inventory</Text>
