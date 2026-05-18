@@ -5,6 +5,7 @@ import {
   Pressable, RefreshControl, KeyboardAvoidingView,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -256,15 +257,15 @@ function AlertsSection({ colors, insets }: { colors: ReturnType<typeof import("@
     chemical: { fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 },
     week: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 },
     badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12, marginLeft: 8 },
-    badgeCritical: { backgroundColor: "#fef2f2" },
-    badgeWarning: { backgroundColor: "#fffbeb" },
+    badgeCritical: { backgroundColor: colors.criticalSurface },
+    badgeWarning: { backgroundColor: colors.warningSurface },
     badgeText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
     btnRow: { flexDirection: "row", gap: 8, marginTop: 10 },
     ackBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: colors.secondary, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 },
     ackBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: colors.foreground },
-    delBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: "#fef2f2", alignItems: "center" },
-    ackBtnDone: { backgroundColor: "#dcfce7" },
-    ackBtnDoneText: { color: "#16a34a" },
+    delBtn: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 8, backgroundColor: colors.criticalSurface, alignItems: "center" },
+    ackBtnDone: { backgroundColor: colors.successSurface },
+    ackBtnDoneText: { color: colors.success },
     empty: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 40 },
   });
 
@@ -300,9 +301,15 @@ function AlertsSection({ colors, insets }: { colors: ReturnType<typeof import("@
           <View style={s.btnRow}>
             <TouchableOpacity
               style={[s.ackBtn, a.acknowledged && s.ackBtnDone]}
-              onPress={async () => { if (!a.acknowledged) { await acknowledge({ alertId: a.id }); qc.invalidateQueries(); } }}
+              onPress={async () => {
+                if (!a.acknowledged) {
+                  await acknowledge({ alertId: a.id });
+                  qc.invalidateQueries();
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                }
+              }}
             >
-              <Feather name={a.acknowledged ? "check-circle" : "circle"} size={15} color={a.acknowledged ? "#16a34a" : colors.mutedForeground} />
+              <Feather name={a.acknowledged ? "check-circle" : "circle"} size={15} color={a.acknowledged ? colors.success : colors.mutedForeground} />
               <Text style={[s.ackBtnText, a.acknowledged && s.ackBtnDoneText]}>{a.acknowledged ? "Acknowledged" : "Acknowledge"}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.delBtn} onPress={() => confirmDelete(a.id)}>

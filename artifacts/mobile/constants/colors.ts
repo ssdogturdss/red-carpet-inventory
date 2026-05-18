@@ -26,12 +26,18 @@ const colors = {
 
     warning: "#f59e0b",
     warningForeground: "#ffffff",
+    warningSurface: "#fffbeb",
+    warningBorder: "#fde68a",
 
     critical: "#dc2626",
     criticalForeground: "#ffffff",
+    criticalSurface: "#fef2f2",
+    criticalBorder: "#fecaca",
 
     success: "#16a34a",
     successForeground: "#ffffff",
+    successSurface: "#dcfce7",
+    successBorder: "#86efac",
 
     border: "#e2e8f0",
     input: "#e2e8f0",
@@ -40,6 +46,11 @@ const colors = {
     navyLight: "#1e293b",
     teal: "#0d9488",
     tealLight: "#99f6e4",
+    tealSurface: "#f0fdfa",
+
+    offlineSurface: "#fef3c7",
+    offlineBorder: "#fde68a",
+    offlineText: "#92400e",
   },
   radius: 12,
 };

@@ -2,6 +2,9 @@ import React from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Platform } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import colors from "@/constants/colors";
+
+const c = colors.light;
 
 interface OfflineBannerProps {
   isOnline: boolean;
@@ -12,7 +15,6 @@ interface OfflineBannerProps {
 
 export function OfflineBanner({ isOnline, queueLength, syncing, onSync }: OfflineBannerProps) {
   const insets = useSafeAreaInsets();
-  const webTop = Platform.OS === "web" ? 0 : 0;
 
   if (isOnline && queueLength === 0) return null;
 
@@ -31,11 +33,11 @@ export function OfflineBanner({ isOnline, queueLength, syncing, onSync }: Offlin
   if (queueLength > 0) {
     return (
       <View style={[s.banner, s.pending]}>
-        <Feather name="clock" size={14} color="#92400e" />
-        <Text style={[s.text, { color: "#92400e" }]}>{queueLength} count{queueLength > 1 ? "s" : ""} waiting to sync</Text>
+        <Feather name="clock" size={14} color={c.offlineText} />
+        <Text style={[s.text, { color: c.offlineText }]}>{queueLength} count{queueLength > 1 ? "s" : ""} waiting to sync</Text>
         <TouchableOpacity style={s.syncBtn} onPress={onSync} disabled={syncing}>
           {syncing ? (
-            <ActivityIndicator size="small" color="#92400e" />
+            <ActivityIndicator size="small" color={c.offlineText} />
           ) : (
             <Text style={s.syncBtnText}>Sync now</Text>
           )}
@@ -57,12 +59,12 @@ const s = StyleSheet.create({
     zIndex: 100,
   },
   offline: {
-    backgroundColor: "#1e293b",
+    backgroundColor: c.navyLight,
   },
   pending: {
-    backgroundColor: "#fef3c7",
+    backgroundColor: c.offlineSurface,
     borderBottomWidth: 1,
-    borderBottomColor: "#fde68a",
+    borderBottomColor: c.offlineBorder,
   },
   text: {
     flex: 1,
@@ -82,6 +84,6 @@ const s = StyleSheet.create({
   syncBtnText: {
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
-    color: "#92400e",
+    color: c.offlineText,
   },
 });

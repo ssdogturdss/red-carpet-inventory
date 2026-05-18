@@ -117,11 +117,11 @@ export default function DashboardScreen() {
     statIconBox: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
     statValue: { fontSize: 30, fontFamily: "Inter_700Bold", color: colors.foreground },
     statLabel: { fontSize: 12, fontFamily: "Inter_500Medium", color: colors.mutedForeground, marginTop: 3 },
-    criticalCard: { backgroundColor: "#fef2f2", borderColor: "#fecaca" },
+    criticalCard: { backgroundColor: colors.criticalSurface, borderColor: colors.criticalBorder },
     criticalValue: { color: colors.critical },
-    warningCard: { backgroundColor: "#fffbeb", borderColor: "#fde68a" },
+    warningCard: { backgroundColor: colors.warningSurface, borderColor: colors.warningBorder },
     warningValue: { color: colors.warning },
-    storesCard: { backgroundColor: "#f0fdfa", borderColor: "#99f6e4" },
+    storesCard: { backgroundColor: colors.tealSurface, borderColor: colors.tealLight },
     storesValue: { color: colors.teal },
     actionRow: { flexDirection: "row", gap: 12 },
     actionBtn: {
@@ -171,23 +171,23 @@ export default function DashboardScreen() {
       alignItems: "center",
     },
     storeAlertName: { flex: 1, fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground },
-    badgeCritical: { backgroundColor: "#fef2f2", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 6 },
+    badgeCritical: { backgroundColor: colors.criticalSurface, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 6 },
     badgeCriticalText: { color: colors.critical, fontSize: 12, fontFamily: "Inter_600SemiBold" },
-    badgeWarning: { backgroundColor: "#fffbeb", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 6 },
+    badgeWarning: { backgroundColor: colors.warningSurface, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 6 },
     badgeWarningText: { color: colors.warning, fontSize: 12, fontFamily: "Inter_600SemiBold" },
     queueCard: {
       flexDirection: "row",
       alignItems: "center",
       gap: 10,
-      backgroundColor: "#fef3c7",
+      backgroundColor: colors.offlineSurface,
       borderRadius: 14,
       padding: 14,
       borderWidth: 1,
-      borderColor: "#fde68a",
+      borderColor: colors.offlineBorder,
       marginBottom: 4,
     },
-    queueText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: "#92400e" },
-    queueSync: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: "#92400e" },
+    queueText: { flex: 1, fontSize: 13, fontFamily: "Inter_500Medium", color: colors.offlineText },
+    queueSync: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.offlineText },
   });
 
   return (
@@ -255,7 +255,7 @@ export default function DashboardScreen() {
             <View style={styles.statsRow}>
               <View style={[styles.statCard, styles.criticalCard]}>
                 <View style={styles.statIconRow}>
-                  <View style={[styles.statIconBox, { backgroundColor: "#fecaca" }]}>
+                  <View style={[styles.statIconBox, { backgroundColor: colors.criticalBorder }]}>
                     <Feather name="alert-circle" size={16} color={colors.critical} />
                   </View>
                 </View>
@@ -264,7 +264,7 @@ export default function DashboardScreen() {
               </View>
               <View style={[styles.statCard, styles.warningCard]}>
                 <View style={styles.statIconRow}>
-                  <View style={[styles.statIconBox, { backgroundColor: "#fde68a" }]}>
+                  <View style={[styles.statIconBox, { backgroundColor: colors.warningBorder }]}>
                     <Feather name="alert-triangle" size={16} color={colors.warning} />
                   </View>
                 </View>
@@ -273,7 +273,7 @@ export default function DashboardScreen() {
               </View>
               <View style={[styles.statCard, styles.storesCard]}>
                 <View style={styles.statIconRow}>
-                  <View style={[styles.statIconBox, { backgroundColor: "#99f6e4" }]}>
+                  <View style={[styles.statIconBox, { backgroundColor: colors.tealLight }]}>
                     <Feather name="map-pin" size={16} color={colors.teal} />
                   </View>
                 </View>

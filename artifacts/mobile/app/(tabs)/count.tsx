@@ -234,7 +234,7 @@ export default function CountScreen() {
       flexDirection: "row",
       alignItems: "center",
     },
-    chemicalRowFilled: { borderColor: colors.teal + "60", backgroundColor: "#f0fdfa" },
+    chemicalRowFilled: { borderColor: colors.teal + "60", backgroundColor: colors.tealSurface },
     chemicalInfo: { flex: 1 },
     chemicalName: { fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground },
     chemicalUnit: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 },
@@ -251,7 +251,7 @@ export default function CountScreen() {
       borderWidth: 1,
       borderColor: "transparent",
     },
-    quantityInputFilled: { borderColor: colors.teal + "80", backgroundColor: "#e6faf8" },
+    quantityInputFilled: { borderColor: colors.teal + "80", backgroundColor: colors.tealSurface },
     notesInput: {
       backgroundColor: colors.card,
       borderRadius: 14,
@@ -282,12 +282,12 @@ export default function CountScreen() {
       width: 90,
       height: 90,
       borderRadius: 45,
-      backgroundColor: "#dcfce7",
+      backgroundColor: colors.successSurface,
       alignItems: "center",
       justifyContent: "center",
       marginBottom: 24,
       borderWidth: 3,
-      borderColor: "#86efac",
+      borderColor: colors.successBorder,
     },
     successTitle: { fontSize: 26, fontFamily: "Inter_700Bold", color: colors.foreground, textAlign: "center" },
     successSub: { fontSize: 15, fontFamily: "Inter_400Regular", color: colors.mutedForeground, textAlign: "center", marginTop: 10, lineHeight: 22 },
@@ -303,7 +303,7 @@ export default function CountScreen() {
       gap: 8,
     },
     newCountBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
-    offlineSuccessIcon: { backgroundColor: "#fef3c7", borderColor: "#fde68a" },
+    offlineSuccessIcon: { backgroundColor: colors.offlineSurface, borderColor: colors.offlineBorder },
   });
 
   if (submitted || savedOffline) {
