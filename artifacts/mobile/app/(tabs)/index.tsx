@@ -77,15 +77,11 @@ export default function DashboardScreen() {
       backgroundColor: colors.navy,
     },
     headerSlogan: {
-      position: "absolute",
-      bottom: 28,
-      left: 16,
-      right: 16,
-      fontSize: 22,
+      fontSize: 16,
       fontFamily: "Inter_700Bold",
-      color: "rgba(56,189,248,0.35)",
-      letterSpacing: 0.5,
-      textAlign: "right",
+      color: "rgba(56,189,248,0.5)",
+      letterSpacing: 0.3,
+      marginBottom: 4,
     },
     headerTop: { flexDirection: "row", alignItems: "flex-start" },
     headerTextBlock: { flex: 1 },
@@ -208,12 +204,12 @@ export default function DashboardScreen() {
       <OfflineBanner isOnline={isOnline} queueLength={queue.length} syncing={syncing} onSync={syncQueue} />
 
       <View style={styles.header}>
-        <Text style={styles.headerSlogan} numberOfLines={1} adjustsFontSizeToFit>
-          Let's get'em clean, dry and shiny!
-        </Text>
         <View style={styles.headerTop}>
           <View style={styles.headerTextBlock}>
             <Text style={styles.headerLabel}>Red Carpet Inventory</Text>
+            <Text style={styles.headerSlogan} numberOfLines={1} adjustsFontSizeToFit>
+              Let's get'em clean, dry and shiny!
+            </Text>
             <Text style={styles.headerTitle}>Dashboard</Text>
             <Text style={styles.headerSubtitle}>Week of {formatWeekOf(currentWeek)}</Text>
           </View>
