@@ -83,7 +83,7 @@ export default function DashboardScreen() {
       right: 16,
       fontSize: 22,
       fontFamily: "Inter_700Bold",
-      color: "rgba(255,255,255,0.06)",
+      color: "rgba(255,255,255,0.18)",
       letterSpacing: 0.5,
       textAlign: "right",
     },
