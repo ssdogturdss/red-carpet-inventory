@@ -1,0 +1,1575 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Chemical Inventory API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: admin
+    description: Admin operations
+  - name: stores
+    description: Store operations
+  - name: chemicals
+    description: Chemical operations
+  - name: inventory
+    description: Inventory count operations
+  - name: alerts
+    description: Alert operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /admin/auth:
+    post:
+      operationId: adminAuth
+      tags: [admin]
+      summary: Validate admin PIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminAuthBody"
+      responses:
+        "200":
+          description: Auth result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminAuthResult"
+
+  /stores:
+    get:
+      operationId: getStores
+      tags: [stores]
+      summary: List all stores
+      responses:
+        "200":
+          description: List of stores
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Store"
+
+  /stores/{storeId}:
+    patch:
+      operationId: updateStore
+      tags: [stores]
+      summary: Update a store
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStoreBody"
+      responses:
+        "200":
+          description: Updated store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Store"
+    delete:
+      operationId: deleteStore
+      tags: [stores]
+      summary: Delete a store and all its data
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /chemicals:
+    get:
+      operationId: getChemicals
+      tags: [chemicals]
+      summary: List all chemicals
+      responses:
+        "200":
+          description: List of chemicals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Chemical"
+
+  /chemicals/{chemicalId}:
+    patch:
+      operationId: updateChemical
+      tags: [chemicals]
+      summary: Update a chemical/product
+      parameters:
+        - name: chemicalId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateChemicalBody"
+      responses:
+        "200":
+          description: Updated chemical
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Chemical"
+    delete:
+      operationId: deleteChemical
+      tags: [chemicals]
+      summary: Delete a chemical/product
+      parameters:
+        - name: chemicalId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /inventory:
+    get:
+      operationId: getInventoryCounts
+      tags: [inventory]
+      summary: List inventory counts
+      parameters:
+        - name: storeId
+          in: query
+          schema:
+            type: integer
+        - name: weekOf
+          in: query
+          schema:
+            type: string
+            description: ISO date string for the week (YYYY-MM-DD, Monday)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of inventory counts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryCount"
+    post:
+      operationId: submitInventoryCount
+      tags: [inventory]
+      summary: Submit a weekly inventory count
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitInventoryCountBody"
+      responses:
+        "201":
+          description: Count submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryCount"
+
+  /inventory/{countId}:
+    get:
+      operationId: getInventoryCount
+      tags: [inventory]
+      summary: Get a single inventory count
+      parameters:
+        - name: countId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Inventory count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryCount"
+    patch:
+      operationId: updateInventoryCount
+      tags: [inventory]
+      summary: Update notes or submittedBy on a count
+      parameters:
+        - name: countId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateInventoryCountBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+    delete:
+      operationId: deleteInventoryCount
+      tags: [inventory]
+      summary: Delete an inventory count and its entries
+      parameters:
+        - name: countId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /inventory/scan:
+    post:
+      operationId: scanInventorySheet
+      tags: [inventory]
+      summary: Upload photo of paper count sheet and extract counts via AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanInventorySheetBody"
+      responses:
+        "200":
+          description: Extracted inventory counts from the photo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanInventorySheetResult"
+
+  /alerts:
+    get:
+      operationId: getAlerts
+      tags: [alerts]
+      summary: List alerts
+      parameters:
+        - name: storeId
+          in: query
+          schema:
+            type: integer
+        - name: acknowledged
+          in: query
+          schema:
+            type: boolean
+        - name: weekOf
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        "200":
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Alert"
+
+  /alerts/summary:
+    get:
+      operationId: getAlertsSummary
+      tags: [alerts]
+      summary: Get alert counts grouped by store and severity
+      responses:
+        "200":
+          description: Alert summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertsSummary"
+
+  /alerts/{alertId}:
+    delete:
+      operationId: deleteAlert
+      tags: [alerts]
+      summary: Delete an alert
+      parameters:
+        - name: alertId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /alerts/{alertId}/acknowledge:
+    patch:
+      operationId: acknowledgeAlert
+      tags: [alerts]
+      summary: Acknowledge an alert
+      parameters:
+        - name: alertId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Alert acknowledged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Alert"
+
+  /orders:
+    get:
+      operationId: getOrders
+      tags: [orders]
+      summary: List chemical orders
+      parameters:
+        - name: storeId
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: chemicalId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChemicalOrder"
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Place a new chemical order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderBody"
+      responses:
+        "200":
+          description: Created order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChemicalOrder"
+
+  /orders/{orderId}:
+    patch:
+      operationId: updateOrder
+      tags: [orders]
+      summary: Update an order (status, notes, etc.)
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderBody"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChemicalOrder"
+    delete:
+      operationId: deleteOrder
+      tags: [orders]
+      summary: Delete an order
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /received:
+    get:
+      operationId: getReceived
+      tags: [received]
+      summary: List inventory received records
+      parameters:
+        - name: storeId
+          in: query
+          schema:
+            type: integer
+        - name: chemicalId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of received records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryReceived"
+    post:
+      operationId: logReceived
+      tags: [received]
+      summary: Log an inventory receipt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReceivedBody"
+      responses:
+        "200":
+          description: Created received record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryReceived"
+
+  /received/{receivedId}:
+    delete:
+      operationId: deleteReceived
+      tags: [received]
+      summary: Delete a received record
+      parameters:
+        - name: receivedId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /pulls:
+    get:
+      operationId: getPulls
+      tags: [pulls]
+      summary: List chemical pull-to-online log entries
+      parameters:
+        - name: storeId
+          in: query
+          schema:
+            type: integer
+        - name: chemicalId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of pull log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChemicalPull"
+    post:
+      operationId: logPull
+      tags: [pulls]
+      summary: Log a chemical pulled to online
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePullBody"
+      responses:
+        "200":
+          description: Created pull log entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChemicalPull"
+
+  /pulls/{pullId}:
+    delete:
+      operationId: deletePull
+      tags: [pulls]
+      summary: Delete a pull log entry
+      parameters:
+        - name: pullId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /on-hand:
+    get:
+      operationId: getOnHand
+      tags: [inventory]
+      summary: Get current on-hand quantities for a store
+      parameters:
+        - name: storeId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: On-hand inventory for the store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnHandResult"
+
+  /reports/chemicals:
+    get:
+      operationId: getChemicalReport
+      tags: [reports]
+      summary: Usage comparison for all chemicals across all stores
+      parameters:
+        - name: weekOf
+          in: query
+          required: false
+          schema:
+            type: string
+            description: ISO date (YYYY-MM-DD) — defaults to latest per store
+      responses:
+        "200":
+          description: List of chemicals each with per-store latest count data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChemicalReport"
+
+  /reports/store/{storeId}:
+    get:
+      operationId: getStoreReport
+      tags: [reports]
+      summary: All chemicals for a single store with week-over-week change
+      parameters:
+        - name: storeId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: weekOf
+          in: query
+          required: false
+          schema:
+            type: string
+            description: ISO date (YYYY-MM-DD) — defaults to latest count
+      responses:
+        "200":
+          description: Store report with per-chemical quantities and changes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StoreReport"
+
+  /reports/missing-submissions:
+    get:
+      operationId: getMissingSubmissions
+      tags: [reports]
+      summary: Stores that have not submitted a count for the current week
+      responses:
+        "200":
+          description: List of stores missing this week's count
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MissingSubmission"
+
+  /notifications/contacts:
+    get:
+      operationId: getNotificationContacts
+      tags: [notifications]
+      summary: List all email notification contacts
+      parameters:
+        - name: storeId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of contacts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationContact"
+    post:
+      operationId: createNotificationContact
+      tags: [notifications]
+      summary: Add a new email contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateNotificationContactBody"
+      responses:
+        "201":
+          description: Created contact
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationContact"
+
+  /notifications/contacts/{id}:
+    patch:
+      operationId: updateNotificationContact
+      tags: [notifications]
+      summary: Update an email contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNotificationContactBody"
+      responses:
+        "200":
+          description: Updated contact
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationContact"
+    delete:
+      operationId: deleteNotificationContact
+      tags: [notifications]
+      summary: Remove an email contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  id:
+                    type: integer
+                required: [success, id]
+
+  /notifications/contacts/{id}/test:
+    post:
+      operationId: testNotificationContact
+      tags: [notifications]
+      summary: Send a test notification (email and/or SMS) to a contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Result of test send
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  error:
+                    type: string
+                    nullable: true
+                required: [success]
+
+  /notifications/status:
+    get:
+      operationId: getNotificationStatus
+      tags: [notifications]
+      summary: Check if email and SMS are configured
+      responses:
+        "200":
+          description: Notification configuration status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  configured:
+                    type: boolean
+                  emailConfigured:
+                    type: boolean
+                  smsConfigured:
+                    type: boolean
+                required: [configured, emailConfigured, smsConfigured]
+
+components:
+  schemas:
+    AdminAuthBody:
+      type: object
+      properties:
+        pin:
+          type: string
+      required:
+        - pin
+
+    AdminAuthResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+
+    DeleteResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        id:
+          type: integer
+      required:
+        - success
+        - id
+
+    UpdateStoreBody:
+      type: object
+      properties:
+        name:
+          type: string
+        storeNumber:
+          type: string
+
+    UpdateChemicalBody:
+      type: object
+      properties:
+        name:
+          type: string
+        unit:
+          type: string
+        thresholdPercent:
+          type: number
+
+    UpdateInventoryCountBody:
+      type: object
+      properties:
+        submittedBy:
+          type: string
+        notes:
+          type: string
+          nullable: true
+
+    ChemicalOrder:
+      type: object
+      properties:
+        id:
+          type: integer
+        storeId:
+          type: integer
+        storeName:
+          type: string
+        chemicalId:
+          type: integer
+        chemicalName:
+          type: string
+        quantityOrdered:
+          type: number
+        unit:
+          type: string
+        orderDate:
+          type: string
+        expectedDelivery:
+          type: string
+          nullable: true
+        status:
+          type: string
+        poNumber:
+          type: string
+          nullable: true
+        orderedBy:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - storeId
+        - storeName
+        - chemicalId
+        - chemicalName
+        - quantityOrdered
+        - unit
+        - orderDate
+        - status
+        - createdAt
+
+    CreateOrderBody:
+      type: object
+      properties:
+        storeId:
+          type: integer
+        chemicalId:
+          type: integer
+        quantityOrdered:
+          type: number
+        unit:
+          type: string
+        orderDate:
+          type: string
+        expectedDelivery:
+          type: string
+          nullable: true
+        poNumber:
+          type: string
+        orderedBy:
+          type: string
+        notes:
+          type: string
+      required:
+        - storeId
+        - chemicalId
+        - quantityOrdered
+        - orderDate
+
+    UpdateOrderBody:
+      type: object
+      properties:
+        status:
+          type: string
+        quantityOrdered:
+          type: number
+        expectedDelivery:
+          type: string
+          nullable: true
+        poNumber:
+          type: string
+          nullable: true
+        orderedBy:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    InventoryReceived:
+      type: object
+      properties:
+        id:
+          type: integer
+        storeId:
+          type: integer
+        storeName:
+          type: string
+        chemicalId:
+          type: integer
+        chemicalName:
+          type: string
+        quantityReceived:
+          type: number
+        unit:
+          type: string
+        receivedDate:
+          type: string
+        receivedBy:
+          type: string
+          nullable: true
+        poNumber:
+          type: string
+          nullable: true
+        orderId:
+          type: integer
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - storeId
+        - storeName
+        - chemicalId
+        - chemicalName
+        - quantityReceived
+        - unit
+        - receivedDate
+        - createdAt
+
+    CreateReceivedBody:
+      type: object
+      properties:
+        storeId:
+          type: integer
+        chemicalId:
+          type: integer
+        quantityReceived:
+          type: number
+        unit:
+          type: string
+        receivedDate:
+          type: string
+        receivedBy:
+          type: string
+        poNumber:
+          type: string
+        orderId:
+          type: integer
+          nullable: true
+        notes:
+          type: string
+      required:
+        - storeId
+        - chemicalId
+        - quantityReceived
+        - receivedDate
+
+    ChemicalPull:
+      type: object
+      properties:
+        id:
+          type: integer
+        storeId:
+          type: integer
+        storeName:
+          type: string
+        chemicalId:
+          type: integer
+        chemicalName:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        pulledAt:
+          type: string
+        initials:
+          type: string
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - storeId
+        - storeName
+        - chemicalId
+        - chemicalName
+        - quantity
+        - unit
+        - pulledAt
+        - initials
+        - createdAt
+
+    CreatePullBody:
+      type: object
+      properties:
+        storeId:
+          type: integer
+        chemicalId:
+          type: integer
+        quantity:
+          type: number
+        unit:
+          type: string
+        pulledAt:
+          type: string
+        initials:
+          type: string
+        notes:
+          type: string
+      required:
+        - storeId
+        - chemicalId
+        - quantity
+        - initials
+
+    OnHandEntry:
+      type: object
+      properties:
+        chemicalId:
+          type: integer
+        chemicalName:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+      required:
+        - chemicalId
+        - chemicalName
+        - quantity
+        - unit
+
+    OnHandResult:
+      type: object
+      properties:
+        storeId:
+          type: integer
+        storeName:
+          type: string
+        weekOf:
+          type: string
+          nullable: true
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/OnHandEntry"
+      required:
+        - storeId
+        - storeName
+        - weekOf
+        - entries
+
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Store:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        storeNumber:
+          type: string
+      required:
+        - id
+        - name
+        - storeNumber
+
+    Chemical:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        unit:
+          type: string
+        thresholdPercent:
+          type: number
+          description: Percent change that triggers an alert (e.g. 30 = 30%)
+      required:
+        - id
+        - name
+        - unit
+        - thresholdPercent
+
+    InventoryEntry:
+      type: object
+      properties:
+        chemicalId:
+          type: integer
+        chemicalName:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+      required:
+        - chemicalId
+        - chemicalName
+        - quantity
+        - unit
+
+    InventoryCount:
+      type: object
+      properties:
+        id:
+          type: integer
+        storeId:
+          type: integer
+        storeName:
+          type: string
+        weekOf:
+          type: string
+          description: ISO date string for the Monday of the week
+        submittedBy:
+          type: string
+        notes:
+          type: string
+          nullable: true
+        submittedAt:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/InventoryEntry"
+      required:
+        - id
+        - storeId
+        - storeName
+        - weekOf
+        - submittedBy
+        - submittedAt
+        - entries
+
+    SubmitInventoryCountBody:
+      type: object
+      properties:
+        storeId:
+          type: integer
+        weekOf:
+          type: string
+        submittedBy:
+          type: string
+        notes:
+          type: string
+          nullable: true
+        entries:
+          type: array
+          items:
+            type: object
+            properties:
+              chemicalId:
+                type: integer
+              quantity:
+                type: number
+            required:
+              - chemicalId
+              - quantity
+      required:
+        - storeId
+        - weekOf
+        - submittedBy
+        - entries
+
+    ScanInventorySheetBody:
+      type: object
+      properties:
+        imageBase64:
+          type: string
+          description: Base64-encoded image of the paper count sheet
+        chemicals:
+          type: array
+          description: List of chemicals to look for in the sheet
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              unit:
+                type: string
+            required:
+              - id
+              - name
+              - unit
+      required:
+        - imageBase64
+        - chemicals
+
+    ScanInventorySheetResult:
+      type: object
+      properties:
+        entries:
+          type: array
+          items:
+            type: object
+            properties:
+              chemicalId:
+                type: integer
+              chemicalName:
+                type: string
+              quantity:
+                type: number
+              confidence:
+                type: string
+                enum: [high, medium, low]
+            required:
+              - chemicalId
+              - chemicalName
+              - quantity
+              - confidence
+        rawText:
+          type: string
+          description: Raw text extracted from the image
+      required:
+        - entries
+        - rawText
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: integer
+        storeId:
+          type: integer
+        storeName:
+          type: string
+        chemicalId:
+          type: integer
+        chemicalName:
+          type: string
+        weekOf:
+          type: string
+        previousQuantity:
+          type: number
+        currentQuantity:
+          type: number
+        percentChange:
+          type: number
+        direction:
+          type: string
+          enum: [over, under]
+          description: over = too much chemical used, under = too little used
+        severity:
+          type: string
+          enum: [warning, critical]
+        acknowledged:
+          type: boolean
+        acknowledgedAt:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - storeId
+        - storeName
+        - chemicalId
+        - chemicalName
+        - weekOf
+        - previousQuantity
+        - currentQuantity
+        - percentChange
+        - direction
+        - severity
+        - acknowledged
+        - createdAt
+
+    AlertsSummary:
+      type: object
+      properties:
+        totalUnacknowledged:
+          type: integer
+        criticalCount:
+          type: integer
+        warningCount:
+          type: integer
+        byStore:
+          type: array
+          items:
+            type: object
+            properties:
+              storeId:
+                type: integer
+              storeName:
+                type: string
+              unacknowledgedCount:
+                type: integer
+              criticalCount:
+                type: integer
+            required:
+              - storeId
+              - storeName
+              - unacknowledgedCount
+              - criticalCount
+      required:
+        - totalUnacknowledged
+        - criticalCount
+        - warningCount
+        - byStore
+
+    ChemicalReport:
+      type: object
+      properties:
+        chemicalId:
+          type: integer
+        chemicalName:
+          type: string
+        unit:
+          type: string
+        alertThresholdPercent:
+          type: number
+        stores:
+          type: array
+          items:
+            type: object
+            properties:
+              storeId:
+                type: integer
+              storeName:
+                type: string
+              storeNumber:
+                type: string
+              latestQuantity:
+                type: number
+                nullable: true
+              weekOf:
+                type: string
+                nullable: true
+              previousQuantity:
+                type: number
+                nullable: true
+              changePercent:
+                type: number
+                nullable: true
+              previousWeekOf:
+                type: string
+                nullable: true
+              hasAlert:
+                type: boolean
+            required:
+              - storeId
+              - storeName
+              - storeNumber
+              - hasAlert
+      required:
+        - chemicalId
+        - chemicalName
+        - unit
+        - alertThresholdPercent
+        - stores
+
+    StoreReport:
+      type: object
+      properties:
+        storeId:
+          type: integer
+        storeName:
+          type: string
+        storeNumber:
+          type: string
+        weekOf:
+          type: string
+          nullable: true
+        chemicals:
+          type: array
+          items:
+            type: object
+            properties:
+              chemicalId:
+                type: integer
+              chemicalName:
+                type: string
+              unit:
+                type: string
+              alertThresholdPercent:
+                type: number
+              quantity:
+                type: number
+                nullable: true
+              previousQuantity:
+                type: number
+                nullable: true
+              changePercent:
+                type: number
+                nullable: true
+              hasAlert:
+                type: boolean
+            required:
+              - chemicalId
+              - chemicalName
+              - unit
+              - alertThresholdPercent
+              - hasAlert
+      required:
+        - storeId
+        - storeName
+        - storeNumber
+        - chemicals
+
+    MissingSubmission:
+      type: object
+      properties:
+        storeId:
+          type: integer
+        storeName:
+          type: string
+        storeNumber:
+          type: string
+        lastSubmittedWeekOf:
+          type: string
+          nullable: true
+        weeksSinceLast:
+          type: integer
+          nullable: true
+      required:
+        - storeId
+        - storeName
+        - storeNumber
+
+    NotificationContact:
+      type: object
+      properties:
+        id:
+          type: integer
+        storeId:
+          type: integer
+          nullable: true
+        storeName:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        label:
+          type: string
+        active:
+          type: boolean
+        severity:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - label
+        - active
+        - severity
+        - createdAt
+
+    CreateNotificationContactBody:
+      type: object
+      properties:
+        storeId:
+          type: integer
+          nullable: true
+        email:
+          type: string
+        phone:
+          type: string
+        label:
+          type: string
+        active:
+          type: boolean
+        severity:
+          type: string
+
+    UpdateNotificationContactBody:
+      type: object
+      properties:
+        storeId:
+          type: integer
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+        label:
+          type: string
+        active:
+          type: boolean
+        severity:
+          type: string
