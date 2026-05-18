@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "CBw7tbgoL4ccKCBx68OUW"
+uri = "file://artifacts/mobile/assets/images/icon.png"
+type = "image"
+title = "chemical inventory app icon"
