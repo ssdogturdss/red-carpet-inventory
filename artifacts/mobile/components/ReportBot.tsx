@@ -1,8 +1,7 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, KeyboardAvoidingView,
-  Platform, Pressable, Share, Linking,
+  ScrollView, ActivityIndicator, Platform, Share, Linking,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -74,9 +73,44 @@ function formatMarkdown(text: string, colors: ReturnType<typeof import("@/hooks/
   return elements;
 }
 
+function useSpeechRecognition(onResult: (text: string) => void) {
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const supported = Platform.OS === "web" && typeof window !== "undefined" &&
+    ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+
+  const start = useCallback(() => {
+    if (!supported) return;
+    const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
+    const rec = new SR();
+    recognitionRef.current = rec;
+    rec.lang = "en-US";
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.onresult = (e: any) => {
+      const transcript = e.results[0][0].transcript;
+      onResult(transcript);
+    };
+    rec.onerror = () => setListening(false);
+    rec.onend = () => setListening(false);
+    rec.start();
+    setListening(true);
+  }, [supported, onResult]);
+
+  const stop = useCallback(() => {
+    recognitionRef.current?.stop();
+    setListening(false);
+  }, []);
+
+  useEffect(() => () => recognitionRef.current?.abort(), []);
+
+  return { listening, supported, start, stop };
+}
+
 export function ReportBot({ bottomInset, adminPin }: { bottomInset: number; adminPin: string }) {
   const colors = useColors();
   const scrollRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -128,7 +162,7 @@ export function ReportBot({ bottomInset, adminPin }: { bottomInset: number; admi
         pdfPending: !!(data.reportData && Array.isArray(data.reportData) && data.reportData.length > 0),
       };
       setMessages((prev) => [...prev, botMsg]);
-    } catch (e: any) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         {
@@ -141,7 +175,14 @@ export function ReportBot({ bottomInset, adminPin }: { bottomInset: number; admi
       setLoading(false);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
     }
-  }, [loading, history]);
+  }, [loading, history, adminPin]);
+
+  const { listening, supported: voiceSupported, start: startListening, stop: stopListening } = useSpeechRecognition(
+    useCallback((transcript: string) => {
+      setInput(transcript);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }, [])
+  );
 
   const downloadPdf = useCallback(async (msg: Message, userQuery: string) => {
     if (!msg.reportData) return;
@@ -173,7 +214,7 @@ export function ReportBot({ bottomInset, adminPin }: { bottomInset: number; admi
     } finally {
       setPdfLoading(null);
     }
-  }, []);
+  }, [adminPin]);
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
@@ -238,12 +279,21 @@ export function ReportBot({ bottomInset, adminPin }: { bottomInset: number; admi
       borderRadius: 20, borderWidth: 1, borderColor: colors.border,
     },
     quickChipText: { fontSize: 12, fontFamily: "Inter_500Medium", color: colors.foreground },
+    inputArea: {
+      backgroundColor: colors.card,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingBottom: bottomInset + 10,
+    },
+    listeningBar: {
+      flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 8, paddingVertical: 8, paddingHorizontal: 14,
+      backgroundColor: colors.teal + "22",
+    },
+    listeningText: { fontSize: 12, fontFamily: "Inter_500Medium", color: colors.teal },
     inputRow: {
       flexDirection: "row", alignItems: "flex-end", gap: 8,
       paddingHorizontal: 14, paddingVertical: 10,
-      paddingBottom: bottomInset + 10,
-      backgroundColor: colors.card,
-      borderTopWidth: 1, borderTopColor: colors.border,
     },
     input: {
       flex: 1, minHeight: 40, maxHeight: 100,
@@ -252,6 +302,12 @@ export function ReportBot({ bottomInset, adminPin }: { bottomInset: number; admi
       borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10,
       fontSize: 14, fontFamily: "Inter_400Regular", color: colors.foreground,
     },
+    micBtn: {
+      width: 40, height: 40, borderRadius: 20,
+      backgroundColor: colors.secondary,
+      alignItems: "center", justifyContent: "center",
+    },
+    micBtnActive: { backgroundColor: colors.teal },
     sendBtn: {
       width: 40, height: 40, borderRadius: 20,
       backgroundColor: colors.primary,
@@ -260,15 +316,10 @@ export function ReportBot({ bottomInset, adminPin }: { bottomInset: number; admi
     sendBtnDisabled: { backgroundColor: colors.secondary },
   });
 
-  // Find the last user message text for PDF title
   const lastUserText = [...messages].reverse().find((m) => m.role === "user")?.content ?? "Report";
 
   return (
-    <KeyboardAvoidingView
-      style={s.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 0}
-    >
+    <View style={s.container}>
       <ScrollView
         ref={scrollRef}
         style={s.scroll}
@@ -352,26 +403,44 @@ export function ReportBot({ bottomInset, adminPin }: { bottomInset: number; admi
         </View>
       )}
 
-      <View style={s.inputRow}>
-        <TextInput
-          style={s.input}
-          placeholder="Ask about your inventory…"
-          placeholderTextColor={colors.mutedForeground}
-          value={input}
-          onChangeText={setInput}
-          multiline
-          onSubmitEditing={() => send(input)}
-          returnKeyType="send"
-          blurOnSubmit
-        />
-        <TouchableOpacity
-          style={[s.sendBtn, (!input.trim() || loading) && s.sendBtnDisabled]}
-          onPress={() => send(input)}
-          disabled={!input.trim() || loading}
-        >
-          <Feather name="send" size={16} color="#fff" />
-        </TouchableOpacity>
+      <View style={s.inputArea}>
+        {listening && (
+          <View style={s.listeningBar}>
+            <ActivityIndicator size="small" color={colors.teal} />
+            <Text style={s.listeningText}>Listening… tap mic to stop</Text>
+          </View>
+        )}
+        <View style={s.inputRow}>
+          {voiceSupported && (
+            <TouchableOpacity
+              style={[s.micBtn, listening && s.micBtnActive]}
+              onPress={listening ? stopListening : startListening}
+              activeOpacity={0.7}
+            >
+              <Feather name={listening ? "mic-off" : "mic"} size={18} color={listening ? "#fff" : colors.mutedForeground} />
+            </TouchableOpacity>
+          )}
+          <TextInput
+            ref={inputRef}
+            style={s.input}
+            placeholder="Ask about your inventory…"
+            placeholderTextColor={colors.mutedForeground}
+            value={input}
+            onChangeText={setInput}
+            multiline
+            onSubmitEditing={() => send(input)}
+            returnKeyType="send"
+            blurOnSubmit
+          />
+          <TouchableOpacity
+            style={[s.sendBtn, (!input.trim() || loading) && s.sendBtnDisabled]}
+            onPress={() => send(input)}
+            disabled={!input.trim() || loading}
+          >
+            <Feather name="send" size={16} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
