@@ -5,6 +5,7 @@ import {
   FlatList, Pressable, TextInput, Alert, KeyboardAvoidingView,
   useWindowDimensions,
 } from "react-native";
+import { ReportBot } from "@/components/ReportBot";
 import Svg, { Polyline, Circle } from "react-native-svg";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -1778,8 +1779,47 @@ function GridView({
   );
 }
 
-// ─── Reports Section ─────────────────────────────────────────────────────────
+// ─── Reports Section — Bot + Analytics toggle ────────────────────────────────
 function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: ReturnType<typeof useSafeAreaInsets> }) {
+  const [mode, setMode] = useState<"bot" | "analytics">("bot");
+  const s = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    toggle: {
+      flexDirection: "row", backgroundColor: colors.card,
+      borderBottomWidth: 1, borderBottomColor: colors.border,
+      padding: 10, gap: 8,
+    },
+    toggleBtn: {
+      flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+      gap: 6, paddingVertical: 8, borderRadius: 10,
+      backgroundColor: colors.secondary,
+    },
+    toggleBtnActive: { backgroundColor: colors.primary },
+    toggleText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground },
+    toggleTextActive: { color: "#fff" },
+  });
+  return (
+    <View style={s.container}>
+      <View style={s.toggle}>
+        <TouchableOpacity style={[s.toggleBtn, mode === "bot" && s.toggleBtnActive]} onPress={() => setMode("bot")}>
+          <Feather name="zap" size={14} color={mode === "bot" ? "#fff" : colors.mutedForeground} />
+          <Text style={[s.toggleText, mode === "bot" && s.toggleTextActive]}>Report Bot</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.toggleBtn, mode === "analytics" && s.toggleBtnActive]} onPress={() => setMode("analytics")}>
+          <Feather name="bar-chart-2" size={14} color={mode === "analytics" ? "#fff" : colors.mutedForeground} />
+          <Text style={[s.toggleText, mode === "analytics" && s.toggleTextActive]}>Analytics</Text>
+        </TouchableOpacity>
+      </View>
+      {mode === "bot"
+        ? <ReportBot bottomInset={insets.bottom} />
+        : <AnalyticsSection colors={colors} insets={insets} />
+      }
+    </View>
+  );
+}
+
+// ─── Analytics Section (charts/tables view) ──────────────────────────────────
+function AnalyticsSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: ReturnType<typeof useSafeAreaInsets> }) {
   const webBottom = Platform.OS === "web" ? 34 : 0;
   const [viewMode, setViewMode] = useState<ReportViewMode>("chemical");
   const [selectedChemIdx, setSelectedChemIdx] = useState(0);
