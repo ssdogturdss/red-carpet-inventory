@@ -74,7 +74,7 @@ function formatMarkdown(text: string, colors: ReturnType<typeof import("@/hooks/
   return elements;
 }
 
-export function ReportBot({ bottomInset }: { bottomInset: number }) {
+export function ReportBot({ bottomInset, adminPin }: { bottomInset: number; adminPin: string }) {
   const colors = useColors();
   const scrollRef = useRef<ScrollView>(null);
   const [input, setInput] = useState("");
@@ -112,7 +112,7 @@ export function ReportBot({ bottomInset }: { bottomInset: number }) {
     try {
       const res = await fetch(`${BASE_URL}/api/reports/bot`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-admin-pin": adminPin },
         body: JSON.stringify({ message: trimmed, history }),
       });
 
@@ -152,7 +152,7 @@ export function ReportBot({ bottomInset }: { bottomInset: number }) {
       const title = userQuery.slice(0, 60) || "Inventory Report";
       const res = await fetch(`${BASE_URL}/api/reports/bot/pdf`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-admin-pin": adminPin },
         body: JSON.stringify({
           title,
           summary: msg.content,

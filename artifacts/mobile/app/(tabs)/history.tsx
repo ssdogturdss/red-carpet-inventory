@@ -6,6 +6,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { ReportBot } from "@/components/ReportBot";
+import { PinScreen } from "@/components/PinScreen";
 import Svg, { Polyline, Circle } from "react-native-svg";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -1779,9 +1780,22 @@ function GridView({
   );
 }
 
-// ─── Reports Section — Bot + Analytics toggle ────────────────────────────────
+// ─── Reports Section — PIN-gated, Bot + Analytics toggle ─────────────────────
 function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: ReturnType<typeof useSafeAreaInsets> }) {
+  const [adminPin, setAdminPin] = useState<string | null>(null);
   const [mode, setMode] = useState<"bot" | "analytics">("bot");
+
+  if (!adminPin) {
+    return (
+      <PinScreen
+        title="Reports Access"
+        subtitle="Enter your admin PIN to view reports"
+        insets={{ top: insets.top }}
+        onSuccess={(pin) => setAdminPin(pin)}
+      />
+    );
+  }
+
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     toggle: {
@@ -1798,6 +1812,7 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
     toggleText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground },
     toggleTextActive: { color: "#fff" },
   });
+
   return (
     <View style={s.container}>
       <View style={s.toggle}>
@@ -1811,7 +1826,7 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
         </TouchableOpacity>
       </View>
       {mode === "bot"
-        ? <ReportBot bottomInset={insets.bottom} />
+        ? <ReportBot bottomInset={insets.bottom} adminPin={adminPin} />
         : <AnalyticsSection colors={colors} insets={insets} />
       }
     </View>

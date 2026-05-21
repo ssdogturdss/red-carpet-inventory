@@ -6,6 +6,17 @@ import PDFDocument from "pdfkit";
 
 const router = Router();
 
+// ─── Admin PIN middleware ─────────────────────────────────────────────────────
+function requireAdminPin(req: any, res: any, next: any) {
+  const pin = req.headers["x-admin-pin"] as string | undefined;
+  const adminPin = process.env.ADMIN_PIN ?? "1234";
+  if (!pin || pin !== adminPin) {
+    res.status(401).json({ error: "Admin PIN required" });
+    return;
+  }
+  next();
+}
+
 // ─── Tool definitions ─────────────────────────────────────────────────────────
 const TOOLS: any[] = [
   {
@@ -248,7 +259,7 @@ async function runTool(name: string, args: any): Promise<any> {
 }
 
 // ─── POST /reports/bot ────────────────────────────────────────────────────────
-router.post("/reports/bot", async (req, res) => {
+router.post("/reports/bot", requireAdminPin, async (req, res) => {
   const { message, history = [] } = req.body as {
     message: string;
     history: Array<{ role: "user" | "assistant"; content: string }>;
@@ -330,7 +341,7 @@ Today's date: ${new Date().toISOString().split("T")[0]}`;
 });
 
 // ─── POST /reports/bot/pdf ────────────────────────────────────────────────────
-router.post("/reports/bot/pdf", async (req, res) => {
+router.post("/reports/bot/pdf", requireAdminPin, async (req, res) => {
   const { title, summary, toolName, data } = req.body as {
     title: string;
     summary: string;
