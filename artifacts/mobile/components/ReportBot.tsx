@@ -111,6 +111,9 @@ export function ReportBot({ bottomInset, adminPin }: { bottomInset: number; admi
   const colors = useColors();
   const scrollRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
+  // On web the tab bar is position:absolute (84px tall) and insets.bottom is 0,
+  // so we must add the tab bar height manually to keep the input above it.
+  const webTabBarHeight = Platform.OS === "web" ? 84 : 0;
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -283,7 +286,7 @@ export function ReportBot({ bottomInset, adminPin }: { bottomInset: number; admi
       backgroundColor: colors.card,
       borderTopWidth: 1,
       borderTopColor: colors.border,
-      paddingBottom: bottomInset + 10,
+      paddingBottom: bottomInset + webTabBarHeight + 10,
     },
     listeningBar: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
