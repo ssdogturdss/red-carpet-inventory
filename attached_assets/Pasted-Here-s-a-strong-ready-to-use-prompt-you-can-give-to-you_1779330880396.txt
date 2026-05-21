@@ -1,0 +1,51 @@
+Here’s a strong, ready-to-use prompt you can give to your AI coding agent (like Claude, Cursor, or GPT-based dev agent). Customize the bracketed parts with your app’s specifics for best results.23
+
+System/Role Prompt:
+You are an expert full-stack developer and AI integration specialist. I want to add a conversational report generation bot to my existing [describe your app: e.g., “React + Node.js/Express web app” or “Next.js app with Prisma and PostgreSQL”].
+Core Requirements:
+	•	Users should interact with the bot via a chat interface (new or existing chat component) inside the app.
+	•	The bot understands natural language requests like: “Generate a Q2 sales report for the West region”, “Show me user engagement metrics for last month exported as PDF”, or “Create a monthly performance summary and email it to me”.
+	•	The bot must:
+	1	Parse the user’s request.
+	2	Query the relevant data from our database/API (describe key data models or endpoints if available).
+	3	Generate a well-structured, professional report (use markdown for previews, with tables, charts where possible).
+	4	Support multiple export formats: PDF, CSV, Excel, and optionally image/PNG of charts.
+	5	Provide a preview in the chat and clear download/export buttons.
+	6	Handle permissions: users can only access reports for data they are authorized to see.
+	7	Log report generations for auditing.
+Technical Implementation Guidelines:
+	•	Use [your preferred LLM: e.g., OpenAI GPT-4o, Claude 3.5, Grok, or local model] via [LangChain / LlamaIndex / Vercel AI SDK / direct API].
+	•	Implement tool-calling / function calling so the agent can safely query your DB or internal APIs.
+	•	For report generation: Structure output with clear sections (Summary, Key Metrics, Charts/Tables, Insights, Recommendations).
+	•	For exports:
+	◦	PDF: Use libraries like pdf-lib, Puppeteer, or react-pdf (server-side preferred for security).
+	◦	CSV/Excel: Use PapaParse, json2csv, or exceljs.
+	•	Store generated reports temporarily or persistently with metadata (user_id, request, timestamp, file paths).
+	•	Make it streaming where possible for better UX.
+	•	Add rate limiting and cost guards if using paid LLM APIs.
+User Experience Flow:
+	1	User opens the Report Bot (sidebar, modal, or dedicated page).
+	2	Types a natural language request.
+	3	Bot asks clarifying questions if needed (e.g., date range, specific filters).
+	4	Bot shows a live preview of the report.
+	5	User can refine (“add more details on churn”) or export directly.
+	6	After export, provide download link and option to save to user’s reports library.
+Best Practices to Follow:
+	•	Security first: Never expose raw DB queries; use parameterized queries or ORM.
+	•	Error handling: Graceful fallbacks, clear messages to user.
+	•	Observability: Log prompts, tool uses, and token usage.
+	•	Make the bot’s personality helpful, professional, and concise.
+	•	Support follow-up conversations on the same report.
+Deliverables I Expect:
+	•	Step-by-step implementation plan.
+	•	Code changes: new components, backend routes/endpoints, prompt templates, tool definitions.
+	•	Example prompt templates for the report agent.
+	•	Any new dependencies and setup instructions.
+	•	Tests for common report requests.
+Start by asking me for any missing details (tech stack screenshots, DB schema, existing auth, specific report types, etc.), then propose the architecture and begin implementation.
+
+Tips for using this prompt effectively:
+	•	Paste it as the initial message to your coding agent.
+	•	Follow up with specifics: database schema, example report types, current tech stack, UI framework, etc.
+	•	Iterate: After the first version, prompt refinements like “Make the PDF styling match our brand” or “Add chart generation with Chart.js/Recharts data”.
+This prompt is detailed enough to get high-quality output while giving the agent room to suggest smart approaches. Let me know your tech stack or specific report needs if you want a more tailored version!
