@@ -144,14 +144,14 @@ async function runTool(name: string, args: any): Promise<any> {
           c.name AS chemical_name, c.unit,
           ie.quantity, pie.quantity AS previous_quantity,
           sel.week_of,
-          ROUND(((ie.quantity - pie.quantity)::numeric / NULLIF(pie.quantity,0)) * 100, 1) AS change_pct
+          ROUND(((ie.quantity - pie.quantity)::numeric / NULLIF(pie.quantity::numeric, 0)) * 100, 1) AS change_pct
         FROM stores s
-        ${storeId ? sql`WHERE s.id = ${storeId}` : sql``}
         JOIN sel ON sel.store_id = s.id
         JOIN chemicals c ON true
         LEFT JOIN inventory_entries ie ON ie.count_id = sel.id AND ie.chemical_id = c.id
         LEFT JOIN prev ON prev.store_id = s.id
         LEFT JOIN inventory_entries pie ON pie.count_id = prev.id AND pie.chemical_id = c.id
+        ${storeId ? sql`WHERE s.id = ${storeId}` : sql``}
         ORDER BY s.name, c.name
       `);
       return r.rows;
@@ -193,10 +193,10 @@ async function runTool(name: string, args: any): Promise<any> {
           s.name AS store_name, s.store_number,
           ie.quantity, sel.week_of
         FROM chemicals c
-        ${chemicalId ? sql`WHERE c.id = ${chemicalId}` : sql``}
         CROSS JOIN stores s
         LEFT JOIN sel ON sel.store_id = s.id
         LEFT JOIN inventory_entries ie ON ie.count_id = sel.id AND ie.chemical_id = c.id
+        ${chemicalId ? sql`WHERE c.id = ${chemicalId}` : sql``}
         ORDER BY c.name, s.name
       `);
       return r.rows;
