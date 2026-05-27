@@ -243,6 +243,23 @@ export function ReportBot({ bottomInset, adminPin }: { bottomInset: number; admi
 
   const s = StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
+    header: {
+      flexDirection: "row", alignItems: "center", gap: 8,
+      paddingHorizontal: 14, paddingVertical: 10,
+      backgroundColor: colors.navy,
+      borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.1)",
+    },
+    headerAvatar: {
+      width: 26, height: 26, borderRadius: 13,
+      backgroundColor: colors.teal,
+      alignItems: "center", justifyContent: "center",
+    },
+    headerName: {
+      fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff", flex: 1,
+    },
+    headerOnline: {
+      width: 7, height: 7, borderRadius: 4, backgroundColor: "#4ade80",
+    },
     scroll: { flex: 1 },
     scrollContent: { padding: 14, paddingBottom: 8, gap: 12 },
     welcomeBubble: {
@@ -345,6 +362,13 @@ export function ReportBot({ bottomInset, adminPin }: { bottomInset: number; admi
 
   return (
     <View style={s.container}>
+      <View style={s.header}>
+        <View style={s.headerAvatar}>
+          <Feather name="zap" size={13} color="#fff" />
+        </View>
+        <Text style={s.headerName}>{botName}</Text>
+        <View style={s.headerOnline} />
+      </View>
       <ScrollView
         ref={scrollRef}
         style={s.scroll}

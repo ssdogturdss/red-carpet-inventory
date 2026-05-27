@@ -1781,9 +1781,19 @@ function GridView({
 }
 
 // ─── Reports Section — PIN-gated, Bot + Analytics toggle ─────────────────────
+const BASE_API = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+
 function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: ReturnType<typeof useSafeAreaInsets> }) {
   const [adminPin, setAdminPin] = useState<string | null>(null);
   const [mode, setMode] = useState<"bot" | "analytics">("bot");
+  const [botLabel, setBotLabel] = useState("Report Bot");
+
+  useEffect(() => {
+    fetch(`${BASE_API}/api/bot-settings/public`)
+      .then((r) => r.json())
+      .then((d) => { if (d.botName) setBotLabel(d.botName); })
+      .catch(() => {});
+  }, []);
 
   if (!adminPin) {
     return (
@@ -1818,7 +1828,7 @@ function ReportsSection({ colors, insets }: { colors: ReturnType<typeof import("
       <View style={s.toggle}>
         <TouchableOpacity style={[s.toggleBtn, mode === "bot" && s.toggleBtnActive]} onPress={() => setMode("bot")}>
           <Feather name="zap" size={14} color={mode === "bot" ? "#fff" : colors.mutedForeground} />
-          <Text style={[s.toggleText, mode === "bot" && s.toggleTextActive]}>Report Bot</Text>
+          <Text style={[s.toggleText, mode === "bot" && s.toggleTextActive]}>{botLabel}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[s.toggleBtn, mode === "analytics" && s.toggleBtnActive]} onPress={() => setMode("analytics")}>
           <Feather name="bar-chart-2" size={14} color={mode === "analytics" ? "#fff" : colors.mutedForeground} />
