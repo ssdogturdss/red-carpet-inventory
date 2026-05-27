@@ -53,6 +53,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/AdminAuthResult"
 
+  /admin/bot-settings:
+    get:
+      operationId: getBotSettings
+      tags: [admin]
+      summary: Get bot personalization settings (requires admin PIN header)
+      parameters:
+        - name: x-admin-pin
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Bot settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotSettings"
+    put:
+      operationId: updateBotSettings
+      tags: [admin]
+      summary: Update bot personalization settings (requires admin PIN header)
+      parameters:
+        - name: x-admin-pin
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBotSettingsBody"
+      responses:
+        "200":
+          description: Updated bot settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotSettings"
+
+  /bot-settings/public:
+    get:
+      operationId: getPublicBotSettings
+      tags: [admin]
+      summary: Get public bot name and greeting (no PIN required)
+      responses:
+        "200":
+          description: Public bot settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicBotSettings"
+
   /stores:
     get:
       operationId: getStores
@@ -811,6 +866,47 @@ paths:
 
 components:
   schemas:
+    BotSettings:
+      type: object
+      properties:
+        id:
+          type: integer
+        botName:
+          type: string
+        greeting:
+          type: string
+        systemPromptExtra:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - botName
+        - greeting
+        - systemPromptExtra
+        - updatedAt
+
+    UpdateBotSettingsBody:
+      type: object
+      properties:
+        botName:
+          type: string
+        greeting:
+          type: string
+        systemPromptExtra:
+          type: string
+
+    PublicBotSettings:
+      type: object
+      properties:
+        botName:
+          type: string
+        greeting:
+          type: string
+      required:
+        - botName
+        - greeting
+
     AdminAuthBody:
       type: object
       properties:

@@ -15,6 +15,7 @@ import pushRouter from "./push";
 import exportRouter from "./export";
 import pullsRouter from "./pulls";
 import reportBotRouter from "./reportbot";
+import botSettingsRouter from "./botSettings";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(pushRouter);
 router.use(exportRouter);
 router.use(pullsRouter);
 router.use(reportBotRouter);
+router.use(botSettingsRouter);
 
 export default router;

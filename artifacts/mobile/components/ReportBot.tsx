@@ -115,13 +115,35 @@ export function ReportBot({ bottomInset, adminPin }: { bottomInset: number; admi
   // so we must add the tab bar height manually to keep the input above it.
   const webTabBarHeight = Platform.OS === "web" ? 84 : 0;
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "system",
-      content: "Hi! I'm your Report Bot. Ask me anything about your chemical inventory — usage trends, alerts, store comparisons, deliveries, and more. I'll pull live data and summarize it for you.",
-    },
-  ]);
+
+  const [botName, setBotName] = useState("Report Bot");
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  // Fetch public bot settings (name + greeting) on mount
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/bot-settings/public`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.botName) setBotName(data.botName);
+        setMessages([
+          {
+            id: "welcome",
+            role: "system",
+            content: data.greeting ||
+              "Hi! I'm your Report Bot. Ask me anything about your chemical inventory — usage trends, alerts, store comparisons, deliveries, and more. I'll pull live data and summarize it for you.",
+          },
+        ]);
+      })
+      .catch(() => {
+        setMessages([
+          {
+            id: "welcome",
+            role: "system",
+            content: "Hi! I'm your Report Bot. Ask me anything about your chemical inventory — usage trends, alerts, store comparisons, deliveries, and more. I'll pull live data and summarize it for you.",
+          },
+        ]);
+      });
+  }, []);
   const [loading, setLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState<string | null>(null);
 

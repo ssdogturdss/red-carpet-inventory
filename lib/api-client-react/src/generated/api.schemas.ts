@@ -5,6 +5,25 @@
  * Chemical Inventory API
  * OpenAPI spec version: 0.1.0
  */
+export interface BotSettings {
+  id: number;
+  botName: string;
+  greeting: string;
+  systemPromptExtra: string;
+  updatedAt: string;
+}
+
+export interface UpdateBotSettingsBody {
+  botName?: string;
+  greeting?: string;
+  systemPromptExtra?: string;
+}
+
+export interface PublicBotSettings {
+  botName: string;
+  greeting: string;
+}
+
 export interface AdminAuthBody {
   pin: string;
 }

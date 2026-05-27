@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, ActivityIndicator, Platform, Modal,
@@ -22,7 +22,7 @@ import { useColors } from "@/hooks/useColors";
 import { EmptyState } from "@/components/EmptyState";
 import { PinScreen } from "@/components/PinScreen";
 
-type Section = "alerts" | "stores" | "products" | "counts" | "notifications";
+type Section = "alerts" | "stores" | "products" | "counts" | "notifications" | "bot";
 
 function formatWeekOf(weekOf: string) {
   const d = new Date(weekOf + "T00:00:00");
@@ -774,16 +774,165 @@ function NotificationsSection({ colors, insets }: { colors: ReturnType<typeof im
   );
 }
 
+// ─── Bot Section ─────────────────────────────────────────────────────────────
+const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
+
+function BotSection({ colors, insets, adminPin }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: { bottom: number }; adminPin: string }) {
+  const webBottom = Platform.OS === "web" ? 34 : 0;
+  const [botName, setBotName] = useState("");
+  const [greeting, setGreeting] = useState("");
+  const [systemPromptExtra, setSystemPromptExtra] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/admin/bot-settings`, {
+      headers: { "x-admin-pin": adminPin },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        setBotName(data.botName ?? "");
+        setGreeting(data.greeting ?? "");
+        setSystemPromptExtra(data.systemPromptExtra ?? "");
+      })
+      .finally(() => setLoading(false));
+  }, [adminPin]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaved(false);
+    try {
+      await fetch(`${BASE_URL}/api/admin/bot-settings`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-pin": adminPin },
+        body: JSON.stringify({ botName, greeting, systemPromptExtra }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const s = StyleSheet.create({
+    scroll: { flex: 1 },
+    content: { padding: 20, paddingBottom: insets.bottom + 80 + webBottom, gap: 20 },
+    loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
+    section: { gap: 6 },
+    label: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7 },
+    hint: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 4 },
+    input: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: colors.radius, padding: 12, fontSize: 15, fontFamily: "Inter_400Regular", color: colors.foreground },
+    textArea: { minHeight: 100, textAlignVertical: "top" },
+    saveBtn: { backgroundColor: colors.primary, borderRadius: colors.radius, padding: 15, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8 },
+    saveBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
+    savedBanner: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.successSurface, borderRadius: colors.radius, padding: 12 },
+    savedText: { fontSize: 14, fontFamily: "Inter_500Medium", color: colors.success },
+    divider: { height: 1, backgroundColor: colors.border },
+    descCard: { backgroundColor: colors.secondary, borderRadius: colors.radius, padding: 14, gap: 4 },
+    descTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    descBody: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, lineHeight: 18 },
+  });
+
+  if (loading) {
+    return (
+      <View style={s.loadingWrap}>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView style={s.scroll} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      <View style={s.descCard}>
+        <Text style={s.descTitle}>Bot Personalization</Text>
+        <Text style={s.descBody}>
+          Customize the name, opening message, and extra instructions for the Report Bot. Changes take effect on the next message sent.
+        </Text>
+      </View>
+
+      <View style={s.divider} />
+
+      <View style={s.section}>
+        <Text style={s.label}>Bot Name</Text>
+        <TextInput
+          style={s.input}
+          value={botName}
+          onChangeText={setBotName}
+          placeholder="e.g. Red Carpet Inventory Bot"
+          placeholderTextColor={colors.mutedForeground}
+          autoCapitalize="words"
+        />
+        <Text style={s.hint}>Shown in the chat header and used in the system prompt.</Text>
+      </View>
+
+      <View style={s.section}>
+        <Text style={s.label}>Opening Greeting</Text>
+        <TextInput
+          style={[s.input, s.textArea]}
+          value={greeting}
+          onChangeText={setGreeting}
+          placeholder="Hi! I'm your Report Bot…"
+          placeholderTextColor={colors.mutedForeground}
+          multiline
+          numberOfLines={4}
+          autoCapitalize="sentences"
+        />
+        <Text style={s.hint}>First message shown when a user opens the chat.</Text>
+      </View>
+
+      <View style={s.section}>
+        <Text style={s.label}>Extra Instructions</Text>
+        <TextInput
+          style={[s.input, s.textArea]}
+          value={systemPromptExtra}
+          onChangeText={setSystemPromptExtra}
+          placeholder="e.g. Always respond in Spanish. Focus on critical alerts first."
+          placeholderTextColor={colors.mutedForeground}
+          multiline
+          numberOfLines={5}
+          autoCapitalize="sentences"
+        />
+        <Text style={s.hint}>Appended to the system prompt — use this to add custom behavior or instructions.</Text>
+      </View>
+
+      {saved && (
+        <View style={s.savedBanner}>
+          <Feather name="check-circle" size={16} color={colors.success} />
+          <Text style={s.savedText}>Settings saved successfully!</Text>
+        </View>
+      )}
+
+      <TouchableOpacity style={s.saveBtn} onPress={handleSave} disabled={saving}>
+        {saving ? (
+          <ActivityIndicator color="#fff" size="small" />
+        ) : (
+          <>
+            <Feather name="save" size={16} color="#fff" />
+            <Text style={s.saveBtnText}>Save Settings</Text>
+          </>
+        )}
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
 // ─── Main Admin Screen ───────────────────────────────────────────────────────
 export default function AdminScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [authenticated, setAuthenticated] = useState(false);
+  const [adminPin, setAdminPin] = useState("");
   const [activeSection, setActiveSection] = useState<Section>("alerts");
   const webTop = Platform.OS === "web" ? 67 : 0;
 
   if (!authenticated) {
-    return <PinScreen onSuccess={() => setAuthenticated(true)} insets={{ top: insets.top }} />;
+    return (
+      <PinScreen
+        onSuccess={(pin) => { setAuthenticated(true); setAdminPin(pin); }}
+        insets={{ top: insets.top }}
+      />
+    );
   }
 
   const sections: { key: Section; label: string; icon: string }[] = [
@@ -792,6 +941,7 @@ export default function AdminScreen() {
     { key: "products", label: "Products", icon: "package" },
     { key: "counts", label: "Counts", icon: "clipboard" },
     { key: "notifications", label: "Notify", icon: "bell" },
+    { key: "bot", label: "Bot", icon: "cpu" },
   ];
 
   const s = StyleSheet.create({
@@ -847,6 +997,7 @@ export default function AdminScreen() {
         {activeSection === "products" && <ProductsSection colors={colors} insets={insets} />}
         {activeSection === "counts" && <CountsSection colors={colors} insets={insets} />}
         {activeSection === "notifications" && <NotificationsSection colors={colors} insets={insets} />}
+        {activeSection === "bot" && <BotSection colors={colors} insets={insets} adminPin={adminPin} />}
       </View>
     </View>
   );

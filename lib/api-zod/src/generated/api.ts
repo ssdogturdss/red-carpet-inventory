@@ -26,6 +26,50 @@ export const AdminAuthResponse = zod.object({
 });
 
 /**
+ * @summary Get bot personalization settings (requires admin PIN header)
+ */
+export const GetBotSettingsHeader = zod.object({
+  "x-admin-pin": zod.string(),
+});
+
+export const GetBotSettingsResponse = zod.object({
+  id: zod.number(),
+  botName: zod.string(),
+  greeting: zod.string(),
+  systemPromptExtra: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Update bot personalization settings (requires admin PIN header)
+ */
+export const UpdateBotSettingsHeader = zod.object({
+  "x-admin-pin": zod.string(),
+});
+
+export const UpdateBotSettingsBody = zod.object({
+  botName: zod.string().optional(),
+  greeting: zod.string().optional(),
+  systemPromptExtra: zod.string().optional(),
+});
+
+export const UpdateBotSettingsResponse = zod.object({
+  id: zod.number(),
+  botName: zod.string(),
+  greeting: zod.string(),
+  systemPromptExtra: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Get public bot name and greeting (no PIN required)
+ */
+export const GetPublicBotSettingsResponse = zod.object({
+  botName: zod.string(),
+  greeting: zod.string(),
+});
+
+/**
  * @summary List all stores
  */
 export const GetStoresResponseItem = zod.object({

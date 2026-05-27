@@ -21,6 +21,7 @@ import type {
   AdminAuthResult,
   Alert,
   AlertsSummary,
+  BotSettings,
   Chemical,
   ChemicalOrder,
   ChemicalPull,
@@ -47,12 +48,14 @@ import type {
   MissingSubmission,
   NotificationContact,
   OnHandResult,
+  PublicBotSettings,
   ScanInventorySheetBody,
   ScanInventorySheetResult,
   Store,
   StoreReport,
   SubmitInventoryCountBody,
   TestNotificationContact200,
+  UpdateBotSettingsBody,
   UpdateChemicalBody,
   UpdateInventoryCountBody,
   UpdateNotificationContactBody,
@@ -229,6 +232,242 @@ export const useAdminAuth = <
 > => {
   return useMutation(getAdminAuthMutationOptions(options));
 };
+
+/**
+ * @summary Get bot personalization settings (requires admin PIN header)
+ */
+export const getGetBotSettingsUrl = () => {
+  return `/api/admin/bot-settings`;
+};
+
+export const getBotSettings = async (
+  options?: RequestInit,
+): Promise<BotSettings> => {
+  return customFetch<BotSettings>(getGetBotSettingsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBotSettingsQueryKey = () => {
+  return [`/api/admin/bot-settings`] as const;
+};
+
+export const getGetBotSettingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBotSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBotSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBotSettingsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getBotSettings>>> = ({
+    signal,
+  }) => getBotSettings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBotSettings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBotSettingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBotSettings>>
+>;
+export type GetBotSettingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get bot personalization settings (requires admin PIN header)
+ */
+
+export function useGetBotSettings<
+  TData = Awaited<ReturnType<typeof getBotSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBotSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBotSettingsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update bot personalization settings (requires admin PIN header)
+ */
+export const getUpdateBotSettingsUrl = () => {
+  return `/api/admin/bot-settings`;
+};
+
+export const updateBotSettings = async (
+  updateBotSettingsBody: UpdateBotSettingsBody,
+  options?: RequestInit,
+): Promise<BotSettings> => {
+  return customFetch<BotSettings>(getUpdateBotSettingsUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateBotSettingsBody),
+  });
+};
+
+export const getUpdateBotSettingsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBotSettings>>,
+    TError,
+    { data: BodyType<UpdateBotSettingsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateBotSettings>>,
+  TError,
+  { data: BodyType<UpdateBotSettingsBody> },
+  TContext
+> => {
+  const mutationKey = ["updateBotSettings"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateBotSettings>>,
+    { data: BodyType<UpdateBotSettingsBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateBotSettings(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateBotSettingsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateBotSettings>>
+>;
+export type UpdateBotSettingsMutationBody = BodyType<UpdateBotSettingsBody>;
+export type UpdateBotSettingsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update bot personalization settings (requires admin PIN header)
+ */
+export const useUpdateBotSettings = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateBotSettings>>,
+    TError,
+    { data: BodyType<UpdateBotSettingsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateBotSettings>>,
+  TError,
+  { data: BodyType<UpdateBotSettingsBody> },
+  TContext
+> => {
+  return useMutation(getUpdateBotSettingsMutationOptions(options));
+};
+
+/**
+ * @summary Get public bot name and greeting (no PIN required)
+ */
+export const getGetPublicBotSettingsUrl = () => {
+  return `/api/bot-settings/public`;
+};
+
+export const getPublicBotSettings = async (
+  options?: RequestInit,
+): Promise<PublicBotSettings> => {
+  return customFetch<PublicBotSettings>(getGetPublicBotSettingsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPublicBotSettingsQueryKey = () => {
+  return [`/api/bot-settings/public`] as const;
+};
+
+export const getGetPublicBotSettingsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublicBotSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicBotSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPublicBotSettingsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPublicBotSettings>>
+  > = ({ signal }) => getPublicBotSettings({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicBotSettings>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPublicBotSettingsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublicBotSettings>>
+>;
+export type GetPublicBotSettingsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get public bot name and greeting (no PIN required)
+ */
+
+export function useGetPublicBotSettings<
+  TData = Awaited<ReturnType<typeof getPublicBotSettings>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicBotSettings>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPublicBotSettingsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary List all stores

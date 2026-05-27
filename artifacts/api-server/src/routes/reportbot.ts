@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
+import { botSettingsTable } from "@workspace/db/schema";
 import { sql } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import PDFDocument from "pdfkit";
@@ -270,7 +271,16 @@ router.post("/reports/bot", requireAdminPin, async (req, res) => {
     return;
   }
 
-  const systemPrompt = `You are the Red Carpet Inventory Report Bot — a helpful, professional assistant for a car wash chain with 11 stores tracking 23+ chemicals weekly.
+  // Load bot personalization from DB (fallback to defaults if not set)
+  const settingsRows = await db.select().from(botSettingsTable).limit(1);
+  const botSettings = settingsRows[0] ?? {
+    botName: "Red Carpet Inventory Report Bot",
+    systemPromptExtra: "",
+  };
+  const botName = botSettings.botName || "Red Carpet Inventory Report Bot";
+  const systemPromptExtra = (botSettings as any).systemPromptExtra ?? "";
+
+  const systemPrompt = `You are the ${botName} — a helpful, professional assistant for a car wash chain with 11 stores tracking 23+ chemicals weekly.
 
 You help managers understand their chemical inventory through natural language. You have access to tools that query live data.
 
@@ -283,7 +293,7 @@ Always be specific — mention store names, chemical names, and actual numbers.
 If data is missing or a store hasn't submitted, say so clearly.
 Keep your tone professional but friendly. You are helping car wash operators make better decisions.
 
-Today's date: ${new Date().toISOString().split("T")[0]}`;
+Today's date: ${new Date().toISOString().split("T")[0]}${systemPromptExtra ? `\n\n${systemPromptExtra}` : ""}`;
 
   const messages: any[] = [
     { role: "system", content: systemPrompt },
