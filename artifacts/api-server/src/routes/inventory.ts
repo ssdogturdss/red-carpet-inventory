@@ -6,6 +6,7 @@ import {
   storesTable,
   chemicalsTable,
   alertsTable,
+  usersTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, or, isNull } from "drizzle-orm";
 import { SubmitInventoryCountBody } from "@workspace/api-zod";
@@ -33,11 +34,14 @@ router.get("/inventory", async (req, res) => {
       storeName: storesTable.name,
       weekOf: inventoryCountsTable.weekOf,
       submittedBy: inventoryCountsTable.submittedBy,
+      userId: inventoryCountsTable.userId,
+      userName: usersTable.name,
       notes: inventoryCountsTable.notes,
       submittedAt: inventoryCountsTable.submittedAt,
     })
     .from(inventoryCountsTable)
     .innerJoin(storesTable, eq(inventoryCountsTable.storeId, storesTable.id))
+    .leftJoin(usersTable, eq(inventoryCountsTable.userId, usersTable.id))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(inventoryCountsTable.submittedAt))
     .limit(limit);

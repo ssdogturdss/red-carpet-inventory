@@ -111,6 +111,8 @@ export interface ChemicalOrder {
   status: string;
   poNumber?: string | null;
   orderedBy?: string | null;
+  userId?: number | null;
+  userName?: string | null;
   notes?: string | null;
   createdAt: string;
 }
@@ -124,6 +126,7 @@ export interface CreateOrderBody {
   expectedDelivery?: string | null;
   poNumber?: string;
   orderedBy?: string;
+  userId?: number | null;
   notes?: string;
 }
 
@@ -133,6 +136,7 @@ export interface UpdateOrderBody {
   expectedDelivery?: string | null;
   poNumber?: string | null;
   orderedBy?: string | null;
+  userId?: number | null;
   notes?: string | null;
 }
 
@@ -146,6 +150,8 @@ export interface InventoryReceived {
   unit: string;
   receivedDate: string;
   receivedBy?: string | null;
+  userId?: number | null;
+  userName?: string | null;
   poNumber?: string | null;
   orderId?: number | null;
   notes?: string | null;
@@ -159,6 +165,7 @@ export interface CreateReceivedBody {
   unit?: string;
   receivedDate: string;
   receivedBy?: string;
+  userId?: number | null;
   poNumber?: string;
   orderId?: number | null;
   notes?: string;
@@ -174,6 +181,8 @@ export interface ChemicalPull {
   unit: string;
   pulledAt: string;
   initials: string;
+  userId?: number | null;
+  userName?: string | null;
   notes?: string | null;
   createdAt: string;
 }
@@ -185,6 +194,7 @@ export interface CreatePullBody {
   unit?: string;
   pulledAt?: string;
   initials: string;
+  userId?: number | null;
   notes?: string;
 }
 
@@ -234,6 +244,9 @@ export interface InventoryCount {
   /** ISO date string for the Monday of the week */
   weekOf: string;
   submittedBy: string;
+  userId?: number | null;
+  /** Resolved employee name from the users table (null for legacy rows) */
+  userName?: string | null;
   notes?: string | null;
   submittedAt: string;
   entries: InventoryEntry[];

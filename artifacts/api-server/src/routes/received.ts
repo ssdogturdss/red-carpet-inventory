@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { inventoryReceivedTable, chemicalOrdersTable, storesTable, chemicalsTable } from "@workspace/db";
+import { inventoryReceivedTable, chemicalOrdersTable, storesTable, chemicalsTable, usersTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 
 const router = Router();
@@ -25,6 +25,8 @@ router.get("/received", async (req, res) => {
       unit: inventoryReceivedTable.unit,
       receivedDate: inventoryReceivedTable.receivedDate,
       receivedBy: inventoryReceivedTable.receivedBy,
+      userId: inventoryReceivedTable.userId,
+      userName: usersTable.name,
       poNumber: inventoryReceivedTable.poNumber,
       orderId: inventoryReceivedTable.orderId,
       notes: inventoryReceivedTable.notes,
@@ -33,6 +35,7 @@ router.get("/received", async (req, res) => {
     .from(inventoryReceivedTable)
     .innerJoin(storesTable, eq(inventoryReceivedTable.storeId, storesTable.id))
     .innerJoin(chemicalsTable, eq(inventoryReceivedTable.chemicalId, chemicalsTable.id))
+    .leftJoin(usersTable, eq(inventoryReceivedTable.userId, usersTable.id))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(inventoryReceivedTable.receivedDate))
     .limit(limit);
@@ -41,10 +44,11 @@ router.get("/received", async (req, res) => {
 });
 
 router.post("/received", async (req, res) => {
-  const { storeId, chemicalId, quantityReceived, unit, receivedDate, receivedBy, poNumber, orderId, notes } =
+  const { storeId, chemicalId, quantityReceived, unit, receivedDate, receivedBy, poNumber, orderId, notes, userId } =
     req.body as {
       storeId: number; chemicalId: number; quantityReceived: number; unit?: string;
       receivedDate: string; receivedBy?: string; poNumber?: string; orderId?: number; notes?: string;
+      userId?: number | null;
     };
 
   const [record] = await db
@@ -56,6 +60,7 @@ router.post("/received", async (req, res) => {
       unit: unit ?? "gallons",
       receivedDate,
       receivedBy: receivedBy ?? null,
+      userId: userId ?? null,
       poNumber: poNumber ?? null,
       orderId: orderId ? Number(orderId) : null,
       notes: notes ?? null,
@@ -71,8 +76,11 @@ router.post("/received", async (req, res) => {
 
   const [store] = await db.select({ name: storesTable.name }).from(storesTable).where(eq(storesTable.id, record.storeId));
   const [chemical] = await db.select({ name: chemicalsTable.name }).from(chemicalsTable).where(eq(chemicalsTable.id, record.chemicalId));
+  const [user] = record.userId
+    ? await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, record.userId))
+    : [{ name: null }];
 
-  res.json({ ...record, storeName: store?.name ?? "", chemicalName: chemical?.name ?? "", createdAt: record.createdAt.toISOString() });
+  res.json({ ...record, storeName: store?.name ?? "", chemicalName: chemical?.name ?? "", userName: user?.name ?? null, createdAt: record.createdAt.toISOString() });
 });
 
 router.delete("/received/:receivedId", async (req, res) => {

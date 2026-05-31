@@ -312,6 +312,13 @@ export const GetInventoryCountsResponseItem = zod.object({
   storeName: zod.string(),
   weekOf: zod.string().describe("ISO date string for the Monday of the week"),
   submittedBy: zod.string(),
+  userId: zod.number().nullish(),
+  userName: zod
+    .string()
+    .nullish()
+    .describe(
+      "Resolved employee name from the users table (null for legacy rows)",
+    ),
   notes: zod.string().nullish(),
   submittedAt: zod.string(),
   entries: zod.array(
@@ -357,6 +364,13 @@ export const GetInventoryCountResponse = zod.object({
   storeName: zod.string(),
   weekOf: zod.string().describe("ISO date string for the Monday of the week"),
   submittedBy: zod.string(),
+  userId: zod.number().nullish(),
+  userName: zod
+    .string()
+    .nullish()
+    .describe(
+      "Resolved employee name from the users table (null for legacy rows)",
+    ),
   notes: zod.string().nullish(),
   submittedAt: zod.string(),
   entries: zod.array(
@@ -538,6 +552,8 @@ export const GetOrdersResponseItem = zod.object({
   status: zod.string(),
   poNumber: zod.string().nullish(),
   orderedBy: zod.string().nullish(),
+  userId: zod.number().nullish(),
+  userName: zod.string().nullish(),
   notes: zod.string().nullish(),
   createdAt: zod.string(),
 });
@@ -555,6 +571,7 @@ export const CreateOrderBody = zod.object({
   expectedDelivery: zod.string().nullish(),
   poNumber: zod.string().optional(),
   orderedBy: zod.string().optional(),
+  userId: zod.number().nullish(),
   notes: zod.string().optional(),
 });
 
@@ -571,6 +588,8 @@ export const CreateOrderResponse = zod.object({
   status: zod.string(),
   poNumber: zod.string().nullish(),
   orderedBy: zod.string().nullish(),
+  userId: zod.number().nullish(),
+  userName: zod.string().nullish(),
   notes: zod.string().nullish(),
   createdAt: zod.string(),
 });
@@ -588,6 +607,7 @@ export const UpdateOrderBody = zod.object({
   expectedDelivery: zod.string().nullish(),
   poNumber: zod.string().nullish(),
   orderedBy: zod.string().nullish(),
+  userId: zod.number().nullish(),
   notes: zod.string().nullish(),
 });
 
@@ -604,6 +624,8 @@ export const UpdateOrderResponse = zod.object({
   status: zod.string(),
   poNumber: zod.string().nullish(),
   orderedBy: zod.string().nullish(),
+  userId: zod.number().nullish(),
+  userName: zod.string().nullish(),
   notes: zod.string().nullish(),
   createdAt: zod.string(),
 });
@@ -639,6 +661,8 @@ export const GetReceivedResponseItem = zod.object({
   unit: zod.string(),
   receivedDate: zod.string(),
   receivedBy: zod.string().nullish(),
+  userId: zod.number().nullish(),
+  userName: zod.string().nullish(),
   poNumber: zod.string().nullish(),
   orderId: zod.number().nullish(),
   notes: zod.string().nullish(),
@@ -656,6 +680,7 @@ export const LogReceivedBody = zod.object({
   unit: zod.string().optional(),
   receivedDate: zod.string(),
   receivedBy: zod.string().optional(),
+  userId: zod.number().nullish(),
   poNumber: zod.string().optional(),
   orderId: zod.number().nullish(),
   notes: zod.string().optional(),
@@ -671,6 +696,8 @@ export const LogReceivedResponse = zod.object({
   unit: zod.string(),
   receivedDate: zod.string(),
   receivedBy: zod.string().nullish(),
+  userId: zod.number().nullish(),
+  userName: zod.string().nullish(),
   poNumber: zod.string().nullish(),
   orderId: zod.number().nullish(),
   notes: zod.string().nullish(),
@@ -708,6 +735,8 @@ export const GetPullsResponseItem = zod.object({
   unit: zod.string(),
   pulledAt: zod.string(),
   initials: zod.string(),
+  userId: zod.number().nullish(),
+  userName: zod.string().nullish(),
   notes: zod.string().nullish(),
   createdAt: zod.string(),
 });
@@ -723,6 +752,7 @@ export const LogPullBody = zod.object({
   unit: zod.string().optional(),
   pulledAt: zod.string().optional(),
   initials: zod.string(),
+  userId: zod.number().nullish(),
   notes: zod.string().optional(),
 });
 
@@ -736,6 +766,8 @@ export const LogPullResponse = zod.object({
   unit: zod.string(),
   pulledAt: zod.string(),
   initials: zod.string(),
+  userId: zod.number().nullish(),
+  userName: zod.string().nullish(),
   notes: zod.string().nullish(),
   createdAt: zod.string(),
 });

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { chemicalPullsTable, storesTable, chemicalsTable } from "@workspace/db";
+import { chemicalPullsTable, storesTable, chemicalsTable, usersTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 
 const router = Router();
@@ -25,12 +25,15 @@ router.get("/pulls", async (req, res) => {
       unit: chemicalPullsTable.unit,
       pulledAt: chemicalPullsTable.pulledAt,
       initials: chemicalPullsTable.initials,
+      userId: chemicalPullsTable.userId,
+      userName: usersTable.name,
       notes: chemicalPullsTable.notes,
       createdAt: chemicalPullsTable.createdAt,
     })
     .from(chemicalPullsTable)
     .innerJoin(storesTable, eq(chemicalPullsTable.storeId, storesTable.id))
     .innerJoin(chemicalsTable, eq(chemicalPullsTable.chemicalId, chemicalsTable.id))
+    .leftJoin(usersTable, eq(chemicalPullsTable.userId, usersTable.id))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(chemicalPullsTable.pulledAt))
     .limit(limit);
@@ -43,7 +46,7 @@ router.get("/pulls", async (req, res) => {
 });
 
 router.post("/pulls", async (req, res) => {
-  const { storeId, chemicalId, quantity, unit, pulledAt, initials, notes } = req.body as {
+  const { storeId, chemicalId, quantity, unit, pulledAt, initials, notes, userId } = req.body as {
     storeId: number;
     chemicalId: number;
     quantity: number;
@@ -51,6 +54,7 @@ router.post("/pulls", async (req, res) => {
     pulledAt?: string;
     initials: string;
     notes?: string;
+    userId?: number | null;
   };
 
   const [record] = await db
@@ -62,17 +66,22 @@ router.post("/pulls", async (req, res) => {
       unit: unit ?? "gallons",
       pulledAt: pulledAt ? new Date(pulledAt) : new Date(),
       initials: initials.trim().toUpperCase(),
+      userId: userId ?? null,
       notes: notes ?? null,
     })
     .returning();
 
   const [store] = await db.select({ name: storesTable.name }).from(storesTable).where(eq(storesTable.id, record!.storeId));
   const [chemical] = await db.select({ name: chemicalsTable.name }).from(chemicalsTable).where(eq(chemicalsTable.id, record!.chemicalId));
+  const [user] = record!.userId
+    ? await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, record!.userId))
+    : [{ name: null }];
 
   res.json({
     ...record,
     storeName: store?.name ?? "",
     chemicalName: chemical?.name ?? "",
+    userName: user?.name ?? null,
     pulledAt: record!.pulledAt.toISOString(),
     createdAt: record!.createdAt.toISOString(),
   });

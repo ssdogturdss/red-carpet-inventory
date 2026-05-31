@@ -1266,6 +1266,12 @@ components:
         orderedBy:
           type: string
           nullable: true
+        userId:
+          type: integer
+          nullable: true
+        userName:
+          type: string
+          nullable: true
         notes:
           type: string
           nullable: true
@@ -1303,6 +1309,9 @@ components:
           type: string
         orderedBy:
           type: string
+        userId:
+          type: integer
+          nullable: true
         notes:
           type: string
       required:
@@ -1326,6 +1335,9 @@ components:
           nullable: true
         orderedBy:
           type: string
+          nullable: true
+        userId:
+          type: integer
           nullable: true
         notes:
           type: string
@@ -1351,6 +1363,12 @@ components:
         receivedDate:
           type: string
         receivedBy:
+          type: string
+          nullable: true
+        userId:
+          type: integer
+          nullable: true
+        userName:
           type: string
           nullable: true
         poNumber:
@@ -1390,6 +1408,9 @@ components:
           type: string
         receivedBy:
           type: string
+        userId:
+          type: integer
+          nullable: true
         poNumber:
           type: string
         orderId:
@@ -1424,6 +1445,12 @@ components:
           type: string
         initials:
           type: string
+        userId:
+          type: integer
+          nullable: true
+        userName:
+          type: string
+          nullable: true
         notes:
           type: string
           nullable: true
@@ -1456,6 +1483,9 @@ components:
           type: string
         initials:
           type: string
+        userId:
+          type: integer
+          nullable: true
         notes:
           type: string
       required:
@@ -1572,6 +1602,13 @@ components:
           description: ISO date string for the Monday of the week
         submittedBy:
           type: string
+        userId:
+          type: integer
+          nullable: true
+        userName:
+          type: string
+          nullable: true
+          description: Resolved employee name from the users table (null for legacy rows)
         notes:
           type: string
           nullable: true
