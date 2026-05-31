@@ -24,6 +24,7 @@ import {
 } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 function getWeekOf(date: Date = new Date()): string {
   const d = new Date(date);
@@ -45,6 +46,8 @@ export default function ScanScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+
+  const { user: currentUser } = useCurrentUser();
 
   const { data: stores } = useGetStores();
   const { data: chemicals } = useGetChemicals();
@@ -166,6 +169,7 @@ export default function ScanScreen() {
           storeId: selectedStoreId,
           weekOf: currentWeek,
           submittedBy: submittedBy.trim(),
+          userId: (currentUser && currentUser.id > 0) ? currentUser.id : null,
           entries: entries.map((e) => ({ chemicalId: e.chemicalId, quantity: e.quantity })),
         },
       });

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createHash, randomBytes } from "crypto";
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { db } from "@workspace/db";
 import { usersTable, storesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
@@ -7,8 +7,80 @@ import { logger } from "../lib/logger";
 
 const router = Router();
 
+const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1, keylen: 64 } as const;
+const SCRYPT_PREFIX = "scrypt:";
+
 function hashPin(pin: string): string {
+  const salt = randomBytes(16).toString("hex");
+  const hash = scryptSync(pin, salt, SCRYPT_PARAMS.keylen, { N: SCRYPT_PARAMS.N, r: SCRYPT_PARAMS.r, p: SCRYPT_PARAMS.p });
+  return `${SCRYPT_PREFIX}${salt}:${hash.toString("hex")}`;
+}
+
+function legacyHashPin(pin: string): string {
   return createHash("sha256").update(pin).digest("hex");
+}
+
+function verifyPin(pin: string, storedHash: string): boolean {
+  if (storedHash.startsWith(SCRYPT_PREFIX)) {
+    const rest = storedHash.slice(SCRYPT_PREFIX.length);
+    const colonIdx = rest.indexOf(":");
+    if (colonIdx === -1) return false;
+    const salt = rest.slice(0, colonIdx);
+    const expected = rest.slice(colonIdx + 1);
+    const actual = scryptSync(pin, salt, SCRYPT_PARAMS.keylen, { N: SCRYPT_PARAMS.N, r: SCRYPT_PARAMS.r, p: SCRYPT_PARAMS.p });
+    try {
+      return timingSafeEqual(Buffer.from(expected, "hex"), actual);
+    } catch {
+      return false;
+    }
+  }
+  return timingSafeEqual(
+    Buffer.from(storedHash, "hex"),
+    Buffer.from(legacyHashPin(pin), "hex")
+  );
+}
+
+interface LoginAttemptState {
+  failures: number;
+  windowStart: number;
+  lockedUntil: number;
+}
+const loginAttempts = new Map<number, LoginAttemptState>();
+const MAX_FAILURES = 5;
+const WINDOW_MS = 15 * 60 * 1000;
+const LOCKOUT_MS = 15 * 60 * 1000;
+
+function checkRateLimit(userId: number): { allowed: boolean; retryAfterMs?: number } {
+  const now = Date.now();
+  const state = loginAttempts.get(userId);
+  if (!state) return { allowed: true };
+  if (state.lockedUntil > now) {
+    return { allowed: false, retryAfterMs: state.lockedUntil - now };
+  }
+  if (now - state.windowStart > WINDOW_MS) {
+    loginAttempts.delete(userId);
+    return { allowed: true };
+  }
+  if (state.failures >= MAX_FAILURES) {
+    state.lockedUntil = now + LOCKOUT_MS;
+    return { allowed: false, retryAfterMs: LOCKOUT_MS };
+  }
+  return { allowed: true };
+}
+
+function recordFailure(userId: number): void {
+  const now = Date.now();
+  const state = loginAttempts.get(userId);
+  if (!state || now - state.windowStart > WINDOW_MS) {
+    loginAttempts.set(userId, { failures: 1, windowStart: now, lockedUntil: 0 });
+    return;
+  }
+  state.failures += 1;
+  if (state.failures >= MAX_FAILURES) state.lockedUntil = now + LOCKOUT_MS;
+}
+
+function clearFailures(userId: number): void {
+  loginAttempts.delete(userId);
 }
 
 function generateToken(): string {
@@ -43,24 +115,39 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     return;
   }
 
+  const rateCheck = checkRateLimit(userId);
+  if (!rateCheck.allowed) {
+    const retryAfterSec = Math.ceil((rateCheck.retryAfterMs ?? LOCKOUT_MS) / 1000);
+    res.status(429).json({ success: false, error: "Too many attempts. Try again later.", retryAfterSec });
+    return;
+  }
+
   const [user] = await db
     .select()
     .from(usersTable)
     .where(and(eq(usersTable.id, userId), eq(usersTable.active, true)));
 
   if (!user) {
+    recordFailure(userId);
     res.json({ success: false });
     return;
   }
 
-  if (user.pinHash !== hashPin(pin)) {
+  if (!verifyPin(pin, user.pinHash)) {
+    recordFailure(userId);
     req.log.warn({ userId }, "Failed login attempt");
     res.json({ success: false });
     return;
   }
 
+  clearFailures(userId);
+
   const token = generateToken();
-  await db.update(usersTable).set({ sessionToken: token }).where(eq(usersTable.id, user.id));
+  const updates: Partial<typeof usersTable.$inferInsert> = { sessionToken: token };
+  if (!user.pinHash.startsWith(SCRYPT_PREFIX)) {
+    updates.pinHash = hashPin(pin);
+  }
+  await db.update(usersTable).set(updates).where(eq(usersTable.id, user.id));
 
   const [storeRow] = user.storeId
     ? await db.select({ name: storesTable.name }).from(storesTable).where(eq(storesTable.id, user.storeId))

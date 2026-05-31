@@ -19,6 +19,7 @@ import {
   useGetPulls, useLogPull, useDeletePull,
 } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 type SubTab = "history" | "onhand" | "received" | "orders" | "online" | "reports";
 
@@ -280,6 +281,7 @@ function OnHandSection({ colors, insets }: { colors: ReturnType<typeof import("@
 function ReceivedSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: ReturnType<typeof useSafeAreaInsets> }) {
   const webBottom = Platform.OS === "web" ? 34 : 0;
   const qc = useQueryClient();
+  const { user: currentUser } = useCurrentUser();
   const [storeFilter, setStoreFilter] = useState<number | undefined>();
   const [filterOpen, setFilterOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
@@ -308,7 +310,7 @@ function ReceivedSection({ colors, insets }: { colors: ReturnType<typeof import(
       Alert.alert("Missing Fields", "Store, product, quantity, and date are required.");
       return;
     }
-    await logReceived({ data: { storeId: formStore, chemicalId: formProduct, quantityReceived: parseFloat(formQty), receivedDate: formDate, receivedBy: formBy || undefined, poNumber: formPO || undefined, notes: formNotes || undefined } });
+    await logReceived({ data: { storeId: formStore, chemicalId: formProduct, quantityReceived: parseFloat(formQty), receivedDate: formDate, receivedBy: formBy || undefined, userId: (currentUser && currentUser.id > 0) ? currentUser.id : null, poNumber: formPO || undefined, notes: formNotes || undefined } });
     qc.invalidateQueries();
     resetForm();
     setFormOpen(false);
@@ -458,6 +460,7 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; color: string; 
 function OrdersSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: ReturnType<typeof useSafeAreaInsets> }) {
   const webBottom = Platform.OS === "web" ? 34 : 0;
   const qc = useQueryClient();
+  const { user: currentUser } = useCurrentUser();
   const [storeFilter, setStoreFilter] = useState<number | undefined>();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -486,7 +489,7 @@ function OrdersSection({ colors, insets }: { colors: ReturnType<typeof import("@
   const resetForm = () => { setFormStore(undefined); setFormProduct(undefined); setFormQty(""); setFormDate(todayString()); setFormDelivery(""); setFormPO(""); setFormBy(""); setFormNotes(""); };
   const handleSubmit = async () => {
     if (!formStore || !formProduct || !formQty || !formDate) { Alert.alert("Missing Fields", "Store, product, quantity, and order date are required."); return; }
-    await createOrder({ data: { storeId: formStore, chemicalId: formProduct, quantityOrdered: parseFloat(formQty), orderDate: formDate, expectedDelivery: formDelivery || undefined, poNumber: formPO || undefined, orderedBy: formBy || undefined, notes: formNotes || undefined } });
+    await createOrder({ data: { storeId: formStore, chemicalId: formProduct, quantityOrdered: parseFloat(formQty), orderDate: formDate, expectedDelivery: formDelivery || undefined, poNumber: formPO || undefined, orderedBy: formBy || undefined, userId: (currentUser && currentUser.id > 0) ? currentUser.id : null, notes: formNotes || undefined } });
     qc.invalidateQueries();
     resetForm();
     setFormOpen(false);
@@ -690,6 +693,7 @@ function nowISOLocal(): string {
 function OnlineSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: ReturnType<typeof useSafeAreaInsets> }) {
   const webBottom = Platform.OS === "web" ? 34 : 0;
   const qc = useQueryClient();
+  const { user: currentUser } = useCurrentUser();
   const [storeFilter, setStoreFilter] = useState<number | undefined>();
   const [filterOpen, setFilterOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
@@ -727,6 +731,7 @@ function OnlineSection({ colors, insets }: { colors: ReturnType<typeof import("@
         quantity: parseFloat(formQty),
         pulledAt: formPulledAt ? new Date(formPulledAt).toISOString() : undefined,
         initials: formInitials.trim().toUpperCase(),
+        userId: (currentUser && currentUser.id > 0) ? currentUser.id : null,
         notes: formNotes || undefined,
       },
     });
