@@ -6,6 +6,7 @@ const DRAFT_KEY = "@rci_draft_v1";
 export interface CountDraft {
   storeId: number | null;
   storeName: string;
+  weekOf: string;
   submittedBy: string;
   quantities: Record<number, string>;
   notes: string;

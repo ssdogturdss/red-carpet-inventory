@@ -228,7 +228,7 @@ export default function DashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
       >
         {/* Pending queue */}
-        {isOnline && queue.length > 0 && (
+        {queue.length > 0 && (
           <>
             <SectionHeader icon="clock" label="Pending Sync" />
             <TouchableOpacity style={styles.queueCard} onPress={() => syncQueue()}>

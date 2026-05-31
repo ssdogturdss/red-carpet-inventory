@@ -60,6 +60,7 @@ export default function CountScreen() {
   const [submittedBy, setSubmittedBy] = useState("");
   const [quantities, setQuantities] = useState<Record<number, string>>({});
   const [notes, setNotes] = useState("");
+  const [weekOf, setWeekOf] = useState(getWeekOf());
   const [showStorePicker, setShowStorePicker] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [savedOffline, setSavedOffline] = useState(false);
@@ -95,6 +96,7 @@ export default function CountScreen() {
             setSubmittedBy(pendingDraft.submittedBy);
             setQuantities(pendingDraft.quantities);
             setNotes(pendingDraft.notes);
+            if (pendingDraft.weekOf) setWeekOf(pendingDraft.weekOf);
             hasInteracted.current = true;
           },
         },
@@ -108,11 +110,12 @@ export default function CountScreen() {
     scheduleSave({
       storeId: selectedStoreId,
       storeName,
+      weekOf,
       submittedBy,
       quantities,
       notes,
     });
-  }, [selectedStoreId, submittedBy, quantities, notes]);
+  }, [selectedStoreId, submittedBy, quantities, notes, weekOf]);
 
   const handleQuantityChange = useCallback((chemicalId: number, value: string) => {
     hasInteracted.current = true;
@@ -153,7 +156,7 @@ export default function CountScreen() {
 
     const submitData = {
       storeId: selectedStoreId,
-      weekOf: currentWeek,
+      weekOf,
       submittedBy: submittedBy.trim(),
       notes: notes.trim() || null,
       entries,
