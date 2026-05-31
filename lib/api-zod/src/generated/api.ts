@@ -975,6 +975,38 @@ export const GetNotificationStatusResponse = zod.object({
 });
 
 /**
+ * @summary Register or update a device push token (upsert by token value)
+ */
+export const RegisterPushTokenBody = zod.object({
+  token: zod.string(),
+  platform: zod.string().optional(),
+  label: zod.string().optional(),
+  minSeverity: zod.string().optional(),
+});
+
+export const RegisterPushTokenResponse = zod.object({
+  id: zod.number(),
+  token: zod.string(),
+  platform: zod.string(),
+  label: zod.string().nullish(),
+  minSeverity: zod.string(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Remove a device push token registration
+ */
+export const UnregisterPushTokenParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const UnregisterPushTokenResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
+});
+
+/**
  * @summary List all registered push notification devices (requires admin PIN header)
  */
 export const GetAdminPushTokensHeader = zod.object({

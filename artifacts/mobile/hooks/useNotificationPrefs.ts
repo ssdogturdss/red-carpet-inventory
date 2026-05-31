@@ -18,7 +18,7 @@ async function updateTokenSeverity(minSeverity: MinSeverity) {
   try {
     const tokenData = await Notifications.getExpoPushTokenAsync();
     const token = tokenData.data;
-    await fetch(`${BASE_URL}/api/push/register`, {
+    await fetch(`${BASE_URL}/api/push-tokens`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, platform: Platform.OS, minSeverity }),

@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, ActivityIndicator, Platform, Modal,
@@ -1237,6 +1238,16 @@ export default function AdminScreen() {
   const [adminPin, setAdminPin] = useState("");
   const [activeSection, setActiveSection] = useState<Section>("alerts");
   const webTop = Platform.OS === "web" ? 67 : 0;
+  const { fromNotification } = useLocalSearchParams<{ fromNotification?: string }>();
+
+  // When tapping a push notification, switch to the Alerts section
+  useFocusEffect(
+    useCallback(() => {
+      if (fromNotification === "1") {
+        setActiveSection("alerts");
+      }
+    }, [fromNotification])
+  );
 
   if (!authenticated) {
     return (

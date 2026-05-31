@@ -270,76 +270,78 @@ async function generateAlerts(
       const storeName = storeRow?.name ?? "";
       const chemName = chem?.name ?? "";
 
-      // Send email + SMS to active contacts for this store or global contacts
-      try {
-        const contacts = await db
-          .select({
-            email: notificationContactsTable.email,
-            phone: notificationContactsTable.phone,
-          })
-          .from(notificationContactsTable)
-          .where(
-            and(
-              or(
-                eq(notificationContactsTable.storeId, storeId),
-                isNull(notificationContactsTable.storeId)
-              ),
-              eq(notificationContactsTable.active, true),
-              or(
-                eq(notificationContactsTable.severity, "all"),
-                eq(notificationContactsTable.severity, severity)
+      // Fire-and-forget: email + SMS — do NOT await, submission must not block on network I/O
+      void (async () => {
+        try {
+          const contacts = await db
+            .select({
+              email: notificationContactsTable.email,
+              phone: notificationContactsTable.phone,
+            })
+            .from(notificationContactsTable)
+            .where(
+              and(
+                or(
+                  eq(notificationContactsTable.storeId, storeId),
+                  isNull(notificationContactsTable.storeId)
+                ),
+                eq(notificationContactsTable.active, true),
+                or(
+                  eq(notificationContactsTable.severity, "all"),
+                  eq(notificationContactsTable.severity, severity)
+                )
               )
-            )
-          );
+            );
 
-        if (contacts.length > 0) {
-          const emailRecipients = contacts.map((c) => c.email).filter((e): e is string => !!e);
-          if (emailRecipients.length > 0) {
-            await sendAlertEmail(emailRecipients, storeName, chemName, severity, direction, percentChange);
-          }
+          if (contacts.length > 0) {
+            const emailRecipients = contacts.map((c) => c.email).filter((e): e is string => !!e);
+            if (emailRecipients.length > 0) {
+              await sendAlertEmail(emailRecipients, storeName, chemName, severity, direction, percentChange);
+            }
 
-          const phoneRecipients = contacts.map((c) => c.phone).filter((p): p is string => !!p);
-          if (phoneRecipients.length > 0) {
-            await sendAlertSms(phoneRecipients, storeName, chemName, severity, direction, percentChange);
+            const phoneRecipients = contacts.map((c) => c.phone).filter((p): p is string => !!p);
+            if (phoneRecipients.length > 0) {
+              await sendAlertSms(phoneRecipients, storeName, chemName, severity, direction, percentChange);
+            }
           }
+        } catch (notifyErr) {
+          req.log.warn({ notifyErr }, "Email/SMS notification failed (non-fatal)");
         }
-      } catch (notifyErr) {
-        req.log.warn({ notifyErr }, "Email/SMS notification failed (non-fatal)");
-      }
+      })();
 
-      // Send push notifications independently — filter by each device's minSeverity preference
-      try {
-        const tokenRows = await db
-          .select({ token: pushTokensTable.token, minSeverity: pushTokensTable.minSeverity })
-          .from(pushTokensTable);
+      // Fire-and-forget: push — do NOT await, submission must not block on Expo API
+      void (async () => {
+        try {
+          const tokenRows = await db
+            .select({ token: pushTokensTable.token, minSeverity: pushTokensTable.minSeverity })
+            .from(pushTokensTable);
 
-        // "warning" preference = receive all alerts; "critical" = critical alerts only
-        const filteredTokens = tokenRows
-          .filter((t) => severity === "critical" || t.minSeverity === "warning")
-          .map((t) => t.token);
+          // "warning" preference = receive all alerts; "critical" = critical alerts only
+          const filteredTokens = tokenRows
+            .filter((t) => severity === "critical" || t.minSeverity === "warning")
+            .map((t) => t.token);
 
-        if (filteredTokens.length > 0) {
-          const result = await sendAlertPush(
-            filteredTokens,
-            storeName,
-            chemName,
-            severity,
-            direction,
-            percentChange,
-            undefined,
-            req.log
-          );
-          // Auto-remove any tokens the Expo service says are no longer registered
-          if (result.invalidTokens.length > 0) {
+          if (filteredTokens.length > 0) {
+            const result = await sendAlertPush(
+              filteredTokens,
+              storeName,
+              chemName,
+              severity,
+              direction,
+              percentChange,
+              undefined,
+              req.log
+            );
+            // Auto-remove any tokens the Expo service flags as no longer registered
             for (const badToken of result.invalidTokens) {
               await db.delete(pushTokensTable).where(eq(pushTokensTable.token, badToken));
               req.log.warn({ token: badToken }, "Removed invalid (unregistered) push token");
             }
           }
+        } catch (pushErr) {
+          req.log.warn({ pushErr }, "Push notification failed (non-fatal)");
         }
-      } catch (pushErr) {
-        req.log.warn({ pushErr }, "Push notification failed (non-fatal)");
-      }
+      })();
     }
   }
 }

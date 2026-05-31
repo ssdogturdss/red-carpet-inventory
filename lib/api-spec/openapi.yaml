@@ -1034,6 +1034,60 @@ paths:
                     type: boolean
                 required: [configured, emailConfigured, smsConfigured]
 
+  /push-tokens:
+    post:
+      operationId: registerPushToken
+      tags: [notifications]
+      summary: Register or update a device push token (upsert by token value)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                platform:
+                  type: string
+                label:
+                  type: string
+                minSeverity:
+                  type: string
+              required: [token]
+      responses:
+        "200":
+          description: Token updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushToken"
+        "201":
+          description: Token created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PushToken"
+
+  /push-tokens/{token}:
+    delete:
+      operationId: unregisterPushToken
+      tags: [notifications]
+      summary: Remove a device push token registration
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
   /admin/push-tokens:
     get:
       operationId: getAdminPushTokens

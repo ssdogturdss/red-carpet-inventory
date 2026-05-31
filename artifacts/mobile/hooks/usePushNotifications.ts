@@ -38,7 +38,7 @@ async function registerToken(minSeverity: string = "warning") {
   const token = tokenData.data;
 
   try {
-    await fetch(`${BASE_URL}/api/push/register`, {
+    await fetch(`${BASE_URL}/api/push-tokens`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, platform: Platform.OS, minSeverity }),
@@ -62,7 +62,11 @@ export function usePushNotifications() {
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener((_response) => {
       try {
-        router.navigate("/(tabs)/admin");
+        // Navigate to admin tab and signal it to show the Alerts section
+        router.navigate({
+          pathname: "/(tabs)/admin",
+          params: { fromNotification: "1" },
+        } as Parameters<typeof router.navigate>[0]);
       } catch {
       }
     });

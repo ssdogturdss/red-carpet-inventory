@@ -510,3 +510,10 @@ export type GetNotificationStatus200 = {
   emailConfigured: boolean;
   smsConfigured: boolean;
 };
+
+export type RegisterPushTokenBody = {
+  token: string;
+  platform?: string;
+  label?: string;
+  minSeverity?: string;
+};
