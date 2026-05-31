@@ -51,7 +51,7 @@ export default function DashboardScreen() {
   const router = useRouter();
   const currentWeek = getWeekOf();
   const { showOnboarding, completeOnboarding, openOnboarding } = useOnboarding();
-  const { queue, isOnline, syncing, syncQueue } = useOfflineQueue();
+  const { queue, isOnline, syncing, syncResult, syncQueue } = useOfflineQueue();
 
   const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useGetAlertsSummary();
   const { data: stores } = useGetStores();
@@ -201,7 +201,7 @@ export default function DashboardScreen() {
     <View style={styles.container}>
       <OnboardingModal visible={showOnboarding} onComplete={completeOnboarding} />
 
-      <OfflineBanner isOnline={isOnline} queueLength={queue.length} syncing={syncing} onSync={syncQueue} />
+      <OfflineBanner isOnline={isOnline} queueLength={queue.length} syncing={syncing} syncResult={syncResult} onSync={syncQueue} />
 
       <View style={styles.header}>
         <View style={styles.headerTop}>

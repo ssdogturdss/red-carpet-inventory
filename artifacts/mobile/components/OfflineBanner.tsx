@@ -1,8 +1,8 @@
 import React from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Platform } from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Animated, Platform } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import colors from "@/constants/colors";
+import type { SyncResult } from "@/hooks/useOfflineQueue";
 
 const c = colors.light;
 
@@ -10,17 +10,32 @@ interface OfflineBannerProps {
   isOnline: boolean;
   queueLength: number;
   syncing: boolean;
+  syncResult?: SyncResult;
   onSync: () => void;
 }
 
-export function OfflineBanner({ isOnline, queueLength, syncing, onSync }: OfflineBannerProps) {
-  const insets = useSafeAreaInsets();
+export function OfflineBanner({ isOnline, queueLength, syncing, syncResult, onSync }: OfflineBannerProps) {
+  if (syncResult === "success") {
+    return (
+      <View style={[s.banner, s.success]}>
+        <Feather name="check-circle" size={14} color={c.success} />
+        <Text style={[s.text, { color: c.success }]}>All counts synced successfully ✓</Text>
+      </View>
+    );
+  }
 
-  if (isOnline && queueLength === 0) return null;
+  if (syncResult === "error") {
+    return (
+      <View style={[s.banner, s.error]}>
+        <Feather name="alert-circle" size={14} color={c.critical} />
+        <Text style={[s.text, { color: c.critical }]}>Sync failed — will retry when online</Text>
+      </View>
+    );
+  }
 
   if (!isOnline) {
     return (
-      <View style={[s.banner, s.offline, { paddingTop: insets.top > 0 ? 0 : 0 }]}>
+      <View style={[s.banner, s.offline]}>
         <Feather name="wifi-off" size={14} color="#fff" />
         <Text style={s.text}>
           You're offline — counts will be saved locally and synced automatically.
@@ -34,7 +49,9 @@ export function OfflineBanner({ isOnline, queueLength, syncing, onSync }: Offlin
     return (
       <View style={[s.banner, s.pending]}>
         <Feather name="clock" size={14} color={c.offlineText} />
-        <Text style={[s.text, { color: c.offlineText }]}>{queueLength} count{queueLength > 1 ? "s" : ""} waiting to sync</Text>
+        <Text style={[s.text, { color: c.offlineText }]}>
+          {queueLength} count{queueLength > 1 ? "s" : ""} waiting to sync
+        </Text>
         <TouchableOpacity style={s.syncBtn} onPress={onSync} disabled={syncing}>
           {syncing ? (
             <ActivityIndicator size="small" color={c.offlineText} />
@@ -58,13 +75,21 @@ const s = StyleSheet.create({
     gap: 8,
     zIndex: 100,
   },
-  offline: {
-    backgroundColor: c.navyLight,
-  },
+  offline: { backgroundColor: c.navyLight },
   pending: {
     backgroundColor: c.offlineSurface,
     borderBottomWidth: 1,
     borderBottomColor: c.offlineBorder,
+  },
+  success: {
+    backgroundColor: c.successSurface,
+    borderBottomWidth: 1,
+    borderBottomColor: c.successBorder,
+  },
+  error: {
+    backgroundColor: c.criticalSurface,
+    borderBottomWidth: 1,
+    borderBottomColor: c.criticalBorder,
   },
   text: {
     flex: 1,

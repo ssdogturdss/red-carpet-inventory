@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { useGetStores, useGetChemicals, useSubmitInventoryCount } from "@workspa
 import { useColors } from "@/hooks/useColors";
 import { useQueryClient } from "@tanstack/react-query";
 import { useOfflineQueue, isNetworkError } from "@/hooks/useOfflineQueue";
+import { useDraft } from "@/hooks/useDraft";
 import { OfflineBanner } from "@/components/OfflineBanner";
 
 function getWeekOf(date: Date = new Date()): string {
@@ -32,11 +33,21 @@ function formatWeekOf(weekOf: string): string {
   return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function formatDraftAge(savedAt: number): string {
+  const mins = Math.round((Date.now() - savedAt) / 60000);
+  if (mins < 2) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.round(hrs / 24)}d ago`;
+}
+
 export default function CountScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const { isOnline, queue, syncing, syncQueue, addToQueue } = useOfflineQueue();
+  const { isOnline, queue, syncing, syncResult, syncQueue, addToQueue } = useOfflineQueue();
+  const { pendingDraft, draftChecked, scheduleSave, discardDraft, clearOnSubmit } = useDraft();
 
   const { data: stores } = useGetStores();
   const { data: chemicals } = useGetChemicals();
@@ -50,6 +61,7 @@ export default function CountScreen() {
   const [submitted, setSubmitted] = useState(false);
   const [savedOffline, setSavedOffline] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const hasInteracted = useRef(false);
 
   const currentWeek = getWeekOf();
   const selectedStore = stores?.find((s) => s.id === selectedStoreId);
@@ -60,8 +72,65 @@ export default function CountScreen() {
   }).length;
   const progressPct = totalChemicals > 0 ? filledCount / totalChemicals : 0;
 
+  useEffect(() => {
+    if (!draftChecked || !pendingDraft) return;
+    const storeName = pendingDraft.storeName || "unknown store";
+    const age = formatDraftAge(pendingDraft.savedAt);
+    Alert.alert(
+      "Restore Draft?",
+      `You have an unsaved count for ${storeName} from ${age}. Restore it?`,
+      [
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => discardDraft(),
+        },
+        {
+          text: "Restore",
+          onPress: () => {
+            if (pendingDraft.storeId !== null) setSelectedStoreId(pendingDraft.storeId);
+            setSubmittedBy(pendingDraft.submittedBy);
+            setQuantities(pendingDraft.quantities);
+            setNotes(pendingDraft.notes);
+            hasInteracted.current = true;
+          },
+        },
+      ]
+    );
+  }, [draftChecked]);
+
+  useEffect(() => {
+    if (!hasInteracted.current) return;
+    const storeName = stores?.find((s) => s.id === selectedStoreId)?.name ?? "";
+    scheduleSave({
+      storeId: selectedStoreId,
+      storeName,
+      submittedBy,
+      quantities,
+      notes,
+    });
+  }, [selectedStoreId, submittedBy, quantities, notes]);
+
   const handleQuantityChange = useCallback((chemicalId: number, value: string) => {
+    hasInteracted.current = true;
     setQuantities((prev) => ({ ...prev, [chemicalId]: value }));
+  }, []);
+
+  const handleStoreSelect = useCallback((storeId: number) => {
+    hasInteracted.current = true;
+    setSelectedStoreId(storeId);
+    setShowStorePicker(false);
+    Haptics.selectionAsync();
+  }, []);
+
+  const handleSubmittedByChange = useCallback((v: string) => {
+    hasInteracted.current = true;
+    setSubmittedBy(v);
+  }, []);
+
+  const handleNotesChange = useCallback((v: string) => {
+    hasInteracted.current = true;
+    setNotes(v);
   }, []);
 
   const handleSubmit = async () => {
@@ -95,6 +164,7 @@ export default function CountScreen() {
           setTimeout(() => reject(new Error("Network timeout: server did not respond")), 25000)
         ),
       ]);
+      await clearOnSubmit();
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries();
       setSubmitted(true);
@@ -116,6 +186,7 @@ export default function CountScreen() {
                   notes: submitData.notes,
                   entries,
                 });
+                await clearOnSubmit();
                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                 setSavedOffline(true);
               },
@@ -137,6 +208,7 @@ export default function CountScreen() {
     setSubmittedBy("");
     setQuantities({});
     setNotes("");
+    hasInteracted.current = false;
   };
 
   const webTop = Platform.OS === "web" ? 67 : 0;
@@ -180,8 +252,6 @@ export default function CountScreen() {
       letterSpacing: 1,
       marginBottom: 10,
       marginTop: 20,
-      flexDirection: "row",
-      alignItems: "center",
     },
     sectionLabel: { fontSize: 12, fontFamily: "Inter_700Bold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 1 },
     sectionDivider: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 20, marginBottom: 10 },
@@ -337,7 +407,7 @@ export default function CountScreen() {
 
   return (
     <View style={styles.container}>
-      <OfflineBanner isOnline={isOnline} queueLength={queue.length} syncing={syncing} onSync={syncQueue} />
+      <OfflineBanner isOnline={isOnline} queueLength={queue.length} syncing={syncing} syncResult={syncResult} onSync={syncQueue} />
       <View style={styles.header}>
         <Text style={styles.headerLabel}>Red Carpet Inventory</Text>
         <Text style={styles.headerTitle}>Count Entry</Text>
@@ -375,11 +445,7 @@ export default function CountScreen() {
               <TouchableOpacity
                 key={store.id}
                 style={[styles.storeItem, idx === (stores?.length ?? 0) - 1 && { borderBottomWidth: 0 }]}
-                onPress={() => {
-                  setSelectedStoreId(store.id);
-                  setShowStorePicker(false);
-                  Haptics.selectionAsync();
-                }}
+                onPress={() => handleStoreSelect(store.id)}
               >
                 <Text style={[styles.storeItemText, selectedStoreId === store.id && styles.storeItemActive]}>
                   {store.name}
@@ -399,7 +465,7 @@ export default function CountScreen() {
           placeholder="Enter your name..."
           placeholderTextColor={colors.mutedForeground}
           value={submittedBy}
-          onChangeText={setSubmittedBy}
+          onChangeText={handleSubmittedByChange}
           returnKeyType="done"
         />
 
@@ -439,7 +505,7 @@ export default function CountScreen() {
           placeholder="Add observations, special conditions, or instructions..."
           placeholderTextColor={colors.mutedForeground}
           value={notes}
-          onChangeText={setNotes}
+          onChangeText={handleNotesChange}
           multiline
           numberOfLines={4}
           returnKeyType="default"

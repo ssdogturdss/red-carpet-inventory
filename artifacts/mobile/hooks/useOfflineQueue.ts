@@ -64,11 +64,15 @@ async function pingServer(): Promise<boolean> {
   }
 }
 
+export type SyncResult = "success" | "error" | null;
+
 export function useOfflineQueue() {
   const [queue, setQueue] = useState<QueuedCount[]>([]);
   const [isOnline, setIsOnline] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<SyncResult>(null);
   const syncingRef = useRef(false);
+  const resultTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(async () => {
     const q = await getQueue();
@@ -76,10 +80,17 @@ export function useOfflineQueue() {
     return q;
   }, []);
 
+  const showResult = useCallback((result: SyncResult) => {
+    if (resultTimer.current) clearTimeout(resultTimer.current);
+    setSyncResult(result);
+    resultTimer.current = setTimeout(() => setSyncResult(null), 3500);
+  }, []);
+
   const doSync = useCallback(async (items: QueuedCount[]) => {
     if (!items.length || syncingRef.current) return;
     syncingRef.current = true;
     setSyncing(true);
+    let failed = false;
     for (const item of items) {
       try {
         const resp = await fetch(`${BASE_URL}/api/inventory`, {
@@ -96,16 +107,19 @@ export function useOfflineQueue() {
         if (resp.ok) {
           await removeFromQueue(item.id);
         } else {
+          failed = true;
           break;
         }
       } catch {
+        failed = true;
         break;
       }
     }
-    await refresh();
+    const remaining = await refresh();
     syncingRef.current = false;
     setSyncing(false);
-  }, [refresh]);
+    showResult(failed || remaining.length > 0 ? "error" : "success");
+  }, [refresh, showResult]);
 
   const syncQueue = useCallback(async () => {
     const items = await getQueue();
@@ -154,5 +168,5 @@ export function useOfflineQueue() {
     }
   }, []);
 
-  return { queue, isOnline, syncing, syncQueue, addToQueue, refresh };
+  return { queue, isOnline, syncing, syncResult, syncQueue, addToQueue, refresh };
 }

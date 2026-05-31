@@ -5,9 +5,10 @@ import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { Platform, StyleSheet, View, Text, useColorScheme } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 
 function NativeTabLayout() {
   return (
@@ -42,6 +43,8 @@ function ClassicTabLayout() {
   const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
+  const { queue } = useOfflineQueue();
+  const queueBadge = queue.length > 0 ? queue.length : undefined;
 
   return (
     <Tabs
@@ -87,6 +90,8 @@ function ClassicTabLayout() {
         name="count"
         options={{
           title: "Count",
+          tabBarBadge: queueBadge,
+          tabBarBadgeStyle: { backgroundColor: colors.warning, fontSize: 10 },
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="list.clipboard.fill" tintColor={color} size={22} />
