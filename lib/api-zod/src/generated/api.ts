@@ -1041,3 +1041,35 @@ export const DeleteAdminPushTokenResponse = zod.object({
   success: zod.boolean(),
   id: zod.number(),
 });
+
+/**
+ * @summary List push delivery receipts (requires admin PIN header)
+ */
+export const getAdminPushReceiptsQueryLimitDefault = 100;
+
+export const GetAdminPushReceiptsQueryParams = zod.object({
+  limit: zod.coerce.number().default(getAdminPushReceiptsQueryLimitDefault),
+  status: zod.enum(["pending", "ok", "error"]).optional(),
+});
+
+export const GetAdminPushReceiptsHeader = zod.object({
+  "x-admin-pin": zod.string(),
+});
+
+export const GetAdminPushReceiptsResponseItem = zod.object({
+  id: zod.number(),
+  ticketId: zod.string(),
+  token: zod.string(),
+  alertId: zod.number().nullish(),
+  storeName: zod.string(),
+  chemicalName: zod.string(),
+  severity: zod.string(),
+  status: zod.enum(["pending", "ok", "error"]),
+  errorCode: zod.string().nullish(),
+  sentAt: zod.string(),
+  checkedAt: zod.string().nullish(),
+  createdAt: zod.string(),
+});
+export const GetAdminPushReceiptsResponse = zod.array(
+  GetAdminPushReceiptsResponseItem,
+);

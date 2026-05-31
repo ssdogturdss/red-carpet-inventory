@@ -438,6 +438,30 @@ export interface PushToken {
   updatedAt: string;
 }
 
+export type PushReceiptStatus =
+  (typeof PushReceiptStatus)[keyof typeof PushReceiptStatus];
+
+export const PushReceiptStatus = {
+  pending: "pending",
+  ok: "ok",
+  error: "error",
+} as const;
+
+export interface PushReceipt {
+  id: number;
+  ticketId: string;
+  token: string;
+  alertId?: number | null;
+  storeName: string;
+  chemicalName: string;
+  severity: string;
+  status: PushReceiptStatus;
+  errorCode?: string | null;
+  sentAt: string;
+  checkedAt?: string | null;
+  createdAt: string;
+}
+
 export type GetInventoryCountsParams = {
   storeId?: number;
   /**
@@ -517,3 +541,17 @@ export type RegisterPushTokenBody = {
   label?: string;
   minSeverity?: string;
 };
+
+export type GetAdminPushReceiptsParams = {
+  limit?: number;
+  status?: GetAdminPushReceiptsStatus;
+};
+
+export type GetAdminPushReceiptsStatus =
+  (typeof GetAdminPushReceiptsStatus)[keyof typeof GetAdminPushReceiptsStatus];
+
+export const GetAdminPushReceiptsStatus = {
+  pending: "pending",
+  ok: "ok",
+  error: "error",
+} as const;

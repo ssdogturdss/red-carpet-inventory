@@ -1,5 +1,5 @@
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
-const EXPO_RECEIPTS_URL = "https://exp.host/--/api/v2/push/getReceipts";
+export const EXPO_RECEIPTS_URL = "https://exp.host/--/api/v2/push/getReceipts";
 
 interface ExpoPushMessage {
   to: string;
@@ -10,14 +10,14 @@ interface ExpoPushMessage {
   priority?: "default" | "normal" | "high";
 }
 
-interface ExpoTicket {
+export interface ExpoTicket {
   status: "ok" | "error";
   id?: string;
   message?: string;
   details?: { error?: string };
 }
 
-interface ExpoReceipt {
+export interface ExpoReceipt {
   status: "ok" | "error";
   message?: string;
   details?: { error?: string };
@@ -25,44 +25,10 @@ interface ExpoReceipt {
 
 export interface PushSendResult {
   ok: boolean;
-  ticketIds: string[];
+  /** Successful tickets — maps Expo ticketId → device token for DB persistence */
+  tickets: Array<{ ticketId: string; token: string }>;
+  /** Tokens that Expo rejected immediately as DeviceNotRegistered */
   invalidTokens: string[];
-}
-
-async function checkReceipts(ticketIds: string[], logger?: { warn: (obj: unknown, msg: string) => void }): Promise<void> {
-  if (ticketIds.length === 0) return;
-  try {
-    const res = await fetch(EXPO_RECEIPTS_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "Accept-Encoding": "gzip, deflate",
-      },
-      body: JSON.stringify({ ids: ticketIds }),
-      signal: AbortSignal.timeout(10_000),
-    });
-
-    if (!res.ok) return;
-
-    const json = await res.json() as { data?: Record<string, ExpoReceipt> };
-    const receipts = json.data ?? {};
-
-    for (const [ticketId, receipt] of Object.entries(receipts)) {
-      if (receipt.status === "error") {
-        const errorCode = receipt.details?.error ?? "unknown";
-        if (logger) {
-          logger.warn(
-            { ticketId, errorCode, message: receipt.message },
-            `Expo push receipt error: ${errorCode}`
-          );
-        } else {
-          console.warn(`Expo push receipt error [${ticketId}]: ${errorCode} — ${receipt.message ?? ""}`);
-        }
-      }
-    }
-  } catch {
-  }
 }
 
 export async function sendExpoPush(
@@ -71,9 +37,9 @@ export async function sendExpoPush(
   body: string,
   data?: Record<string, unknown>,
   opts?: { sound?: "default" | null; priority?: "default" | "normal" | "high" },
-  logger?: { warn: (obj: unknown, msg: string) => void }
+  log?: { warn: (obj: unknown, msg: string) => void }
 ): Promise<PushSendResult> {
-  if (tokens.length === 0) return { ok: true, ticketIds: [], invalidTokens: [] };
+  if (tokens.length === 0) return { ok: true, tickets: [], invalidTokens: [] };
 
   const messages: ExpoPushMessage[] = tokens.map((token) => ({
     to: token,
@@ -96,44 +62,33 @@ export async function sendExpoPush(
       signal: AbortSignal.timeout(10_000),
     });
 
-    if (!res.ok) return { ok: false, ticketIds: [], invalidTokens: [] };
+    if (!res.ok) return { ok: false, tickets: [], invalidTokens: [] };
 
     const json = await res.json() as { data?: ExpoTicket[] };
-    const tickets: ExpoTicket[] = json.data ?? [];
+    const rawTickets: ExpoTicket[] = json.data ?? [];
 
-    const ticketIds: string[] = [];
+    const tickets: Array<{ ticketId: string; token: string }> = [];
     const invalidTokens: string[] = [];
 
-    tickets.forEach((ticket, i) => {
+    rawTickets.forEach((ticket, i) => {
+      const token = tokens[i];
       if (ticket.status === "ok" && ticket.id) {
-        ticketIds.push(ticket.id);
+        tickets.push({ ticketId: ticket.id, token: token ?? "" });
       } else if (ticket.status === "error") {
         const errorCode = ticket.details?.error ?? "unknown";
-        const token = tokens[i];
-        if (logger) {
-          logger.warn(
-            { errorCode, message: ticket.message, token },
-            `Expo push ticket error: ${errorCode}`
-          );
-        } else {
-          console.warn(`Expo push ticket error: ${errorCode} — ${ticket.message ?? ""}`);
-        }
+        log?.warn(
+          { errorCode, message: ticket.message, token },
+          `Expo push ticket error: ${errorCode}`
+        );
         if (errorCode === "DeviceNotRegistered" && token) {
           invalidTokens.push(token);
         }
       }
     });
 
-    // Fire-and-forget receipt check after a short delay (non-blocking)
-    if (ticketIds.length > 0) {
-      setTimeout(() => {
-        void checkReceipts(ticketIds, logger);
-      }, 5_000);
-    }
-
-    return { ok: true, ticketIds, invalidTokens };
+    return { ok: true, tickets, invalidTokens };
   } catch {
-    return { ok: false, ticketIds: [], invalidTokens: [] };
+    return { ok: false, tickets: [], invalidTokens: [] };
   }
 }
 
@@ -145,9 +100,9 @@ export async function sendAlertPush(
   direction: "over" | "under" | string,
   pctChange: number,
   extra?: Record<string, unknown>,
-  logger?: { warn: (obj: unknown, msg: string) => void }
+  log?: { warn: (obj: unknown, msg: string) => void }
 ): Promise<PushSendResult> {
-  if (tokens.length === 0) return { ok: true, ticketIds: [], invalidTokens: [] };
+  if (tokens.length === 0) return { ok: true, tickets: [], invalidTokens: [] };
 
   const dirLabel = direction === "over" ? "high usage" : "low quantity";
   const isCritical = severity === "critical";
@@ -167,6 +122,6 @@ export async function sendAlertPush(
       sound: isCritical ? "default" : null,
       priority: isCritical ? "high" : "normal",
     },
-    logger
+    log
   );
 }

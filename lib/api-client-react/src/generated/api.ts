@@ -33,6 +33,7 @@ import type {
   CreateUserBody,
   DeleteNotificationContact200,
   DeleteResult,
+  GetAdminPushReceiptsParams,
   GetAlertsParams,
   GetChemicalReportParams,
   GetInventoryCountsParams,
@@ -52,6 +53,7 @@ import type {
   NotificationContact,
   OnHandResult,
   PublicBotSettings,
+  PushReceipt,
   PushToken,
   RegisterPushTokenBody,
   ScanInventorySheetBody,
@@ -4567,3 +4569,103 @@ export const useDeleteAdminPushToken = <
 > => {
   return useMutation(getDeleteAdminPushTokenMutationOptions(options));
 };
+
+/**
+ * @summary List push delivery receipts (requires admin PIN header)
+ */
+export const getGetAdminPushReceiptsUrl = (
+  params?: GetAdminPushReceiptsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/push-receipts?${stringifiedParams}`
+    : `/api/admin/push-receipts`;
+};
+
+export const getAdminPushReceipts = async (
+  params?: GetAdminPushReceiptsParams,
+  options?: RequestInit,
+): Promise<PushReceipt[]> => {
+  return customFetch<PushReceipt[]>(getGetAdminPushReceiptsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminPushReceiptsQueryKey = (
+  params?: GetAdminPushReceiptsParams,
+) => {
+  return [`/api/admin/push-receipts`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetAdminPushReceiptsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminPushReceipts>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetAdminPushReceiptsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminPushReceipts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAdminPushReceiptsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAdminPushReceipts>>
+  > = ({ signal }) =>
+    getAdminPushReceipts(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminPushReceipts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminPushReceiptsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminPushReceipts>>
+>;
+export type GetAdminPushReceiptsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List push delivery receipts (requires admin PIN header)
+ */
+
+export function useGetAdminPushReceipts<
+  TData = Awaited<ReturnType<typeof getAdminPushReceipts>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetAdminPushReceiptsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminPushReceipts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminPushReceiptsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}

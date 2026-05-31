@@ -20,12 +20,13 @@ import {
   useTestNotificationContact, useGetNotificationStatus,
   useGetAdminUsers, useCreateAdminUser, useUpdateAdminUser, useDeleteAdminUser,
   useGetAdminPushTokens, useDeleteAdminPushToken,
+  useGetAdminPushReceipts,
 } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 import { EmptyState } from "@/components/EmptyState";
 import { PinScreen } from "@/components/PinScreen";
 
-type Section = "alerts" | "stores" | "products" | "counts" | "notifications" | "bot" | "users" | "devices";
+type Section = "alerts" | "stores" | "products" | "counts" | "notifications" | "bot" | "users" | "devices" | "receipts";
 
 function formatWeekOf(weekOf: string) {
   const d = new Date(weekOf + "T00:00:00");
@@ -1230,6 +1231,92 @@ function DevicesSection({ colors, insets, adminPin }: { colors: ReturnType<typeo
   );
 }
 
+// ─── Receipts Section ────────────────────────────────────────────────────────
+function ReceiptsSection({ colors, insets, adminPin }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: { bottom: number }; adminPin: string }) {
+  const headers = { "x-admin-pin": adminPin };
+  const reqOpts = { headers } as RequestInit;
+  const { data: receipts, isLoading, refetch } = useGetAdminPushReceipts(
+    { limit: 100 },
+    { request: reqOpts }
+  );
+  const [refreshing, setRefreshing] = useState(false);
+  const webBottom = Platform.OS === "web" ? 34 : 0;
+
+  const onRefresh = useCallback(async () => { setRefreshing(true); await refetch(); setRefreshing(false); }, [refetch]);
+
+  function statusIcon(status: string): React.ComponentProps<typeof Feather>["name"] {
+    if (status === "ok") return "check-circle";
+    if (status === "error") return "x-circle";
+    return "clock";
+  }
+
+  function statusColor(status: string, colors: ReturnType<typeof import("@/hooks/useColors").useColors>) {
+    if (status === "ok") return "#16a34a";
+    if (status === "error") return colors.critical;
+    return colors.warning ?? colors.mutedForeground;
+  }
+
+  const s = StyleSheet.create({
+    scroll: { flex: 1 },
+    content: { padding: 16, paddingBottom: insets.bottom + 80 + webBottom },
+    card: {
+      backgroundColor: colors.card, borderRadius: colors.radius, borderWidth: 1,
+      borderColor: colors.border, marginBottom: 8, padding: 12,
+      flexDirection: "row", alignItems: "flex-start", gap: 10,
+    },
+    iconWrap: { paddingTop: 1 },
+    info: { flex: 1 },
+    storeName: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    chemical: { fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 1 },
+    meta: { fontSize: 11, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 3 },
+    errorCode: { fontSize: 11, fontFamily: "Inter_500Medium", color: colors.critical, marginTop: 2 },
+    empty: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 40 },
+    banner: {
+      flexDirection: "row", alignItems: "center", gap: 8,
+      backgroundColor: colors.card, borderRadius: colors.radius, borderWidth: 1,
+      borderColor: colors.border, padding: 12, marginBottom: 14,
+    },
+    bannerText: { fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, flex: 1 },
+  });
+
+  const data = receipts ?? [];
+  const pending = data.filter((r) => r.status === "pending").length;
+  const errors = data.filter((r) => r.status === "error").length;
+
+  return (
+    <ScrollView style={s.scroll} contentContainerStyle={s.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+    >
+      <View style={s.banner}>
+        <Feather name="activity" size={16} color={colors.primary} />
+        <Text style={s.bannerText}>
+          {data.length} total · {pending} pending · {errors} {errors !== 1 ? "errors" : "error"}
+          {"\n"}Receipts checked 15 min after send
+        </Text>
+      </View>
+
+      {isLoading ? <ActivityIndicator color={colors.primary} /> : !data.length ? (
+        <EmptyState icon="mail" title="No delivery receipts" subtitle="Receipts appear here after push notifications are sent when alerts are generated." compact />
+      ) : data.map((r) => (
+        <View key={r.id} style={s.card}>
+          <View style={s.iconWrap}>
+            <Feather name={statusIcon(r.status)} size={18} color={statusColor(r.status, colors)} />
+          </View>
+          <View style={s.info}>
+            <Text style={s.storeName}>{r.storeName}</Text>
+            <Text style={s.chemical}>{r.chemicalName} · {r.severity === "critical" ? "🚨 Critical" : "⚠️ Warning"}</Text>
+            <Text style={s.meta}>
+              Sent {new Date(r.sentAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+              {r.checkedAt ? ` · Checked ${new Date(r.checkedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : " · Awaiting check"}
+            </Text>
+            {r.errorCode ? <Text style={s.errorCode}>{r.errorCode}</Text> : null}
+          </View>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
 // ─── Main Admin Screen ───────────────────────────────────────────────────────
 export default function AdminScreen() {
   const colors = useColors();
@@ -1266,6 +1353,7 @@ export default function AdminScreen() {
     { key: "users", label: "Users", icon: "users" },
     { key: "notifications", label: "Notify", icon: "bell" },
     { key: "devices", label: "Devices", icon: "smartphone" },
+    { key: "receipts", label: "Receipts", icon: "activity" },
     { key: "bot", label: "Bot", icon: "cpu" },
   ];
 
@@ -1324,6 +1412,7 @@ export default function AdminScreen() {
         {activeSection === "users" && <UsersSection colors={colors} insets={insets} adminPin={adminPin} />}
         {activeSection === "notifications" && <NotificationsSection colors={colors} insets={insets} />}
         {activeSection === "devices" && <DevicesSection colors={colors} insets={insets} adminPin={adminPin} />}
+        {activeSection === "receipts" && <ReceiptsSection colors={colors} insets={insets} adminPin={adminPin} />}
         {activeSection === "bot" && <BotSection colors={colors} insets={insets} adminPin={adminPin} />}
       </View>
     </View>

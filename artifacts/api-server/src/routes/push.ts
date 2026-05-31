@@ -1,6 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { db } from "@workspace/db";
-import { pushTokensTable } from "@workspace/db";
+import { pushTokensTable, pushReceiptsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 
 const router = Router();
@@ -112,6 +112,20 @@ router.delete("/admin/push-tokens/:id", requireAdminPin, async (req, res) => {
   }
   await db.delete(pushTokensTable).where(eq(pushTokensTable.id, id));
   res.json({ success: true, id });
+});
+
+router.get("/admin/push-receipts", requireAdminPin, async (req, res) => {
+  const limit = Math.min(Number(req.query["limit"] ?? 100), 500);
+  const status = req.query["status"] as string | undefined;
+
+  const rows = await db
+    .select()
+    .from(pushReceiptsTable)
+    .orderBy(desc(pushReceiptsTable.sentAt))
+    .limit(limit);
+
+  const filtered = status ? rows.filter((r) => r.status === status) : rows;
+  res.json(filtered);
 });
 
 export default router;

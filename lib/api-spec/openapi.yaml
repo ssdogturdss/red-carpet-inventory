@@ -1133,6 +1133,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/DeleteResult"
 
+  /admin/push-receipts:
+    get:
+      operationId: getAdminPushReceipts
+      tags: [admin]
+      summary: List push delivery receipts (requires admin PIN header)
+      parameters:
+        - name: x-admin-pin
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, ok, error]
+      responses:
+        "200":
+          description: List of push delivery receipts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PushReceipt"
+
 components:
   schemas:
     BotSettings:
@@ -2109,3 +2140,45 @@ components:
         - minSeverity
         - createdAt
         - updatedAt
+
+    PushReceipt:
+      type: object
+      properties:
+        id:
+          type: integer
+        ticketId:
+          type: string
+        token:
+          type: string
+        alertId:
+          type: integer
+          nullable: true
+        storeName:
+          type: string
+        chemicalName:
+          type: string
+        severity:
+          type: string
+        status:
+          type: string
+          enum: [pending, ok, error]
+        errorCode:
+          type: string
+          nullable: true
+        sentAt:
+          type: string
+        checkedAt:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - ticketId
+        - token
+        - storeName
+        - chemicalName
+        - severity
+        - status
+        - sentAt
+        - createdAt

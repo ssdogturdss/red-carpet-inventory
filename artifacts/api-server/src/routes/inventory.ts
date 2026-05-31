@@ -7,6 +7,8 @@ import {
   chemicalsTable,
   alertsTable,
   usersTable,
+  pushTokensTable,
+  pushReceiptsTable,
 } from "@workspace/db";
 import { eq, and, desc, sql, or, isNull } from "drizzle-orm";
 import { SubmitInventoryCountBody } from "@workspace/api-zod";
@@ -14,7 +16,6 @@ import { notificationContactsTable } from "@workspace/db";
 import { sendAlertEmail } from "../services/email";
 import { sendAlertSms } from "../services/sms";
 import { sendAlertPush } from "../services/push";
-import { pushTokensTable } from "@workspace/db";
 
 const router = Router();
 
@@ -251,7 +252,7 @@ async function generateAlerts(
       const direction: "over" | "under" = percentChange > 0 ? "under" : "over";
       const severity: "warning" | "critical" = absChange >= chemical.thresholdPercent * 2 ? "critical" : "warning";
 
-      await db.insert(alertsTable).values({
+      const [insertedAlert] = await db.insert(alertsTable).values({
         storeId,
         chemicalId: entry.chemicalId,
         weekOf,
@@ -261,7 +262,8 @@ async function generateAlerts(
         direction,
         severity,
         acknowledged: false,
-      });
+      }).returning({ id: alertsTable.id });
+      const alertId = insertedAlert?.id ?? null;
 
       req.log.info({ storeId, chemicalId: entry.chemicalId, percentChange, direction }, "Alert generated");
 
@@ -332,10 +334,25 @@ async function generateAlerts(
               undefined,
               req.log
             );
-            // Auto-remove any tokens the Expo service flags as no longer registered
+            // Auto-remove any tokens the Expo service flagged as immediately invalid
             for (const badToken of result.invalidTokens) {
               await db.delete(pushTokensTable).where(eq(pushTokensTable.token, badToken));
               req.log.warn({ token: badToken }, "Removed invalid (unregistered) push token");
+            }
+            // Persist ticket IDs so the receipt poller can confirm delivery later
+            if (result.tickets.length > 0) {
+              await db.insert(pushReceiptsTable).values(
+                result.tickets.map(({ ticketId, token }) => ({
+                  ticketId,
+                  token,
+                  alertId,
+                  storeName,
+                  chemicalName: chemName,
+                  severity,
+                  status: "pending" as const,
+                  sentAt: new Date(),
+                }))
+              );
             }
           }
         } catch (pushErr) {

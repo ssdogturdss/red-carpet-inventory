@@ -6,4 +6,5 @@ export * from "./alerts";
 export * from "./orders";
 export * from "./notifications";
 export * from "./push_tokens";
+export * from "./push_receipts";
 export * from "./bot_settings";
