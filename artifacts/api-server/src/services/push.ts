@@ -13,7 +13,8 @@ export async function sendExpoPush(
   tokens: string[],
   title: string,
   body: string,
-  data?: Record<string, unknown>
+  data?: Record<string, unknown>,
+  opts?: { sound?: "default" | null; priority?: "default" | "normal" | "high" }
 ): Promise<boolean> {
   if (tokens.length === 0) return true;
 
@@ -22,8 +23,8 @@ export async function sendExpoPush(
     title,
     body,
     data: data ?? {},
-    sound: "default",
-    priority: "high",
+    sound: opts?.sound ?? "default",
+    priority: opts?.priority ?? "high",
   }));
 
   try {
@@ -37,6 +38,18 @@ export async function sendExpoPush(
       body: JSON.stringify(messages),
       signal: AbortSignal.timeout(10_000),
     });
+
+    if (res.ok) {
+      try {
+        const json = await res.json() as { data?: Array<{ status: string; message?: string }> };
+        const failures = (json.data ?? []).filter((r) => r.status !== "ok");
+        if (failures.length > 0) {
+          console.warn("Expo push partial failures:", failures);
+        }
+      } catch {
+      }
+    }
+
     return res.ok;
   } catch {
     return false;
@@ -47,14 +60,30 @@ export async function sendAlertPush(
   tokens: string[],
   storeName: string,
   chemicalName: string,
-  severity: string,
-  direction: string,
+  severity: "warning" | "critical" | string,
+  direction: "over" | "under" | string,
   pctChange: number,
   extra?: Record<string, unknown>
 ): Promise<void> {
   if (tokens.length === 0) return;
-  const dir = direction === "over" ? "High Usage" : "Low Quantity";
-  const title = `[${severity.toUpperCase()}] ${storeName}`;
-  const body = `${chemicalName}: ${dir} — ${Math.abs(pctChange).toFixed(1)}% change this week.`;
-  await sendExpoPush(tokens, title, body, { severity, ...extra });
+
+  const dirLabel = direction === "over" ? "high usage" : "low quantity";
+  const isCritical = severity === "critical";
+
+  const title = isCritical
+    ? `🚨 Critical: ${storeName}`
+    : `⚠️ Warning: ${storeName}`;
+
+  const body = `${chemicalName} — ${dirLabel} (${Math.abs(pctChange).toFixed(1)}% change)`;
+
+  await sendExpoPush(
+    tokens,
+    title,
+    body,
+    { severity, direction, storeName, chemicalName, tab: "admin", ...extra },
+    {
+      sound: isCritical ? "default" : null,
+      priority: isCritical ? "high" : "normal",
+    }
+  );
 }

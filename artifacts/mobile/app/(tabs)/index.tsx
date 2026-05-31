@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Platform,
   RefreshControl,
+  Switch,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
@@ -20,6 +21,7 @@ import { OfflineBanner } from "@/components/OfflineBanner";
 import { OnboardingModal } from "@/components/OnboardingModal";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
+import { useNotificationPrefs } from "@/hooks/useNotificationPrefs";
 
 function getWeekOf(date: Date = new Date()): string {
   const d = new Date(date);
@@ -53,6 +55,7 @@ export default function DashboardScreen() {
   const currentWeek = getWeekOf();
   const { showOnboarding, completeOnboarding, openOnboarding } = useOnboarding();
   const { queue, isOnline, syncing, syncResult, syncQueue, refresh } = useOfflineQueue();
+  const { minSeverity, setMinSeverity, loaded: prefsLoaded } = useNotificationPrefs();
 
   useFocusEffect(React.useCallback(() => { refresh(); }, [refresh]));
 
@@ -185,6 +188,18 @@ export default function DashboardScreen() {
     badgeCriticalText: { color: colors.critical, fontSize: 12, fontFamily: "Inter_600SemiBold" },
     badgeWarning: { backgroundColor: colors.warningSurface, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 6 },
     badgeWarningText: { color: colors.warning, fontSize: 12, fontFamily: "Inter_600SemiBold" },
+    notifCard: {
+      backgroundColor: colors.card,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 14,
+      marginBottom: 10,
+    },
+    notifRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+    notifInfo: { flex: 1 },
+    notifTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    notifDesc: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 3, lineHeight: 17 },
     queueCard: {
       flexDirection: "row",
       alignItems: "center",
@@ -349,6 +364,31 @@ export default function DashboardScreen() {
             onAction={() => router.push("/(tabs)/count")}
             compact
           />
+        )}
+
+        {/* Notification Preferences — native only */}
+        {Platform.OS !== "web" && prefsLoaded && (
+          <>
+            <SectionHeader icon="bell" label="Notification Settings" />
+            <View style={styles.notifCard}>
+              <View style={styles.notifRow}>
+                <View style={styles.notifInfo}>
+                  <Text style={styles.notifTitle}>Critical Alerts Only</Text>
+                  <Text style={styles.notifDesc}>
+                    {minSeverity === "critical"
+                      ? "Only critical alerts will send a push notification."
+                      : "Both warning and critical alerts send push notifications."}
+                  </Text>
+                </View>
+                <Switch
+                  value={minSeverity === "critical"}
+                  onValueChange={(v) => setMinSeverity(v ? "critical" : "warning")}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor="#fff"
+                />
+              </View>
+            </View>
+          </>
         )}
       </ScrollView>
     </View>

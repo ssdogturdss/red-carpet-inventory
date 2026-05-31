@@ -428,6 +428,16 @@ export interface UpdateNotificationContactBody {
   severity?: string;
 }
 
+export interface PushToken {
+  id: number;
+  token: string;
+  platform: string;
+  label?: string | null;
+  minSeverity: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type GetInventoryCountsParams = {
   storeId?: number;
   /**

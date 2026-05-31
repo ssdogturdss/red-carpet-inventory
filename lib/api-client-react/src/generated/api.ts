@@ -52,6 +52,7 @@ import type {
   NotificationContact,
   OnHandResult,
   PublicBotSettings,
+  PushToken,
   ScanInventorySheetBody,
   ScanInventorySheetResult,
   Store,
@@ -4236,3 +4237,162 @@ export function useGetNotificationStatus<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List all registered push notification devices (requires admin PIN header)
+ */
+export const getGetAdminPushTokensUrl = () => {
+  return `/api/admin/push-tokens`;
+};
+
+export const getAdminPushTokens = async (
+  options?: RequestInit,
+): Promise<PushToken[]> => {
+  return customFetch<PushToken[]>(getGetAdminPushTokensUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminPushTokensQueryKey = () => {
+  return [`/api/admin/push-tokens`] as const;
+};
+
+export const getGetAdminPushTokensQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminPushTokens>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminPushTokens>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminPushTokensQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAdminPushTokens>>
+  > = ({ signal }) => getAdminPushTokens({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminPushTokens>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminPushTokensQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminPushTokens>>
+>;
+export type GetAdminPushTokensQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all registered push notification devices (requires admin PIN header)
+ */
+
+export function useGetAdminPushTokens<
+  TData = Awaited<ReturnType<typeof getAdminPushTokens>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminPushTokens>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminPushTokensQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Delete a registered push token (requires admin PIN header)
+ */
+export const getDeleteAdminPushTokenUrl = (tokenId: number) => {
+  return `/api/admin/push-tokens/${tokenId}`;
+};
+
+export const deleteAdminPushToken = async (
+  tokenId: number,
+  options?: RequestInit,
+): Promise<DeleteResult> => {
+  return customFetch<DeleteResult>(getDeleteAdminPushTokenUrl(tokenId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAdminPushTokenMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminPushToken>>,
+    TError,
+    { tokenId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAdminPushToken>>,
+  TError,
+  { tokenId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteAdminPushToken"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAdminPushToken>>,
+    { tokenId: number }
+  > = (props) => {
+    const { tokenId } = props ?? {};
+
+    return deleteAdminPushToken(tokenId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAdminPushTokenMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAdminPushToken>>
+>;
+
+export type DeleteAdminPushTokenMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a registered push token (requires admin PIN header)
+ */
+export const useDeleteAdminPushToken = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminPushToken>>,
+    TError,
+    { tokenId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAdminPushToken>>,
+  TError,
+  { tokenId: number },
+  TContext
+> => {
+  return useMutation(getDeleteAdminPushTokenMutationOptions(options));
+};

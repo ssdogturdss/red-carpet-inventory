@@ -5,6 +5,7 @@ export const pushTokensTable = pgTable("push_tokens", {
   token: text("token").notNull().unique(),
   platform: text("platform").notNull().default("unknown"),
   label: text("label"),
+  minSeverity: text("min_severity").notNull().default("warning"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

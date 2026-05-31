@@ -973,3 +973,39 @@ export const GetNotificationStatusResponse = zod.object({
   emailConfigured: zod.boolean(),
   smsConfigured: zod.boolean(),
 });
+
+/**
+ * @summary List all registered push notification devices (requires admin PIN header)
+ */
+export const GetAdminPushTokensHeader = zod.object({
+  "x-admin-pin": zod.string(),
+});
+
+export const GetAdminPushTokensResponseItem = zod.object({
+  id: zod.number(),
+  token: zod.string(),
+  platform: zod.string(),
+  label: zod.string().nullish(),
+  minSeverity: zod.string(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const GetAdminPushTokensResponse = zod.array(
+  GetAdminPushTokensResponseItem,
+);
+
+/**
+ * @summary Delete a registered push token (requires admin PIN header)
+ */
+export const DeleteAdminPushTokenParams = zod.object({
+  tokenId: zod.coerce.number(),
+});
+
+export const DeleteAdminPushTokenHeader = zod.object({
+  "x-admin-pin": zod.string(),
+});
+
+export const DeleteAdminPushTokenResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
+});

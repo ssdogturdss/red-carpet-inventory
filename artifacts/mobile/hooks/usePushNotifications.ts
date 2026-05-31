@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -12,12 +14,16 @@ Notifications.setNotificationHandler({
   }),
 });
 
+export const NOTIF_MIN_SEVERITY_KEY = "@rci_notif_min_severity";
+
 const BASE_URL =
-  typeof window !== "undefined"
+  typeof window !== "undefined" && process.env.EXPO_PUBLIC_DOMAIN
+    ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+    : typeof window !== "undefined"
     ? window.location.origin
     : `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 
-async function registerToken() {
+async function registerToken(minSeverity: string = "warning") {
   if (Platform.OS === "web") return;
 
   const { status: existing } = await Notifications.getPermissionsAsync();
@@ -35,7 +41,7 @@ async function registerToken() {
     await fetch(`${BASE_URL}/api/push/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, platform: Platform.OS }),
+      body: JSON.stringify({ token, platform: Platform.OS, minSeverity }),
     });
   } catch {
   }
@@ -44,14 +50,21 @@ async function registerToken() {
 export function usePushNotifications() {
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener = useRef<Notifications.EventSubscription | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    registerToken();
+    AsyncStorage.getItem(NOTIF_MIN_SEVERITY_KEY).then((saved) => {
+      registerToken(saved ?? "warning");
+    });
 
     notificationListener.current = Notifications.addNotificationReceivedListener(() => {
     });
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(() => {
+    responseListener.current = Notifications.addNotificationResponseReceivedListener((_response) => {
+      try {
+        router.navigate("/(tabs)/admin");
+      } catch {
+      }
     });
 
     return () => {

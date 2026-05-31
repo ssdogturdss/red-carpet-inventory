@@ -265,6 +265,11 @@ async function generateAlerts(
 
       req.log.info({ storeId, chemicalId: entry.chemicalId, percentChange, direction }, "Alert generated");
 
+      const [storeRow] = await db.select({ name: storesTable.name }).from(storesTable).where(eq(storesTable.id, storeId));
+      const chem = chemicals.find((c) => c.id === entry.chemicalId);
+      const storeName = storeRow?.name ?? "";
+      const chemName = chem?.name ?? "";
+
       // Send email + SMS to active contacts for this store or global contacts
       try {
         const contacts = await db
@@ -288,11 +293,6 @@ async function generateAlerts(
           );
 
         if (contacts.length > 0) {
-          const [store] = await db.select({ name: storesTable.name }).from(storesTable).where(eq(storesTable.id, storeId));
-          const chem = chemicals.find((c) => c.id === entry.chemicalId);
-          const storeName = store?.name ?? "";
-          const chemName = chem?.name ?? "";
-
           const emailRecipients = contacts.map((c) => c.email).filter((e): e is string => !!e);
           if (emailRecipients.length > 0) {
             await sendAlertEmail(emailRecipients, storeName, chemName, severity, direction, percentChange);
@@ -302,15 +302,27 @@ async function generateAlerts(
           if (phoneRecipients.length > 0) {
             await sendAlertSms(phoneRecipients, storeName, chemName, severity, direction, percentChange);
           }
-
-          const allTokens = await db.select({ token: pushTokensTable.token }).from(pushTokensTable);
-          const pushTokens = allTokens.map((t) => t.token);
-          if (pushTokens.length > 0) {
-            await sendAlertPush(pushTokens, storeName, chemName, severity, direction, percentChange);
-          }
         }
       } catch (notifyErr) {
-        req.log.warn({ notifyErr }, "Notification send failed (non-fatal)");
+        req.log.warn({ notifyErr }, "Email/SMS notification failed (non-fatal)");
+      }
+
+      // Send push notifications independently — filter by each device's minSeverity preference
+      try {
+        const tokenRows = await db
+          .select({ token: pushTokensTable.token, minSeverity: pushTokensTable.minSeverity })
+          .from(pushTokensTable);
+
+        // "warning" preference = receive all alerts; "critical" = critical alerts only
+        const filteredTokens = tokenRows
+          .filter((t) => severity === "critical" || t.minSeverity === "warning")
+          .map((t) => t.token);
+
+        if (filteredTokens.length > 0) {
+          await sendAlertPush(filteredTokens, storeName, chemName, severity, direction, percentChange);
+        }
+      } catch (pushErr) {
+        req.log.warn({ pushErr }, "Push notification failed (non-fatal)");
       }
     }
   }

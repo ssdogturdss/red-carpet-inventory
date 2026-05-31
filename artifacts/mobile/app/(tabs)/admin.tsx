@@ -18,12 +18,13 @@ import {
   useUpdateNotificationContact, useDeleteNotificationContact,
   useTestNotificationContact, useGetNotificationStatus,
   useGetAdminUsers, useCreateAdminUser, useUpdateAdminUser, useDeleteAdminUser,
+  useGetAdminPushTokens, useDeleteAdminPushToken,
 } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 import { EmptyState } from "@/components/EmptyState";
 import { PinScreen } from "@/components/PinScreen";
 
-type Section = "alerts" | "stores" | "products" | "counts" | "notifications" | "bot" | "users";
+type Section = "alerts" | "stores" | "products" | "counts" | "notifications" | "bot" | "users" | "devices";
 
 function formatWeekOf(weekOf: string) {
   const d = new Date(weekOf + "T00:00:00");
@@ -1144,6 +1145,90 @@ function BotSection({ colors, insets, adminPin }: { colors: ReturnType<typeof im
   );
 }
 
+// ─── Devices Section ─────────────────────────────────────────────────────────
+function DevicesSection({ colors, insets, adminPin }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: { bottom: number }; adminPin: string }) {
+  const qc = useQueryClient();
+  const headers = { "x-admin-pin": adminPin };
+  const reqOpts = { headers } as RequestInit;
+  const { data: tokens, isLoading, refetch } = useGetAdminPushTokens({ request: reqOpts });
+  const { mutateAsync: deleteToken } = useDeleteAdminPushToken({ request: reqOpts });
+  const [refreshing, setRefreshing] = useState(false);
+  const webBottom = Platform.OS === "web" ? 34 : 0;
+
+  const onRefresh = useCallback(async () => { setRefreshing(true); await refetch(); setRefreshing(false); }, [refetch]);
+
+  const confirmDelete = (id: number, label: string | null) => Alert.alert(
+    "Remove Device",
+    `Remove "${label ?? "this device"}" from push notifications?`,
+    [{ text: "Cancel", style: "cancel" }, {
+      text: "Remove", style: "destructive", onPress: async () => {
+        await deleteToken({ tokenId: id });
+        qc.invalidateQueries();
+      }
+    }]
+  );
+
+  function platformIcon(platform: string): React.ComponentProps<typeof Feather>["name"] {
+    if (platform === "ios") return "smartphone";
+    if (platform === "android") return "smartphone";
+    return "monitor";
+  }
+
+  const s = StyleSheet.create({
+    scroll: { flex: 1 },
+    content: { padding: 16, paddingBottom: insets.bottom + 80 + webBottom },
+    card: {
+      backgroundColor: colors.card, borderRadius: colors.radius, borderWidth: 1,
+      borderColor: colors.border, marginBottom: 10, padding: 14,
+      flexDirection: "row", alignItems: "center",
+    },
+    icon: { width: 38, height: 38, borderRadius: 10, backgroundColor: colors.secondary, alignItems: "center", justifyContent: "center", marginRight: 12 },
+    info: { flex: 1 },
+    label: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    meta: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 },
+    severity: { fontSize: 11, fontFamily: "Inter_500Medium", color: colors.mutedForeground, marginTop: 2 },
+    delBtn: { padding: 8, borderRadius: 8, backgroundColor: "#fef2f2" },
+    empty: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 40 },
+    countBanner: {
+      flexDirection: "row", alignItems: "center", gap: 8,
+      backgroundColor: colors.card, borderRadius: colors.radius, borderWidth: 1,
+      borderColor: colors.border, padding: 12, marginBottom: 14,
+    },
+    countText: { fontSize: 13, fontFamily: "Inter_500Medium", color: colors.foreground },
+  });
+
+  return (
+    <ScrollView style={s.scroll} contentContainerStyle={s.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+    >
+      <View style={s.countBanner}>
+        <Feather name="bell" size={16} color={colors.primary} />
+        <Text style={s.countText}>
+          {(tokens ?? []).length} device{(tokens ?? []).length !== 1 ? "s" : ""} registered for push notifications
+        </Text>
+      </View>
+
+      {isLoading ? <ActivityIndicator color={colors.primary} /> : !(tokens ?? []).length ? (
+        <EmptyState icon="smartphone" title="No devices registered" subtitle="Devices appear here after a user logs in to the app and grants notification permission." compact />
+      ) : (tokens ?? []).map((t) => (
+        <View key={t.id} style={s.card}>
+          <View style={s.icon}>
+            <Feather name={platformIcon(t.platform)} size={18} color={colors.primary} />
+          </View>
+          <View style={s.info}>
+            <Text style={s.label}>{t.label ?? t.platform}</Text>
+            <Text style={s.meta}>{t.platform} · Registered {new Date(t.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</Text>
+            <Text style={s.severity}>Min severity: {t.minSeverity === "critical" ? "Critical only" : "Warning + Critical"}</Text>
+          </View>
+          <TouchableOpacity style={s.delBtn} onPress={() => confirmDelete(t.id, t.label ?? null)}>
+            <Feather name="trash-2" size={16} color={colors.critical} />
+          </TouchableOpacity>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
 // ─── Main Admin Screen ───────────────────────────────────────────────────────
 export default function AdminScreen() {
   const colors = useColors();
@@ -1169,6 +1254,7 @@ export default function AdminScreen() {
     { key: "counts", label: "Counts", icon: "clipboard" },
     { key: "users", label: "Users", icon: "users" },
     { key: "notifications", label: "Notify", icon: "bell" },
+    { key: "devices", label: "Devices", icon: "smartphone" },
     { key: "bot", label: "Bot", icon: "cpu" },
   ];
 
@@ -1226,6 +1312,7 @@ export default function AdminScreen() {
         {activeSection === "counts" && <CountsSection colors={colors} insets={insets} />}
         {activeSection === "users" && <UsersSection colors={colors} insets={insets} adminPin={adminPin} />}
         {activeSection === "notifications" && <NotificationsSection colors={colors} insets={insets} />}
+        {activeSection === "devices" && <DevicesSection colors={colors} insets={insets} adminPin={adminPin} />}
         {activeSection === "bot" && <BotSection colors={colors} insets={insets} adminPin={adminPin} />}
       </View>
     </View>

@@ -1034,6 +1034,51 @@ paths:
                     type: boolean
                 required: [configured, emailConfigured, smsConfigured]
 
+  /admin/push-tokens:
+    get:
+      operationId: getAdminPushTokens
+      tags: [admin]
+      summary: List all registered push notification devices (requires admin PIN header)
+      parameters:
+        - name: x-admin-pin
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of registered push tokens
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PushToken"
+
+  /admin/push-tokens/{tokenId}:
+    delete:
+      operationId: deleteAdminPushToken
+      tags: [admin]
+      summary: Delete a registered push token (requires admin PIN header)
+      parameters:
+        - name: x-admin-pin
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
 components:
   schemas:
     BotSettings:
@@ -1984,3 +2029,29 @@ components:
           type: boolean
         severity:
           type: string
+
+    PushToken:
+      type: object
+      properties:
+        id:
+          type: integer
+        token:
+          type: string
+        platform:
+          type: string
+        label:
+          type: string
+          nullable: true
+        minSeverity:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - token
+        - platform
+        - minSeverity
+        - createdAt
+        - updatedAt
