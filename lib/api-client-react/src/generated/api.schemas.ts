@@ -24,6 +24,51 @@ export interface PublicBotSettings {
   greeting: string;
 }
 
+export interface UserPublic {
+  id: number;
+  name: string;
+  storeId?: number | null;
+  storeName?: string | null;
+  role: string;
+}
+
+export interface UserAdmin {
+  id: number;
+  name: string;
+  storeId?: number | null;
+  storeName?: string | null;
+  role: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface LoginBody {
+  userId: number;
+  pin: string;
+}
+
+export interface LoginResult {
+  success: boolean;
+  token?: string | null;
+  user?: UserPublic | null;
+}
+
+export interface CreateUserBody {
+  name: string;
+  pin: string;
+  storeId?: number | null;
+  role?: string;
+  active?: boolean;
+}
+
+export interface UpdateUserBody {
+  name?: string;
+  pin?: string | null;
+  storeId?: number | null;
+  role?: string;
+  active?: boolean;
+}
+
 export interface AdminAuthBody {
   pin: string;
 }
@@ -203,6 +248,7 @@ export interface SubmitInventoryCountBody {
   storeId: number;
   weekOf: string;
   submittedBy: string;
+  userId?: number | null;
   notes?: string | null;
   entries: SubmitInventoryCountBodyEntriesItem[];
 }

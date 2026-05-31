@@ -150,6 +150,7 @@ router.post("/inventory", async (req, res) => {
       storeId: body.storeId,
       weekOf: body.weekOf,
       submittedBy: body.submittedBy,
+      userId: (body as { userId?: number | null }).userId ?? null,
       notes: body.notes ?? null,
     })
     .returning();

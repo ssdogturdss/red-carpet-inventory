@@ -20,6 +20,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useOfflineQueue, isNetworkError } from "@/hooks/useOfflineQueue";
 import { useDraft } from "@/hooks/useDraft";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 function getWeekOf(date: Date = new Date()): string {
   const d = new Date(date);
@@ -49,6 +50,7 @@ export default function CountScreen() {
   const queryClient = useQueryClient();
   const { isOnline, queue, syncing, syncResult, syncQueue, addToQueue, refresh } = useOfflineQueue();
   const { pendingDraft, draftChecked, scheduleSave, discardDraft, clearOnSubmit } = useDraft();
+  const { user: currentUser, logout: signOut } = useCurrentUser();
 
   useFocusEffect(React.useCallback(() => { refresh(); }, [refresh]));
 
@@ -75,6 +77,12 @@ export default function CountScreen() {
     return v.trim() !== "" && parseFloat(v) > 0;
   }).length;
   const progressPct = totalChemicals > 0 ? filledCount / totalChemicals : 0;
+
+  useEffect(() => {
+    if (currentUser && !submittedBy && !hasInteracted.current) {
+      setSubmittedBy(currentUser.name);
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     if (!draftChecked || !pendingDraft) return;
@@ -158,6 +166,7 @@ export default function CountScreen() {
       storeId: selectedStoreId,
       weekOf,
       submittedBy: submittedBy.trim(),
+      userId: (currentUser && currentUser.id > 0) ? currentUser.id : null,
       notes: notes.trim() || null,
       entries,
     };
@@ -416,7 +425,23 @@ export default function CountScreen() {
       <OfflineBanner isOnline={isOnline} queueLength={queue.length} syncing={syncing} syncResult={syncResult} onSync={syncQueue} />
       <View style={styles.header}>
         <Text style={styles.headerLabel}>Red Carpet Inventory</Text>
-        <Text style={styles.headerTitle}>Count Entry</Text>
+        <View style={{ flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" }}>
+          <Text style={styles.headerTitle}>Count Entry</Text>
+          {currentUser && (
+            <TouchableOpacity
+              onPress={() => {
+                Alert.alert("Sign Out", `Sign out as ${currentUser.name}?`, [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Sign Out", style: "destructive", onPress: () => signOut() },
+                ]);
+              }}
+              style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingBottom: 4 }}
+            >
+              <Feather name="log-out" size={13} color="rgba(255,255,255,0.5)" />
+              <Text style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontFamily: "Inter_400Regular" }}>{currentUser.name}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <Text style={styles.headerSubtitle}>Week of {formatWeekOf(currentWeek)}</Text>
       </View>
 

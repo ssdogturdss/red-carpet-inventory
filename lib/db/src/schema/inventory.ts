@@ -3,12 +3,14 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { storesTable } from "./stores";
 import { chemicalsTable } from "./chemicals";
+import { usersTable } from "./users";
 
 export const inventoryCountsTable = pgTable("inventory_counts", {
   id: serial("id").primaryKey(),
   storeId: integer("store_id").notNull().references(() => storesTable.id),
   weekOf: date("week_of").notNull(),
   submittedBy: text("submitted_by").notNull(),
+  userId: integer("user_id").references(() => usersTable.id),
   notes: text("notes"),
   submittedAt: timestamp("submitted_at").defaultNow().notNull(),
 });

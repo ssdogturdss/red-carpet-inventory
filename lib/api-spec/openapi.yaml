@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: User authentication
   - name: admin
     description: Admin operations
   - name: stores
@@ -52,6 +54,174 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AdminAuthResult"
+
+  /auth/users:
+    get:
+      operationId: listUsers
+      tags: [auth]
+      summary: List active employees (public — for login picker)
+      responses:
+        "200":
+          description: List of active users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserPublic"
+
+  /auth/login:
+    post:
+      operationId: loginUser
+      tags: [auth]
+      summary: Log in with user ID and 4-digit PIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: Login result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResult"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current logged-in user (requires x-user-token header)
+      parameters:
+        - name: x-user-token
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPublic"
+
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      tags: [auth]
+      summary: Log out (clears session token)
+      parameters:
+        - name: x-user-token
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /admin/users:
+    get:
+      operationId: getAdminUsers
+      tags: [admin]
+      summary: List all users (requires admin PIN header)
+      parameters:
+        - name: x-admin-pin
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of all users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserAdmin"
+    post:
+      operationId: createAdminUser
+      tags: [admin]
+      summary: Create a new employee (requires admin PIN header)
+      parameters:
+        - name: x-admin-pin
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserBody"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAdmin"
+
+  /admin/users/{userId}:
+    put:
+      operationId: updateAdminUser
+      tags: [admin]
+      summary: Update an employee (requires admin PIN header)
+      parameters:
+        - name: x-admin-pin
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserBody"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserAdmin"
+    delete:
+      operationId: deleteAdminUser
+      tags: [admin]
+      summary: Delete an employee (requires admin PIN header)
+      parameters:
+        - name: x-admin-pin
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
 
   /admin/bot-settings:
     get:
@@ -907,6 +1077,111 @@ components:
         - botName
         - greeting
 
+    UserPublic:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        storeId:
+          type: integer
+          nullable: true
+        storeName:
+          type: string
+          nullable: true
+        role:
+          type: string
+      required:
+        - id
+        - name
+        - role
+
+    UserAdmin:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        storeId:
+          type: integer
+          nullable: true
+        storeName:
+          type: string
+          nullable: true
+        role:
+          type: string
+        active:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - role
+        - active
+        - createdAt
+
+    LoginBody:
+      type: object
+      properties:
+        userId:
+          type: integer
+        pin:
+          type: string
+      required:
+        - userId
+        - pin
+
+    LoginResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        token:
+          type: string
+          nullable: true
+        user:
+          $ref: "#/components/schemas/UserPublic"
+          nullable: true
+      required:
+        - success
+
+    CreateUserBody:
+      type: object
+      properties:
+        name:
+          type: string
+        pin:
+          type: string
+        storeId:
+          type: integer
+          nullable: true
+        role:
+          type: string
+        active:
+          type: boolean
+      required:
+        - name
+        - pin
+
+    UpdateUserBody:
+      type: object
+      properties:
+        name:
+          type: string
+        pin:
+          type: string
+          nullable: true
+        storeId:
+          type: integer
+          nullable: true
+        role:
+          type: string
+        active:
+          type: boolean
+
     AdminAuthBody:
       type: object
       properties:
@@ -1324,6 +1599,9 @@ components:
           type: string
         submittedBy:
           type: string
+        userId:
+          type: integer
+          nullable: true
         notes:
           type: string
           nullable: true

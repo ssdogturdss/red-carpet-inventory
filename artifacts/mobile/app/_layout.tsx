@@ -17,6 +17,7 @@ import { setBaseUrl } from "@workspace/api-client-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { OfflineQueueProvider } from "@/contexts/OfflineQueueContext";
+import { CurrentUserProvider } from "@/contexts/CurrentUserContext";
 
 // Always use EXPO_PUBLIC_DOMAIN — it's set to the main Replit dev/prod domain
 // by the workflow, and is the only domain that routes /api correctly.
@@ -57,6 +58,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
+          <CurrentUserProvider>
           <OfflineQueueProvider>
             <GestureHandlerRootView>
               <KeyboardProvider>
@@ -64,6 +66,7 @@ export default function RootLayout() {
               </KeyboardProvider>
             </GestureHandlerRootView>
           </OfflineQueueProvider>
+          </CurrentUserProvider>
         </QueryClientProvider>
       </ErrorBoundary>
     </SafeAreaProvider>

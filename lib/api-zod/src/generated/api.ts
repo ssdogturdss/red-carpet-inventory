@@ -26,6 +26,145 @@ export const AdminAuthResponse = zod.object({
 });
 
 /**
+ * @summary List active employees (public — for login picker)
+ */
+export const ListUsersResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  storeId: zod.number().nullish(),
+  storeName: zod.string().nullish(),
+  role: zod.string(),
+});
+export const ListUsersResponse = zod.array(ListUsersResponseItem);
+
+/**
+ * @summary Log in with user ID and 4-digit PIN
+ */
+export const LoginUserBody = zod.object({
+  userId: zod.number(),
+  pin: zod.string(),
+});
+
+export const LoginUserResponse = zod.object({
+  success: zod.boolean(),
+  token: zod.string().nullish(),
+  user: zod
+    .object({
+      id: zod.number(),
+      name: zod.string(),
+      storeId: zod.number().nullish(),
+      storeName: zod.string().nullish(),
+      role: zod.string(),
+    })
+    .nullish(),
+});
+
+/**
+ * @summary Get current logged-in user (requires x-user-token header)
+ */
+export const GetMeHeader = zod.object({
+  "x-user-token": zod.string(),
+});
+
+export const GetMeResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  storeId: zod.number().nullish(),
+  storeName: zod.string().nullish(),
+  role: zod.string(),
+});
+
+/**
+ * @summary Log out (clears session token)
+ */
+export const LogoutUserHeader = zod.object({
+  "x-user-token": zod.string(),
+});
+
+export const LogoutUserResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
+});
+
+/**
+ * @summary List all users (requires admin PIN header)
+ */
+export const GetAdminUsersHeader = zod.object({
+  "x-admin-pin": zod.string(),
+});
+
+export const GetAdminUsersResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  storeId: zod.number().nullish(),
+  storeName: zod.string().nullish(),
+  role: zod.string(),
+  active: zod.boolean(),
+  createdAt: zod.string(),
+});
+export const GetAdminUsersResponse = zod.array(GetAdminUsersResponseItem);
+
+/**
+ * @summary Create a new employee (requires admin PIN header)
+ */
+export const CreateAdminUserHeader = zod.object({
+  "x-admin-pin": zod.string(),
+});
+
+export const CreateAdminUserBody = zod.object({
+  name: zod.string(),
+  pin: zod.string(),
+  storeId: zod.number().nullish(),
+  role: zod.string().optional(),
+  active: zod.boolean().optional(),
+});
+
+/**
+ * @summary Update an employee (requires admin PIN header)
+ */
+export const UpdateAdminUserParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const UpdateAdminUserHeader = zod.object({
+  "x-admin-pin": zod.string(),
+});
+
+export const UpdateAdminUserBody = zod.object({
+  name: zod.string().optional(),
+  pin: zod.string().nullish(),
+  storeId: zod.number().nullish(),
+  role: zod.string().optional(),
+  active: zod.boolean().optional(),
+});
+
+export const UpdateAdminUserResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  storeId: zod.number().nullish(),
+  storeName: zod.string().nullish(),
+  role: zod.string(),
+  active: zod.boolean(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Delete an employee (requires admin PIN header)
+ */
+export const DeleteAdminUserParams = zod.object({
+  userId: zod.coerce.number(),
+});
+
+export const DeleteAdminUserHeader = zod.object({
+  "x-admin-pin": zod.string(),
+});
+
+export const DeleteAdminUserResponse = zod.object({
+  success: zod.boolean(),
+  id: zod.number(),
+});
+
+/**
  * @summary Get bot personalization settings (requires admin PIN header)
  */
 export const GetBotSettingsHeader = zod.object({
@@ -195,6 +334,7 @@ export const SubmitInventoryCountBody = zod.object({
   storeId: zod.number(),
   weekOf: zod.string(),
   submittedBy: zod.string(),
+  userId: zod.number().nullish(),
   notes: zod.string().nullish(),
   entries: zod.array(
     zod.object({

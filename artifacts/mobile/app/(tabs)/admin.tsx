@@ -17,12 +17,13 @@ import {
   useGetNotificationContacts, useCreateNotificationContact,
   useUpdateNotificationContact, useDeleteNotificationContact,
   useTestNotificationContact, useGetNotificationStatus,
+  useGetAdminUsers, useCreateAdminUser, useUpdateAdminUser, useDeleteAdminUser,
 } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 import { EmptyState } from "@/components/EmptyState";
 import { PinScreen } from "@/components/PinScreen";
 
-type Section = "alerts" | "stores" | "products" | "counts" | "notifications" | "bot";
+type Section = "alerts" | "stores" | "products" | "counts" | "notifications" | "bot" | "users";
 
 function formatWeekOf(weekOf: string) {
   const d = new Date(weekOf + "T00:00:00");
@@ -774,6 +775,231 @@ function NotificationsSection({ colors, insets }: { colors: ReturnType<typeof im
   );
 }
 
+// ─── Users Section ───────────────────────────────────────────────────────────
+function UsersSection({ colors, insets, adminPin }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: { bottom: number }; adminPin: string }) {
+  const qc = useQueryClient();
+  const headers = { "x-admin-pin": adminPin };
+  const reqOpts = { headers } as RequestInit;
+  const { data: users, isLoading, refetch } = useGetAdminUsers({ request: reqOpts });
+  const { data: stores } = useGetStores();
+  const { mutateAsync: createUser, isPending: creating } = useCreateAdminUser({ request: reqOpts });
+  const { mutateAsync: updateUser, isPending: updating } = useUpdateAdminUser({ request: reqOpts });
+  const { mutateAsync: deleteUser } = useDeleteAdminUser({ request: reqOpts });
+  const [refreshing, setRefreshing] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [editTarget, setEditTarget] = useState<{ id: number; name: string; storeId: number | null; role: string; active: boolean } | null>(null);
+  const [form, setForm] = useState({ name: "", pin: "", storeId: null as number | null, role: "employee", active: true });
+  const [editPin, setEditPin] = useState("");
+  const webBottom = Platform.OS === "web" ? 34 : 0;
+
+  const onRefresh = useCallback(async () => { setRefreshing(true); await refetch(); setRefreshing(false); }, [refetch]);
+
+  const confirmDelete = (id: number, name: string) => Alert.alert(
+    "Delete Employee",
+    `Delete "${name}"? This removes their account but keeps their submitted counts.`,
+    [{ text: "Cancel", style: "cancel" }, {
+      text: "Delete", style: "destructive", onPress: async () => {
+        await deleteUser({ userId: id });
+        qc.invalidateQueries();
+      }
+    }]
+  );
+
+  const handleAdd = async () => {
+    if (!form.name.trim() || !form.pin.trim()) {
+      Alert.alert("Required", "Name and PIN are required.");
+      return;
+    }
+    if (form.pin.length !== 4 || !/^\d{4}$/.test(form.pin)) {
+      Alert.alert("Invalid PIN", "PIN must be exactly 4 digits.");
+      return;
+    }
+    await createUser({ data: { name: form.name.trim(), pin: form.pin, storeId: form.storeId ?? undefined, role: form.role, active: form.active } });
+    qc.invalidateQueries();
+    setShowAdd(false);
+    setForm({ name: "", pin: "", storeId: null, role: "employee", active: true });
+  };
+
+  const handleUpdate = async () => {
+    if (!editTarget) return;
+    const data: { name?: string; pin?: string | null; storeId?: number | null; role?: string; active?: boolean } = {
+      name: editTarget.name,
+      storeId: editTarget.storeId,
+      role: editTarget.role,
+      active: editTarget.active,
+    };
+    if (editPin.trim()) {
+      if (editPin.length !== 4 || !/^\d{4}$/.test(editPin)) {
+        Alert.alert("Invalid PIN", "PIN must be exactly 4 digits.");
+        return;
+      }
+      data.pin = editPin;
+    }
+    await updateUser({ userId: editTarget.id, data });
+    qc.invalidateQueries();
+    setEditTarget(null);
+    setEditPin("");
+  };
+
+  const s = StyleSheet.create({
+    scroll: { flex: 1 },
+    content: { padding: 16, paddingBottom: insets.bottom + 80 + webBottom },
+    addBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.primary, borderRadius: colors.radius, padding: 13, marginBottom: 14, justifyContent: "center" },
+    addBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
+    formCard: { backgroundColor: colors.card, borderRadius: colors.radius, borderWidth: 1, borderColor: colors.border, padding: 16, marginBottom: 14 },
+    formTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: colors.foreground, marginBottom: 14 },
+    fieldLabel: { fontSize: 12, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7, marginBottom: 6 },
+    fieldInput: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: colors.radius, padding: 11, fontSize: 15, fontFamily: "Inter_400Regular", color: colors.foreground, marginBottom: 12 },
+    fieldHint: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginBottom: 12, marginTop: -8 },
+    segRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
+    segBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: colors.secondary, alignItems: "center" },
+    segBtnActive: { backgroundColor: colors.primary },
+    segBtnText: { fontSize: 13, fontFamily: "Inter_500Medium", color: colors.foreground },
+    segBtnTextActive: { color: "#fff" },
+    storeRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 },
+    storeChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, backgroundColor: colors.secondary, borderWidth: 1, borderColor: colors.border },
+    storeChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    storeChipText: { fontSize: 12, fontFamily: "Inter_500Medium", color: colors.foreground },
+    storeChipTextActive: { color: "#fff" },
+    toggleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
+    toggleLabel: { fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground },
+    toggleBtn: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 16, backgroundColor: colors.secondary },
+    toggleBtnOn: { backgroundColor: colors.primary },
+    toggleBtnText: { fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground },
+    toggleBtnOnText: { color: "#fff" },
+    formBtnRow: { flexDirection: "row", gap: 10 },
+    cancelBtn: { flex: 1, backgroundColor: colors.secondary, borderRadius: colors.radius, padding: 12, alignItems: "center" },
+    cancelBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    saveBtn: { flex: 1, backgroundColor: colors.primary, borderRadius: colors.radius, padding: 12, alignItems: "center" },
+    saveBtnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
+    card: { backgroundColor: colors.card, borderRadius: colors.radius, borderWidth: 1, borderColor: colors.border, marginBottom: 10, padding: 14, flexDirection: "row", alignItems: "center" },
+    info: { flex: 1 },
+    userName: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: colors.foreground },
+    userMeta: { fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: 2 },
+    actions: { flexDirection: "row", gap: 8 },
+    editBtn: { padding: 8, borderRadius: 8, backgroundColor: colors.secondary },
+    delBtn: { padding: 8, borderRadius: 8, backgroundColor: "#fef2f2" },
+    badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, marginTop: 4, alignSelf: "flex-start" },
+  });
+
+  const StoreChips = ({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) => (
+    <View style={s.storeRow}>
+      <TouchableOpacity style={[s.storeChip, value === null && s.storeChipActive]} onPress={() => onChange(null)}>
+        <Text style={[s.storeChipText, value === null && s.storeChipTextActive]}>Any</Text>
+      </TouchableOpacity>
+      {(stores ?? []).map((st) => (
+        <TouchableOpacity key={st.id} style={[s.storeChip, value === st.id && s.storeChipActive]} onPress={() => onChange(st.id)}>
+          <Text style={[s.storeChipText, value === st.id && s.storeChipTextActive]}>{st.name}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  return (
+    <ScrollView style={s.scroll} contentContainerStyle={s.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+    >
+      {showAdd ? (
+        <View style={s.formCard}>
+          <Text style={s.formTitle}>Add Employee</Text>
+          <Text style={s.fieldLabel}>Name</Text>
+          <TextInput style={s.fieldInput} value={form.name} onChangeText={(v) => setForm((p) => ({ ...p, name: v }))} placeholder="Employee name" placeholderTextColor={colors.mutedForeground} autoCapitalize="words" />
+          <Text style={s.fieldLabel}>4-Digit PIN</Text>
+          <TextInput style={s.fieldInput} value={form.pin} onChangeText={(v) => setForm((p) => ({ ...p, pin: v.replace(/\D/g, "").slice(0, 4) }))} placeholder="1234" placeholderTextColor={colors.mutedForeground} keyboardType="numeric" secureTextEntry maxLength={4} />
+          <Text style={s.fieldHint}>Employee will use this PIN to log in.</Text>
+          <Text style={s.fieldLabel}>Role</Text>
+          <View style={s.segRow}>
+            {(["employee", "admin"] as const).map((r) => (
+              <TouchableOpacity key={r} style={[s.segBtn, form.role === r && s.segBtnActive]} onPress={() => setForm((p) => ({ ...p, role: r }))}>
+                <Text style={[s.segBtnText, form.role === r && s.segBtnTextActive]}>{r.charAt(0).toUpperCase() + r.slice(1)}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={s.fieldLabel}>Assigned Store (optional)</Text>
+          <StoreChips value={form.storeId} onChange={(v) => setForm((p) => ({ ...p, storeId: v }))} />
+          <View style={s.toggleRow}>
+            <Text style={s.toggleLabel}>Active</Text>
+            <TouchableOpacity style={[s.toggleBtn, form.active && s.toggleBtnOn]} onPress={() => setForm((p) => ({ ...p, active: !p.active }))}>
+              <Text style={[s.toggleBtnText, form.active && s.toggleBtnOnText]}>{form.active ? "ON" : "OFF"}</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={s.formBtnRow}>
+            <TouchableOpacity style={s.cancelBtn} onPress={() => { setShowAdd(false); setForm({ name: "", pin: "", storeId: null, role: "employee", active: true }); }}>
+              <Text style={s.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.saveBtn} onPress={handleAdd} disabled={creating}>
+              {creating ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveBtnText}>Add Employee</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <TouchableOpacity style={s.addBtn} onPress={() => setShowAdd(true)}>
+          <Feather name="user-plus" size={18} color="#fff" />
+          <Text style={s.addBtnText}>Add Employee</Text>
+        </TouchableOpacity>
+      )}
+
+      {editTarget && (
+        <View style={s.formCard}>
+          <Text style={s.formTitle}>Edit Employee</Text>
+          <Text style={s.fieldLabel}>Name</Text>
+          <TextInput style={s.fieldInput} value={editTarget.name} onChangeText={(v) => setEditTarget((p) => p ? { ...p, name: v } : p)} placeholder="Employee name" placeholderTextColor={colors.mutedForeground} autoCapitalize="words" />
+          <Text style={s.fieldLabel}>New PIN (leave blank to keep current)</Text>
+          <TextInput style={s.fieldInput} value={editPin} onChangeText={(v) => setEditPin(v.replace(/\D/g, "").slice(0, 4))} placeholder="Leave blank to keep current PIN" placeholderTextColor={colors.mutedForeground} keyboardType="numeric" secureTextEntry maxLength={4} />
+          <Text style={s.fieldLabel}>Role</Text>
+          <View style={s.segRow}>
+            {(["employee", "admin"] as const).map((r) => (
+              <TouchableOpacity key={r} style={[s.segBtn, editTarget.role === r && s.segBtnActive]} onPress={() => setEditTarget((p) => p ? { ...p, role: r } : p)}>
+                <Text style={[s.segBtnText, editTarget.role === r && s.segBtnTextActive]}>{r.charAt(0).toUpperCase() + r.slice(1)}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={s.fieldLabel}>Assigned Store (optional)</Text>
+          <StoreChips value={editTarget.storeId} onChange={(v) => setEditTarget((p) => p ? { ...p, storeId: v } : p)} />
+          <View style={s.toggleRow}>
+            <Text style={s.toggleLabel}>Active</Text>
+            <TouchableOpacity style={[s.toggleBtn, editTarget.active && s.toggleBtnOn]} onPress={() => setEditTarget((p) => p ? { ...p, active: !p.active } : p)}>
+              <Text style={[s.toggleBtnText, editTarget.active && s.toggleBtnOnText]}>{editTarget.active ? "ON" : "OFF"}</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={s.formBtnRow}>
+            <TouchableOpacity style={s.cancelBtn} onPress={() => { setEditTarget(null); setEditPin(""); }}>
+              <Text style={s.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.saveBtn} onPress={handleUpdate} disabled={updating}>
+              {updating ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.saveBtnText}>Save Changes</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {isLoading ? <ActivityIndicator color={colors.primary} /> : !(users ?? []).length ? (
+        <EmptyState icon="users" title="No employees yet" subtitle="Add employee accounts here so staff can log in with their name and PIN." compact />
+      ) : (users ?? []).map((u) => (
+        <View key={u.id} style={s.card}>
+          <View style={s.info}>
+            <Text style={s.userName}>{u.name}</Text>
+            <Text style={s.userMeta}>{u.storeName ?? "Any store"} · {u.role}</Text>
+            <View style={[s.badge, { backgroundColor: u.active ? "#dcfce7" : "#f1f5f9" }]}>
+              <Text style={{ fontSize: 11, fontFamily: "Inter_600SemiBold", color: u.active ? "#16a34a" : colors.mutedForeground }}>
+                {u.active ? "Active" : "Inactive"}
+              </Text>
+            </View>
+          </View>
+          <View style={s.actions}>
+            <TouchableOpacity style={s.editBtn} onPress={() => { setEditTarget({ id: u.id, name: u.name, storeId: u.storeId ?? null, role: u.role, active: u.active }); setEditPin(""); }}>
+              <Feather name="edit-2" size={16} color={colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.delBtn} onPress={() => confirmDelete(u.id, u.name)}>
+              <Feather name="trash-2" size={16} color={colors.critical} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
 // ─── Bot Section ─────────────────────────────────────────────────────────────
 const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 
@@ -940,6 +1166,7 @@ export default function AdminScreen() {
     { key: "stores", label: "Stores", icon: "map-pin" },
     { key: "products", label: "Products", icon: "package" },
     { key: "counts", label: "Counts", icon: "clipboard" },
+    { key: "users", label: "Users", icon: "users" },
     { key: "notifications", label: "Notify", icon: "bell" },
     { key: "bot", label: "Bot", icon: "cpu" },
   ];
@@ -996,6 +1223,7 @@ export default function AdminScreen() {
         {activeSection === "stores" && <StoresSection colors={colors} insets={insets} />}
         {activeSection === "products" && <ProductsSection colors={colors} insets={insets} />}
         {activeSection === "counts" && <CountsSection colors={colors} insets={insets} />}
+        {activeSection === "users" && <UsersSection colors={colors} insets={insets} adminPin={adminPin} />}
         {activeSection === "notifications" && <NotificationsSection colors={colors} insets={insets} />}
         {activeSection === "bot" && <BotSection colors={colors} insets={insets} adminPin={adminPin} />}
       </View>
