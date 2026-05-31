@@ -1,9 +1,21 @@
-import { Router } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import { db } from "@workspace/db";
 import { pushTokensTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 
 const router = Router();
+
+const ADMIN_PIN_HEADER = "x-admin-pin";
+
+function requireAdminPin(req: Request, res: Response, next: NextFunction) {
+  const pin = req.headers[ADMIN_PIN_HEADER] as string | undefined;
+  const adminPin = process.env.ADMIN_PIN ?? "1234";
+  if (!pin || pin !== adminPin) {
+    res.status(401).json({ error: "Admin PIN required" });
+    return;
+  }
+  next();
+}
 
 router.post("/push/register", async (req, res) => {
   const { token, platform, label, minSeverity } = req.body as {
@@ -58,7 +70,7 @@ router.delete("/push/register", async (req, res) => {
   res.json({ success: true });
 });
 
-router.get("/admin/push-tokens", async (_req, res) => {
+router.get("/admin/push-tokens", requireAdminPin, async (_req, res) => {
   const tokens = await db
     .select()
     .from(pushTokensTable)
@@ -66,7 +78,7 @@ router.get("/admin/push-tokens", async (_req, res) => {
   res.json(tokens);
 });
 
-router.delete("/admin/push-tokens/:id", async (req, res) => {
+router.delete("/admin/push-tokens/:id", requireAdminPin, async (req, res) => {
   const id = Number(req.params["id"]);
   if (!id) {
     res.status(400).json({ error: "id is required" });

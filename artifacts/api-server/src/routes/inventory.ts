@@ -319,7 +319,23 @@ async function generateAlerts(
           .map((t) => t.token);
 
         if (filteredTokens.length > 0) {
-          await sendAlertPush(filteredTokens, storeName, chemName, severity, direction, percentChange);
+          const result = await sendAlertPush(
+            filteredTokens,
+            storeName,
+            chemName,
+            severity,
+            direction,
+            percentChange,
+            undefined,
+            req.log
+          );
+          // Auto-remove any tokens the Expo service says are no longer registered
+          if (result.invalidTokens.length > 0) {
+            for (const badToken of result.invalidTokens) {
+              await db.delete(pushTokensTable).where(eq(pushTokensTable.token, badToken));
+              req.log.warn({ token: badToken }, "Removed invalid (unregistered) push token");
+            }
+          }
         }
       } catch (pushErr) {
         req.log.warn({ pushErr }, "Push notification failed (non-fatal)");
