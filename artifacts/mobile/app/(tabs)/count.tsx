@@ -11,6 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useGetStores, useGetChemicals, useSubmitInventoryCount } from "@workspace/api-client-react";
@@ -46,8 +47,10 @@ export default function CountScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const { isOnline, queue, syncing, syncResult, syncQueue, addToQueue } = useOfflineQueue();
+  const { isOnline, queue, syncing, syncResult, syncQueue, addToQueue, refresh } = useOfflineQueue();
   const { pendingDraft, draftChecked, scheduleSave, discardDraft, clearOnSubmit } = useDraft();
+
+  useFocusEffect(React.useCallback(() => { refresh(); }, [refresh]));
 
   const { data: stores } = useGetStores();
   const { data: chemicals } = useGetChemicals();

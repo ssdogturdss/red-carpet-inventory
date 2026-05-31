@@ -10,6 +10,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useGetAlertsSummary, useGetStores, useGetInventoryCounts } from "@workspace/api-client-react";
@@ -51,7 +52,9 @@ export default function DashboardScreen() {
   const router = useRouter();
   const currentWeek = getWeekOf();
   const { showOnboarding, completeOnboarding, openOnboarding } = useOnboarding();
-  const { queue, isOnline, syncing, syncResult, syncQueue } = useOfflineQueue();
+  const { queue, isOnline, syncing, syncResult, syncQueue, refresh } = useOfflineQueue();
+
+  useFocusEffect(React.useCallback(() => { refresh(); }, [refresh]));
 
   const { data: summary, isLoading: summaryLoading, refetch: refetchSummary } = useGetAlertsSummary();
   const { data: stores } = useGetStores();

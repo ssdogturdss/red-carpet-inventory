@@ -10,7 +10,41 @@ import { Platform, StyleSheet, View, Text, useColorScheme } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 
+function QueueBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <View style={badge.wrap}>
+      <Text style={badge.text}>{count > 9 ? "9+" : String(count)}</Text>
+    </View>
+  );
+}
+
+const badge = StyleSheet.create({
+  wrap: {
+    position: "absolute",
+    top: -4,
+    right: -8,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#f59e0b",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+    zIndex: 10,
+  },
+  text: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#fff",
+    lineHeight: 12,
+  },
+});
+
 function NativeTabLayout() {
+  const { queue } = useOfflineQueue();
+  const queueCount = queue.length;
+
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
@@ -18,7 +52,10 @@ function NativeTabLayout() {
         <Label>Dashboard</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="count">
-        <Icon sf={{ default: "list.clipboard", selected: "list.clipboard.fill" }} />
+        <View style={{ position: "relative" }}>
+          <Icon sf={{ default: "list.clipboard", selected: "list.clipboard.fill" }} />
+          <QueueBadge count={queueCount} />
+        </View>
         <Label>Count</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="scan">
