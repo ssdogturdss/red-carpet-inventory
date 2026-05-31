@@ -11,7 +11,7 @@ export const chemicalPullsTable = pgTable("chemical_pulls", {
   unit: text("unit").notNull().default("gallons"),
   pulledAt: timestamp("pulled_at").notNull().defaultNow(),
   initials: text("initials").notNull(),
-  userId: integer("user_id").references(() => usersTable.id),
+  userId: integer("user_id").references(() => usersTable.id, { onDelete: "set null" }),
   notes: text("notes"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -27,7 +27,7 @@ export const chemicalOrdersTable = pgTable("chemical_orders", {
   status: text("status").notNull().default("pending"),
   poNumber: text("po_number"),
   orderedBy: text("ordered_by"),
-  userId: integer("user_id").references(() => usersTable.id),
+  userId: integer("user_id").references(() => usersTable.id, { onDelete: "set null" }),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -40,7 +40,7 @@ export const inventoryReceivedTable = pgTable("inventory_received", {
   unit: text("unit").notNull().default("gallons"),
   receivedDate: date("received_date").notNull(),
   receivedBy: text("received_by"),
-  userId: integer("user_id").references(() => usersTable.id),
+  userId: integer("user_id").references(() => usersTable.id, { onDelete: "set null" }),
   poNumber: text("po_number"),
   orderId: integer("order_id").references(() => chemicalOrdersTable.id),
   notes: text("notes"),

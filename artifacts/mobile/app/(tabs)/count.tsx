@@ -198,6 +198,7 @@ export default function CountScreen() {
                   storeName: selectedStore?.name ?? "Unknown",
                   weekOf: currentWeek,
                   submittedBy: submitData.submittedBy,
+                  userId: submitData.userId,
                   notes: submitData.notes,
                   entries,
                 });

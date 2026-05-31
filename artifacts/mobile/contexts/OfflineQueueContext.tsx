@@ -13,6 +13,7 @@ export interface QueuedCount {
   storeName: string;
   weekOf: string;
   submittedBy: string;
+  userId: number | null;
   notes: string | null;
   entries: { chemicalId: number; quantity: number }[];
 }
@@ -119,6 +120,7 @@ export function OfflineQueueProvider({ children }: { children: React.ReactNode }
             storeId: item.storeId,
             weekOf: item.weekOf,
             submittedBy: item.submittedBy,
+            userId: item.userId,
             notes: item.notes,
             entries: item.entries,
           }),

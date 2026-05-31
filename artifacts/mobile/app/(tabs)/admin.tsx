@@ -399,7 +399,7 @@ function CountsSection({ colors, insets }: { colors: ReturnType<typeof import("@
         <View key={c.id} style={s.card}>
           <View style={s.info}>
             <Text style={s.store}>{c.storeName}</Text>
-            <Text style={s.meta}>Week of {formatWeekOf(c.weekOf)} · By {(c as any).userName ?? c.submittedBy}</Text>
+            <Text style={s.meta}>Week of {formatWeekOf(c.weekOf)} · By {c.userName ?? c.submittedBy}</Text>
             <Text style={s.meta}>{new Date(c.submittedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}</Text>
           </View>
           <TouchableOpacity style={s.delBtn} onPress={() => confirmDelete(c.id, c.storeName, c.weekOf)}>
