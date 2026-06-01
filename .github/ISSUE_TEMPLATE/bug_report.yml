@@ -1,0 +1,87 @@
+name: Bug Report
+description: Report a bug in Red Carpet Inventory
+labels: [bug, triage]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Fill out the form below as completely as possible.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the app is affected?
+      options:
+        - Mobile app — Dashboard
+        - Mobile app — Count Entry
+        - Mobile app — Scan Sheet (OCR)
+        - Mobile app — Inventory Hub (History / On Hand / Received / Orders)
+        - Mobile app — Admin Panel
+        - Mobile app — Push Notifications
+        - API server
+        - Database / Data integrity
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: Describe the problem…
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps to reproduce the issue.
+      placeholder: |
+        1. Open the app
+        2. Navigate to …
+        3. Tap …
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      placeholder: What should have happened?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - iOS (Expo Go)
+        - Android (Expo Go)
+        - Web browser
+        - All platforms
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      description: Paste API logs, console errors, or attach screenshots.
+      render: shell
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues before opening this one
+          required: true
+        - label: I can reproduce this consistently
+          required: false

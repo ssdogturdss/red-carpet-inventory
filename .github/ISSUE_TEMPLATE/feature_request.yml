@@ -1,0 +1,59 @@
+name: Feature Request
+description: Suggest a new feature or improvement
+labels: [enhancement]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement to Red Carpet Inventory!
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Mobile app — general
+        - Dashboard / alerts
+        - Count Entry
+        - Scan Sheet / OCR
+        - Inventory Hub
+        - Admin Panel
+        - Push Notifications
+        - API / backend
+        - Reporting / exports
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem this solves
+      description: What pain point or workflow gap does this address?
+      placeholder: "Currently, when I… I have to… which is slow/error-prone because…"
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe your ideal solution. Sketches or mockups welcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds you currently use, or other approaches you considered.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this hasn't been requested before
+          required: true
