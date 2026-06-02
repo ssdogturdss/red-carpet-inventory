@@ -1,0 +1,167 @@
+You are a senior DevOps engineer and backup automation architect.
+
+Build a complete “Offline ZIP Disaster Recovery System” for this project.
+
+# OBJECTIVE
+
+Create an automated backup pipeline that:
+- packages the entire project into compressed ZIP archives
+- excludes unnecessary junk/cache/temp folders
+- preserves all critical source code and configuration files
+- generates clean timestamped backup filenames
+- supports Replit, GitHub, Node.js, React, Next.js, Vite, Docker, and TypeScript projects
+- works safely for long-term archival and disaster recovery
+
+The system must be production-grade, reliable, and portable.
+
+# REQUIREMENTS
+
+## CREATE AUTOMATED ZIP BACKUPS
+
+Generate scripts that:
+- automatically create ZIP backups
+- package the project root safely
+- preserve folder structure
+- preserve permissions where possible
+- avoid corrupted archives
+
+Backup filename format:
+```txt
+project-backup-YYYY-MM-DD-HHMM.zip
+Example:
+repliforge-backup-2026-06-02-1430.zip
+EXCLUDE JUNK / CACHE FILES
+Exclude:
+node_modules
+.next
+dist
+build
+.cache
+tmp
+temp
+coverage
+.logs
+.DS_Store
+Thumbs.db
+.git
+replit.nix.backup
+Also exclude:
+system junk
+temporary build artifacts
+package caches
+runtime-generated files
+editor cache folders
+Do NOT exclude:
+package.json
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+.replit
+replit.nix
+docker-compose.yml
+Dockerfile
+README.md
+.env.example
+PRESERVE CRITICAL FILES
+Ensure backups always include:
+frontend source
+backend source
+public assets
+configuration files
+deployment files
+Docker configs
+scripts
+database schemas
+documentation
+environment templates
+CREATE A BACKUP DIRECTORY STRUCTURE
+Generate:
+/backups
+   /daily
+   /weekly
+   /manual
+AUTOMATED TIMESTAMP SYSTEM
+Generate dynamic timestamps automatically using:
+Bash
+Node.js
+cross-platform compatible methods
+Example output:
+repliforge-backup-2026-06-02-1430.zip
+GENERATE THESE FILES
+Create:
+backup.sh
+backup.js
+restore.sh
+backup-config.json
+backup.sh REQUIREMENTS
+The Bash script must:
+create backup directories if missing
+generate timestamped ZIP files
+exclude junk folders
+print success/failure logs
+verify ZIP creation
+support Linux/Replit environments
+backup.js REQUIREMENTS
+The Node.js backup system must:
+work cross-platform
+support Windows/macOS/Linux
+generate ZIP archives
+use safe filesystem operations
+include error handling
+log backup sizes
+validate archive completion
+RESTORE SYSTEM
+Generate restore instructions that:
+explain ZIP extraction
+restore folder structure
+reinstall dependencies
+rebuild the project
+Include:
+npm install
+npm run dev
+ADD BACKUP ROTATION
+Create optional cleanup automation:
+keep latest 10 backups
+automatically remove older archives
+avoid storage overflow
+GITHUB SAFETY
+Ensure:
+ZIP backups are ignored by Git
+backup folders added to .gitignore
+no accidental upload of huge archives
+Add:
+/backups
+*.zip
+REPLIT COMPATIBILITY
+Ensure the backup system works inside:
+Replit
+Replit Shell
+Replit file exports
+Preserve:
+.replit
+replit.nix
+IPHONE WORKFLOW
+Include instructions for:
+downloading ZIP backups to iPhone
+storing in Files app
+saving into iCloud Drive
+organizing archives by date
+transferring to external SSD if needed
+OUTPUT FORMAT
+Generate:
+Complete backup scripts
+Folder structure
+ZIP exclusion rules
+Restore instructions
+Automation setup guide
+Backup rotation logic
+iPhone storage workflow
+Production-ready disaster recovery architecture
+The final result should feel:
+enterprise-grade
+resilient
+organized
+future-proof
+portable
+optimized for mobile management
+suitable for long-term archival recovery

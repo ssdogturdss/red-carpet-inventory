@@ -1,0 +1,97 @@
+{
+  "project": {
+    "name": "red-carpet-inventory",
+    "description": "Chemical inventory management system — 11 stores, 23 chemicals",
+    "backupPrefix": "red-carpet-inventory-backup"
+  },
+  "rotation": {
+    "daily": {
+      "keepCount": 10,
+      "description": "Run daily; retain last 10"
+    },
+    "weekly": {
+      "keepCount": 8,
+      "description": "Run weekly; retain last 8 (2 months)"
+    },
+    "manual": {
+      "keepCount": 20,
+      "description": "On-demand; retain last 20"
+    }
+  },
+  "exclude": {
+    "directories": [
+      "node_modules",
+      ".pnpm-store",
+      "dist",
+      "build",
+      ".next",
+      "out",
+      ".expo",
+      ".expo-shared",
+      ".cache",
+      ".local",
+      ".cursor",
+      ".idea",
+      ".vscode",
+      "coverage",
+      "tmp",
+      "temp",
+      ".logs",
+      ".git",
+      "backups"
+    ],
+    "extensions": [
+      ".log",
+      ".tsbuildinfo"
+    ],
+    "filenames": [
+      ".DS_Store",
+      "Thumbs.db",
+      "replit.nix.backup"
+    ]
+  },
+  "alwaysInclude": [
+    "package.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    ".replit",
+    "replit.nix",
+    ".env.example",
+    "README.md",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    "backup.sh",
+    "backup.js",
+    "restore.sh",
+    "backup-config.json"
+  ],
+  "criticalPaths": [
+    "artifacts/api-server/src",
+    "artifacts/mobile/app",
+    "artifacts/mobile/public",
+    "lib/db/src",
+    "lib/api-spec",
+    "lib/api-client-react/src",
+    "lib/api-zod/src",
+    "scripts/src",
+    ".github",
+    "docs"
+  ],
+  "schedule": {
+    "note": "Replit does not have cron — trigger manually or on deploy hooks",
+    "recommended": {
+      "daily": "Run before major changes",
+      "weekly": "Run every Sunday",
+      "manual": "Run before deploying to production"
+    }
+  },
+  "iphone": {
+    "download": "Right-click the ZIP in Replit File Tree → Download",
+    "storage": [
+      "Save to Files app → On My iPhone → Red Carpet Backups/",
+      "Or save to iCloud Drive → Red Carpet Inventory/Backups/",
+      "Or AirDrop to Mac then transfer to external SSD"
+    ],
+    "naming": "Archives are already date-stamped — sort by name to find the latest"
+  }
+}
