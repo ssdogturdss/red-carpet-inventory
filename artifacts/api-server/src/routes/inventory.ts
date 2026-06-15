@@ -78,6 +78,11 @@ router.get("/inventory/scan", async (_req, res) => {
 router.get("/inventory/:countId", async (req, res) => {
   const countId = Number(req.params["countId"]);
 
+  if (!Number.isInteger(countId) || countId <= 0) {
+    res.status(400).json({ error: "Invalid count ID" });
+    return;
+  }
+
   const [count] = await db
     .select({
       id: inventoryCountsTable.id,
