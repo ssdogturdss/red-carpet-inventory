@@ -219,6 +219,14 @@ export const GetStoresResponseItem = zod.object({
 export const GetStoresResponse = zod.array(GetStoresResponseItem);
 
 /**
+ * @summary Create a new store
+ */
+export const CreateStoreBody = zod.object({
+  name: zod.string(),
+  storeNumber: zod.string(),
+});
+
+/**
  * @summary Update a store
  */
 export const UpdateStoreParams = zod.object({

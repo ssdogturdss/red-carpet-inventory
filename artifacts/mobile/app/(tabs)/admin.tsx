@@ -12,7 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useAdminAuth,
   useGetAlerts, useGetAlertsSummary, useAcknowledgeAlert, useDeleteAlert,
-  useGetStores, useUpdateStore, useDeleteStore,
+  useGetStores, useCreateStore, useUpdateStore, useDeleteStore,
   useGetChemicals, useUpdateChemical, useDeleteChemical,
   useGetInventoryCounts, useDeleteInventoryCount,
   useGetNotificationContacts, useCreateNotificationContact,
@@ -208,9 +208,11 @@ function AlertsSection({ colors, insets }: { colors: ReturnType<typeof import("@
 function StoresSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: { bottom: number } }) {
   const qc = useQueryClient();
   const { data: stores, isLoading, refetch } = useGetStores();
+  const { mutateAsync: createStore, isPending: creating } = useCreateStore();
   const { mutateAsync: updateStore, isPending: updating } = useUpdateStore();
   const { mutateAsync: deleteStore } = useDeleteStore();
   const [editTarget, setEditTarget] = useState<{ id: number; name: string; storeNumber: string } | null>(null);
+  const [addVisible, setAddVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const webBottom = Platform.OS === "web" ? 34 : 0;
 
@@ -225,6 +227,8 @@ function StoresSection({ colors, insets }: { colors: ReturnType<typeof import("@
   const s = StyleSheet.create({
     scroll: { flex: 1 },
     content: { padding: 16, paddingBottom: insets.bottom + 80 + webBottom },
+    addBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: colors.primary, borderRadius: colors.radius, paddingVertical: 12, marginBottom: 16 },
+    addBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
     card: { backgroundColor: colors.card, borderRadius: colors.radius, borderWidth: 1, borderColor: colors.border, marginBottom: 10, padding: 14, flexDirection: "row", alignItems: "center" },
     info: { flex: 1 },
     name: { fontSize: 16, fontFamily: "Inter_600SemiBold", color: colors.foreground },
@@ -232,15 +236,18 @@ function StoresSection({ colors, insets }: { colors: ReturnType<typeof import("@
     actions: { flexDirection: "row", gap: 10 },
     editBtn: { padding: 8, borderRadius: 8, backgroundColor: colors.secondary },
     delBtn: { padding: 8, borderRadius: 8, backgroundColor: "#fef2f2" },
-    empty: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 40 },
   });
 
   return (
     <>
       <ScrollView style={s.scroll} contentContainerStyle={s.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}>
+        <TouchableOpacity style={s.addBtn} onPress={() => setAddVisible(true)}>
+          <Feather name="plus" size={18} color="#fff" />
+          <Text style={s.addBtnText}>Add Store</Text>
+        </TouchableOpacity>
         {isLoading ? <ActivityIndicator color={colors.primary} /> : !stores?.length ? (
-          <EmptyState icon="map-pin" title="No stores" subtitle="Add stores via the database seed or contact your administrator." compact />
+          <EmptyState icon="map-pin" title="No stores yet" subtitle="Tap Add Store above to create your first store." compact />
         ) : stores.map((st) => (
           <View key={st.id} style={s.card}>
             <View style={s.info}>
@@ -258,6 +265,24 @@ function StoresSection({ colors, insets }: { colors: ReturnType<typeof import("@
           </View>
         ))}
       </ScrollView>
+
+      <EditModal
+        visible={addVisible}
+        title="Add Store"
+        fields={[
+          { label: "Name", key: "name", value: "" },
+          { label: "Store Number", key: "storeNumber", value: "" },
+        ]}
+        saving={creating}
+        colors={colors}
+        insets={insets}
+        onClose={() => setAddVisible(false)}
+        onSave={async (vals) => {
+          await createStore({ data: { name: vals["name"] ?? "", storeNumber: vals["storeNumber"] ?? "" } });
+          qc.invalidateQueries();
+          setAddVisible(false);
+        }}
+      />
 
       <EditModal
         visible={!!editTarget}

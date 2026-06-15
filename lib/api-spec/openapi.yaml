@@ -292,6 +292,23 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Store"
+    post:
+      operationId: createStore
+      tags: [stores]
+      summary: Create a new store
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStoreBody"
+      responses:
+        "201":
+          description: Created store
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Store"
 
   /stores/{storeId}:
     patch:
@@ -1338,6 +1355,17 @@ components:
       required:
         - success
         - id
+
+    CreateStoreBody:
+      type: object
+      required:
+        - name
+        - storeNumber
+      properties:
+        name:
+          type: string
+        storeNumber:
+          type: string
 
     UpdateStoreBody:
       type: object

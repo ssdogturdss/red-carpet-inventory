@@ -10,6 +10,27 @@ router.get("/stores", async (_req, res) => {
   res.json(stores.map((s) => ({ id: s.id, name: s.name, storeNumber: s.storeNumber })));
 });
 
+router.post("/stores", async (req, res) => {
+  const { name, storeNumber } = req.body as { name?: string; storeNumber?: string };
+
+  if (!name?.trim() || !storeNumber?.trim()) {
+    res.status(400).json({ error: "name and storeNumber are required" });
+    return;
+  }
+
+  const [created] = await db
+    .insert(storesTable)
+    .values({ name: name.trim(), storeNumber: storeNumber.trim() })
+    .returning();
+
+  if (!created) {
+    res.status(500).json({ error: "Failed to create store" });
+    return;
+  }
+
+  res.status(201).json({ id: created.id, name: created.name, storeNumber: created.storeNumber });
+});
+
 router.patch("/stores/:storeId", async (req, res) => {
   const storeId = Number(req.params["storeId"]);
   const { name, storeNumber } = req.body as { name?: string; storeNumber?: string };

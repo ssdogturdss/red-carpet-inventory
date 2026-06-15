@@ -82,6 +82,11 @@ export interface DeleteResult {
   id: number;
 }
 
+export interface CreateStoreBody {
+  name: string;
+  storeNumber: string;
+}
+
 export interface UpdateStoreBody {
   name?: string;
   storeNumber?: string;

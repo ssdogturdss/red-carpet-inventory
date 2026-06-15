@@ -30,6 +30,7 @@ import type {
   CreateOrderBody,
   CreatePullBody,
   CreateReceivedBody,
+  CreateStoreBody,
   CreateUserBody,
   DeleteNotificationContact200,
   DeleteResult,
@@ -1172,6 +1173,92 @@ export function useGetStores<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Create a new store
+ */
+export const getCreateStoreUrl = () => {
+  return `/api/stores`;
+};
+
+export const createStore = async (
+  createStoreBody: CreateStoreBody,
+  options?: RequestInit,
+): Promise<Store> => {
+  return customFetch<Store>(getCreateStoreUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createStoreBody),
+  });
+};
+
+export const getCreateStoreMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createStore>>,
+    TError,
+    { data: BodyType<CreateStoreBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createStore>>,
+  TError,
+  { data: BodyType<CreateStoreBody> },
+  TContext
+> => {
+  const mutationKey = ["createStore"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createStore>>,
+    { data: BodyType<CreateStoreBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createStore(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateStoreMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createStore>>
+>;
+export type CreateStoreMutationBody = BodyType<CreateStoreBody>;
+export type CreateStoreMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a new store
+ */
+export const useCreateStore = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createStore>>,
+    TError,
+    { data: BodyType<CreateStoreBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createStore>>,
+  TError,
+  { data: BodyType<CreateStoreBody> },
+  TContext
+> => {
+  return useMutation(getCreateStoreMutationOptions(options));
+};
 
 /**
  * @summary Update a store
