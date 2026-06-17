@@ -2,6 +2,7 @@
   "expo": {
     "name": "Red Carpet Inventory",
     "slug": "mobile",
+    "owner": "Imtherealss",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -14,7 +15,9 @@
       "backgroundColor": "#0f172a"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.redcarpetinventory.app",
+      "buildNumber": "1"
     },
     "android": {},
     "web": {
@@ -30,7 +33,7 @@
       [
         "expo-router",
         {
-          "origin": "https://replit.com/"
+          "origin": "https://RedCarpetInventory.replit.app"
         }
       ],
       "expo-font",

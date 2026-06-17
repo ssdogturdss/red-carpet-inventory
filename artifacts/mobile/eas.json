@@ -1,0 +1,24 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "RedCarpetInventory.replit.app"
+      },
+      "ios": {
+        "resourceClass": "m-medium",
+        "simulator": false
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleTeamId": "GSK64789M4"
+      }
+    }
+  }
+}
