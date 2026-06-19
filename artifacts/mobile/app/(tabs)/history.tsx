@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetInventoryCounts, useGetStores, useGetChemicals,
-  useGetOnHand, useGetReceived, useLogReceived, useDeleteReceived,
+  useGetOnHand, useAdjustOnHand, useGetReceived, useLogReceived, useDeleteReceived,
   useGetOrders, useCreateOrder, useUpdateOrder, useDeleteOrder,
   useGetChemicalReport, useGetStoreReport, useGetMissingSubmissions,
   useGetPulls, useLogPull, useDeletePull,
@@ -207,14 +207,41 @@ function HistorySection({ colors, insets }: { colors: ReturnType<typeof import("
 // ─── On Hand Section ─────────────────────────────────────────────────────────
 function OnHandSection({ colors, insets }: { colors: ReturnType<typeof import("@/hooks/useColors").useColors>; insets: ReturnType<typeof useSafeAreaInsets> }) {
   const webBottom = Platform.OS === "web" ? 34 : 0;
+  const qc = useQueryClient();
   const [storeId, setStoreId] = useState<number | undefined>();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [adjustEntry, setAdjustEntry] = useState<{ chemicalId: number; chemicalName: string; unit: string; quantity: number } | null>(null);
+  const [adjustQty, setAdjustQty] = useState("");
+  const [adjusting, setAdjusting] = useState(false);
   const { data: stores } = useGetStores();
   const { data: onHand, isLoading, refetch } = useGetOnHand(
     { storeId: storeId! },
     { query: { enabled: !!storeId } as any }
   );
+  const { mutateAsync: adjustOnHand } = useAdjustOnHand();
   const storeOptions = [{ id: undefined as number | undefined, name: "Select a store…" }, ...(stores ?? [])];
+
+  const openAdjust = (e: { chemicalId: number; chemicalName: string; unit: string; quantity: number }) => {
+    setAdjustEntry(e);
+    setAdjustQty(String(e.quantity));
+  };
+
+  const submitAdjust = async () => {
+    if (!adjustEntry || !storeId) return;
+    const qty = parseFloat(adjustQty);
+    if (isNaN(qty) || qty < 0) { Alert.alert("Invalid quantity", "Enter a valid number."); return; }
+    setAdjusting(true);
+    try {
+      await adjustOnHand({ data: { storeId, chemicalId: adjustEntry.chemicalId, quantity: qty, unit: adjustEntry.unit } });
+      await qc.invalidateQueries();
+      setAdjustEntry(null);
+    } catch {
+      Alert.alert("Error", "Failed to save adjustment.");
+    } finally {
+      setAdjusting(false);
+    }
+  };
+
   const s = StyleSheet.create({
     filterRow: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.card, borderBottomWidth: 1, borderBottomColor: colors.border },
     filterBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: colors.radius, paddingHorizontal: 14, paddingVertical: 9, alignSelf: "flex-start" },
@@ -224,15 +251,28 @@ function OnHandSection({ colors, insets }: { colors: ReturnType<typeof import("@
     scroll: { flex: 1 },
     content: { padding: 16, paddingBottom: insets.bottom + 90 + webBottom },
     prompt: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 40 },
-    weekBadge: { fontSize: 12, fontFamily: "Inter_500Medium", color: colors.mutedForeground, marginBottom: 12, textAlign: "center" },
+    badge: { fontSize: 12, fontFamily: "Inter_500Medium", color: colors.mutedForeground, marginBottom: 12, textAlign: "center" },
     tableHeader: { flexDirection: "row", paddingHorizontal: 14, paddingVertical: 8, backgroundColor: colors.secondary, borderRadius: 8, marginBottom: 4 },
     headerText: { fontSize: 11, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, textTransform: "uppercase", letterSpacing: 0.7 },
-    row: { flexDirection: "row", paddingHorizontal: 14, paddingVertical: 11, backgroundColor: colors.card, borderRadius: 8, marginBottom: 4, borderWidth: 1, borderColor: colors.border },
+    row: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 11, backgroundColor: colors.card, borderRadius: 8, marginBottom: 4, borderWidth: 1, borderColor: colors.border },
     product: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular", color: colors.foreground },
-    qty: { fontSize: 14, fontFamily: "Inter_700Bold", color: colors.foreground, width: 70, textAlign: "right" },
-    unit: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, width: 55, textAlign: "right" },
-    empty: { textAlign: "center", color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 14, paddingVertical: 20 },
+    qty: { fontSize: 14, fontFamily: "Inter_700Bold", color: colors.foreground, width: 60, textAlign: "right" },
+    unit: { fontSize: 12, fontFamily: "Inter_400Regular", color: colors.mutedForeground, width: 50, textAlign: "right" },
+    editBtn: { marginLeft: 10, padding: 4 },
+    modalOverlay: { flex: 1, backgroundColor: "#00000088", justifyContent: "center", alignItems: "center" },
+    modalCard: { backgroundColor: colors.card, borderRadius: 16, padding: 24, width: "86%", gap: 16 },
+    modalTitle: { fontSize: 16, fontFamily: "Inter_700Bold", color: colors.foreground },
+    modalSub: { fontSize: 13, fontFamily: "Inter_400Regular", color: colors.mutedForeground, marginTop: -8 },
+    input: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, fontSize: 18, fontFamily: "Inter_700Bold", color: colors.foreground, textAlign: "center" },
+    modalRow: { flexDirection: "row", gap: 10 },
+    cancelBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: "center" },
+    cancelText: { fontSize: 14, fontFamily: "Inter_500Medium", color: colors.mutedForeground },
+    saveBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: colors.primary, alignItems: "center" },
+    saveText: { fontSize: 14, fontFamily: "Inter_600SemiBold", color: "#fff" },
   });
+
+  const lastUpdated = onHand?.updatedAt ? new Date(onHand.updatedAt) : null;
+
   return (
     <>
       <View style={s.filterRow}>
@@ -250,22 +290,29 @@ function OnHandSection({ colors, insets }: { colors: ReturnType<typeof import("@
         ) : isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
         ) : !onHand?.entries?.length ? (
-          <Text style={s.prompt}>No count data found for this store yet.</Text>
+          <Text style={s.prompt}>No inventory data found for this store yet. Submit an initial count to set the baseline.</Text>
         ) : (
           <>
-            <Text style={s.weekBadge}>
-              Last counted: Week of {onHand.weekOf ? formatDate(onHand.weekOf) : "—"}
+            <Text style={s.badge}>
+              Running balance · Last updated{" "}
+              {lastUpdated
+                ? lastUpdated.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+                : "—"}
             </Text>
             <View style={s.tableHeader}>
               <Text style={[s.headerText, { flex: 1 }]}>Product</Text>
-              <Text style={[s.headerText, { width: 70, textAlign: "right" }]}>Qty</Text>
-              <Text style={[s.headerText, { width: 55, textAlign: "right" }]}>Unit</Text>
+              <Text style={[s.headerText, { width: 60, textAlign: "right" }]}>Qty</Text>
+              <Text style={[s.headerText, { width: 50, textAlign: "right" }]}>Unit</Text>
+              <Text style={[s.headerText, { width: 34, textAlign: "right" }]}> </Text>
             </View>
             {onHand.entries.map((e) => (
               <View key={e.chemicalId} style={s.row}>
                 <Text style={s.product}>{e.chemicalName}</Text>
-                <Text style={s.qty}>{e.quantity}</Text>
+                <Text style={s.qty}>{e.quantity % 1 === 0 ? e.quantity : e.quantity.toFixed(2)}</Text>
                 <Text style={s.unit}>{e.unit}</Text>
+                <TouchableOpacity style={s.editBtn} onPress={() => openAdjust(e)}>
+                  <Feather name="edit-2" size={14} color={colors.primary} />
+                </TouchableOpacity>
               </View>
             ))}
           </>
@@ -273,6 +320,33 @@ function OnHandSection({ colors, insets }: { colors: ReturnType<typeof import("@
       </ScrollView>
       <PickerModal visible={pickerOpen} title="Select Store" items={storeOptions} selected={storeId}
         onSelect={(id) => setStoreId(id)} onClose={() => setPickerOpen(false)} colors={colors} insets={insets} />
+
+      {/* Adjust modal */}
+      <Modal visible={!!adjustEntry} transparent animationType="fade" onRequestClose={() => setAdjustEntry(null)}>
+        <KeyboardAvoidingView behavior="padding" style={s.modalOverlay}>
+          <View style={s.modalCard}>
+            <Text style={s.modalTitle}>Adjust Inventory</Text>
+            <Text style={s.modalSub}>{adjustEntry?.chemicalName} — set current on-hand quantity</Text>
+            <TextInput
+              style={s.input}
+              keyboardType="decimal-pad"
+              value={adjustQty}
+              onChangeText={setAdjustQty}
+              placeholder="0"
+              placeholderTextColor={colors.mutedForeground}
+              autoFocus
+            />
+            <View style={s.modalRow}>
+              <TouchableOpacity style={s.cancelBtn} onPress={() => setAdjustEntry(null)}>
+                <Text style={s.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.saveBtn} onPress={submitAdjust} disabled={adjusting}>
+                <Text style={s.saveText}>{adjusting ? "Saving…" : "Save"}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </>
   );
 }

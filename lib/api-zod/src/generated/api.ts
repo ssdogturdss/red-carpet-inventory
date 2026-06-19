@@ -802,15 +802,36 @@ export const GetOnHandQueryParams = zod.object({
 export const GetOnHandResponse = zod.object({
   storeId: zod.number(),
   storeName: zod.string(),
-  weekOf: zod.string().nullable(),
+  updatedAt: zod.string().nullable(),
   entries: zod.array(
     zod.object({
       chemicalId: zod.number(),
       chemicalName: zod.string(),
       quantity: zod.number(),
       unit: zod.string(),
+      source: zod.string(),
+      updatedAt: zod.string(),
     }),
   ),
+});
+
+/**
+ * @summary Manually adjust on-hand quantity for a chemical at a store
+ */
+export const AdjustOnHandBody = zod.object({
+  storeId: zod.number(),
+  chemicalId: zod.number(),
+  quantity: zod.number(),
+  unit: zod.string().optional(),
+});
+
+export const AdjustOnHandResponse = zod.object({
+  chemicalId: zod.number(),
+  chemicalName: zod.string(),
+  quantity: zod.number(),
+  unit: zod.string(),
+  source: zod.string(),
+  updatedAt: zod.string(),
 });
 
 /**

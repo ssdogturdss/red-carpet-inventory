@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import {
   inventoryCountsTable,
   inventoryEntriesTable,
+  inventoryOnHandTable,
   storesTable,
   chemicalsTable,
   alertsTable,
@@ -196,6 +197,31 @@ router.post("/inventory", async (req, res) => {
     .from(inventoryEntriesTable)
     .innerJoin(chemicalsTable, eq(inventoryEntriesTable.chemicalId, chemicalsTable.id))
     .where(eq(inventoryEntriesTable.countId, count.id));
+
+  // Upsert on-hand running balance — count submission sets the baseline
+  if (entries.length > 0) {
+    await db
+      .insert(inventoryOnHandTable)
+      .values(
+        entries.map((e) => ({
+          storeId: body.storeId,
+          chemicalId: e.chemicalId,
+          quantity: e.quantity,
+          unit: e.unit,
+          source: "count" as const,
+          updatedAt: new Date(),
+        }))
+      )
+      .onConflictDoUpdate({
+        target: [inventoryOnHandTable.storeId, inventoryOnHandTable.chemicalId],
+        set: {
+          quantity: sql`excluded.quantity`,
+          unit: sql`excluded.unit`,
+          source: sql`'count'`,
+          updatedAt: sql`now()`,
+        },
+      });
+  }
 
   res.status(201).json({
     id: count.id,

@@ -1,0 +1,1 @@
+- [Inventory running balance model](inventory-model.md) — on-hand is a live running balance (count=baseline, received+, pull-, adjust=set); not a weekly snapshot.

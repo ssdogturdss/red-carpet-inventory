@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, real, timestamp, date } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, real, timestamp, date, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { storesTable } from "./stores";
@@ -29,3 +29,17 @@ export type InventoryCount = typeof inventoryCountsTable.$inferSelect;
 export const insertInventoryEntrySchema = createInsertSchema(inventoryEntriesTable).omit({ id: true });
 export type InsertInventoryEntry = z.infer<typeof insertInventoryEntrySchema>;
 export type InventoryEntry = typeof inventoryEntriesTable.$inferSelect;
+
+export const inventoryOnHandTable = pgTable(
+  "inventory_on_hand",
+  {
+    id: serial("id").primaryKey(),
+    storeId: integer("store_id").notNull().references(() => storesTable.id, { onDelete: "cascade" }),
+    chemicalId: integer("chemical_id").notNull().references(() => chemicalsTable.id, { onDelete: "cascade" }),
+    quantity: real("quantity").notNull().default(0),
+    unit: text("unit").notNull().default("gallons"),
+    source: text("source").notNull().default("count"),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [unique("uq_on_hand_store_chemical").on(t.storeId, t.chemicalId)]
+);

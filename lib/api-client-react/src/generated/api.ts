@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AdjustOnHandBody,
   AdminAuthBody,
   AdminAuthResult,
   Alert,
@@ -52,6 +53,7 @@ import type {
   LoginResult,
   MissingSubmission,
   NotificationContact,
+  OnHandEntry,
   OnHandResult,
   PublicBotSettings,
   PushReceipt,
@@ -3516,6 +3518,92 @@ export function useGetOnHand<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Manually adjust on-hand quantity for a chemical at a store
+ */
+export const getAdjustOnHandUrl = () => {
+  return `/api/on-hand/adjust`;
+};
+
+export const adjustOnHand = async (
+  adjustOnHandBody: AdjustOnHandBody,
+  options?: RequestInit,
+): Promise<OnHandEntry> => {
+  return customFetch<OnHandEntry>(getAdjustOnHandUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(adjustOnHandBody),
+  });
+};
+
+export const getAdjustOnHandMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adjustOnHand>>,
+    TError,
+    { data: BodyType<AdjustOnHandBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adjustOnHand>>,
+  TError,
+  { data: BodyType<AdjustOnHandBody> },
+  TContext
+> => {
+  const mutationKey = ["adjustOnHand"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adjustOnHand>>,
+    { data: BodyType<AdjustOnHandBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return adjustOnHand(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdjustOnHandMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adjustOnHand>>
+>;
+export type AdjustOnHandMutationBody = BodyType<AdjustOnHandBody>;
+export type AdjustOnHandMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Manually adjust on-hand quantity for a chemical at a store
+ */
+export const useAdjustOnHand = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adjustOnHand>>,
+    TError,
+    { data: BodyType<AdjustOnHandBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adjustOnHand>>,
+  TError,
+  { data: BodyType<AdjustOnHandBody> },
+  TContext
+> => {
+  return useMutation(getAdjustOnHandMutationOptions(options));
+};
 
 /**
  * @summary Usage comparison for all chemicals across all stores

@@ -856,6 +856,35 @@ paths:
               schema:
                 $ref: "#/components/schemas/OnHandResult"
 
+  /on-hand/adjust:
+    patch:
+      operationId: adjustOnHand
+      tags: [inventory]
+      summary: Manually adjust on-hand quantity for a chemical at a store
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [storeId, chemicalId, quantity]
+              properties:
+                storeId:
+                  type: integer
+                chemicalId:
+                  type: integer
+                quantity:
+                  type: number
+                unit:
+                  type: string
+      responses:
+        "200":
+          description: Adjustment applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnHandEntry"
+
   /reports/chemicals:
     get:
       operationId: getChemicalReport
@@ -1663,11 +1692,17 @@ components:
           type: number
         unit:
           type: string
+        source:
+          type: string
+        updatedAt:
+          type: string
       required:
         - chemicalId
         - chemicalName
         - quantity
         - unit
+        - source
+        - updatedAt
 
     OnHandResult:
       type: object
@@ -1676,7 +1711,7 @@ components:
           type: integer
         storeName:
           type: string
-        weekOf:
+        updatedAt:
           type: string
           nullable: true
         entries:
@@ -1686,7 +1721,7 @@ components:
       required:
         - storeId
         - storeName
-        - weekOf
+        - updatedAt
         - entries
 
     HealthStatus:

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { chemicalPullsTable, storesTable, chemicalsTable, usersTable } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { chemicalPullsTable, inventoryOnHandTable, storesTable, chemicalsTable, usersTable } from "@workspace/db";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -70,6 +70,26 @@ router.post("/pulls", async (req, res) => {
       notes: notes ?? null,
     })
     .returning();
+
+  // Update on-hand running balance: subtract pulled quantity
+  await db
+    .insert(inventoryOnHandTable)
+    .values({
+      storeId: record!.storeId,
+      chemicalId: record!.chemicalId,
+      quantity: record!.quantity,
+      unit: record!.unit,
+      source: "pull",
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [inventoryOnHandTable.storeId, inventoryOnHandTable.chemicalId],
+      set: {
+        quantity: sql`${inventoryOnHandTable.quantity} - excluded.quantity`,
+        source: sql`'pull'`,
+        updatedAt: sql`now()`,
+      },
+    });
 
   const [store] = await db.select({ name: storesTable.name }).from(storesTable).where(eq(storesTable.id, record!.storeId));
   const [chemical] = await db.select({ name: chemicalsTable.name }).from(chemicalsTable).where(eq(chemicalsTable.id, record!.chemicalId));

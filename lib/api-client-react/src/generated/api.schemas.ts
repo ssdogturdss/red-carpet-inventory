@@ -208,12 +208,14 @@ export interface OnHandEntry {
   chemicalName: string;
   quantity: number;
   unit: string;
+  source: string;
+  updatedAt: string;
 }
 
 export interface OnHandResult {
   storeId: number;
   storeName: string;
-  weekOf: string | null;
+  updatedAt: string | null;
   entries: OnHandEntry[];
 }
 
@@ -504,6 +506,13 @@ export type GetPullsParams = {
 
 export type GetOnHandParams = {
   storeId: number;
+};
+
+export type AdjustOnHandBody = {
+  storeId: number;
+  chemicalId: number;
+  quantity: number;
+  unit?: string;
 };
 
 export type GetChemicalReportParams = {

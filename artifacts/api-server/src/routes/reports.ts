@@ -241,8 +241,8 @@ router.get("/reports/trend", async (req, res) => {
     WITH recent AS (
       SELECT
         ic.week_of,
-        COALESCE(SUM(ie.quantity), 0)::numeric          AS total_quantity,
-        COUNT(DISTINCT ic.store_id)::int                AS store_count
+        COALESCE(SUM(CASE WHEN ie.quantity > 0 THEN ie.quantity ELSE 0 END), 0)::numeric AS total_quantity,
+        COUNT(DISTINCT CASE WHEN ie.quantity > 0 THEN ic.store_id END)::int             AS store_count
       FROM inventory_counts ic
       JOIN inventory_entries ie
         ON ie.count_id = ic.id
