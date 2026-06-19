@@ -67,6 +67,7 @@ export default function CountScreen() {
   const [submitted, setSubmitted] = useState(false);
   const [savedOffline, setSavedOffline] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [touched, setTouched] = useState<Record<number, boolean>>({});
   const hasInteracted = useRef(false);
 
   const currentWeek = getWeekOf();
@@ -105,6 +106,11 @@ export default function CountScreen() {
             setQuantities(pendingDraft.quantities);
             setNotes(pendingDraft.notes);
             if (pendingDraft.weekOf) setWeekOf(pendingDraft.weekOf);
+            const restoredTouched: Record<number, boolean> = {};
+            Object.keys(pendingDraft.quantities).forEach((id) => {
+              restoredTouched[Number(id)] = true;
+            });
+            setTouched(restoredTouched);
             hasInteracted.current = true;
           },
         },
@@ -128,6 +134,7 @@ export default function CountScreen() {
   const handleQuantityChange = useCallback((chemicalId: number, value: string) => {
     hasInteracted.current = true;
     setQuantities((prev) => ({ ...prev, [chemicalId]: value }));
+    setTouched((prev) => ({ ...prev, [chemicalId]: true }));
   }, []);
 
   const handleStoreSelect = useCallback((storeId: number) => {
@@ -224,6 +231,7 @@ export default function CountScreen() {
     setSubmittedBy("");
     setQuantities({});
     setNotes("");
+    setTouched({});
     hasInteracted.current = false;
   };
 
@@ -320,6 +328,7 @@ export default function CountScreen() {
       flexDirection: "row",
       alignItems: "center",
     },
+    chemicalRowUnfilled: { borderColor: "#fbbf24", backgroundColor: "#fffbeb" },
     chemicalRowFilled: { borderColor: colors.teal + "60", backgroundColor: colors.tealSurface },
     chemicalInfo: { flex: 1 },
     chemicalName: { fontSize: 14, fontFamily: "Inter_500Medium", color: colors.foreground },
@@ -337,6 +346,7 @@ export default function CountScreen() {
       borderWidth: 1,
       borderColor: "transparent",
     },
+    quantityInputUnfilled: { borderColor: "#fbbf24", backgroundColor: "#fffbeb" },
     quantityInputFilled: { borderColor: colors.teal + "80", backgroundColor: colors.tealSurface },
     notesInput: {
       backgroundColor: colors.card,
@@ -507,18 +517,32 @@ export default function CountScreen() {
         </View>
         {(chemicals ?? []).map((chemical) => {
           const val = quantities[chemical.id] ?? "";
-          const filled = val.trim() !== "" && parseFloat(val) > 0;
+          const isTouched = !!touched[chemical.id];
+          const filled = isTouched && val.trim() !== "" && parseFloat(val) > 0;
+          const unfilled = !isTouched;
           return (
-            <View key={chemical.id} style={[styles.chemicalRow, filled && styles.chemicalRowFilled]}>
+            <View
+              key={chemical.id}
+              style={[
+                styles.chemicalRow,
+                unfilled && styles.chemicalRowUnfilled,
+                filled && styles.chemicalRowFilled,
+              ]}
+            >
               <View style={styles.chemicalInfo}>
                 <Text style={styles.chemicalName}>{chemical.name}</Text>
                 <Text style={styles.chemicalUnit}>{chemical.unit}</Text>
               </View>
               {filled && <Feather name="check-circle" size={14} color={colors.teal} style={{ marginRight: 8 }} />}
+              {unfilled && <Feather name="alert-circle" size={14} color="#f59e0b" style={{ marginRight: 8 }} />}
               <TextInput
-                style={[styles.quantityInput, filled && styles.quantityInputFilled]}
-                placeholder="0"
-                placeholderTextColor={colors.mutedForeground}
+                style={[
+                  styles.quantityInput,
+                  unfilled && styles.quantityInputUnfilled,
+                  filled && styles.quantityInputFilled,
+                ]}
+                placeholder="—"
+                placeholderTextColor={unfilled ? "#f59e0b" : colors.mutedForeground}
                 keyboardType="decimal-pad"
                 value={val}
                 onChangeText={(v) => handleQuantityChange(chemical.id, v)}
