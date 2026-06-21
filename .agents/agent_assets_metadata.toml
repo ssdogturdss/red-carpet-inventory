@@ -11,3 +11,9 @@ id = "2g3ggGdEkOafUKWu5w7D0"
 uri = "file://red-carpet-inventory.zip"
 type = "unspecified"
 title = "red-carpet-inventory.zip"
+
+[[outputs]]
+id = "l4aJfn4vv0J1ZMHFh2kHB"
+uri = "file://screenshots/app-store-assets.zip"
+type = "unspecified"
+title = "App Store Assets — 13 files (5.7 MB)"
