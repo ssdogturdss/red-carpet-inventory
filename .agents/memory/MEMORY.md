@@ -1,1 +1,2 @@
 - [Inventory running balance model](inventory-model.md) — on-hand is a live running balance (count=baseline, received+, pull-, adjust=set); not a weekly snapshot.
+- [Production web export](production-web-export.md) — static-build/web/ must be committed to git; it's not gitignored and holds the Expo web bundle for the deployed URL.
