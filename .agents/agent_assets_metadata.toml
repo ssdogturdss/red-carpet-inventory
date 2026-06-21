@@ -1,8 +1,13 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "CBw7tbgoL4ccKCBx68OUW"
 uri = "file://artifacts/mobile/assets/images/icon.png"
 type = "image"
 title = "chemical inventory app icon"
+
+[[outputs]]
+id = "2g3ggGdEkOafUKWu5w7D0"
+uri = "file://red-carpet-inventory.zip"
+type = "unspecified"
+title = "red-carpet-inventory.zip"
