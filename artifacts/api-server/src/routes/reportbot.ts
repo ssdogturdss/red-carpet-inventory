@@ -448,7 +448,7 @@ router.post("/reports/bot/pdf", requireAdminPin, async (req, res) => {
         }
         if (col.includes("change_pct") || col.includes("percent_change")) {
           const num = parseFloat(valStr);
-          if (!isNaN(num)) color = num > 0 ? RED : num < 0 ? GREEN : "#1e293b";
+          if (!isNaN(num)) color = num < 0 ? RED : num > 0 ? AMBER : "#1e293b";
         }
 
         doc.fontSize(8).fillColor(color).font("Helvetica")

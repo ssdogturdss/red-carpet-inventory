@@ -254,6 +254,16 @@ async function generateAlerts(
     .orderBy(desc(inventoryCountsTable.weekOf))
     .limit(1);
 
+  // Remove any alerts already recorded for this store+week (re-submission guard)
+  await db
+    .delete(alertsTable)
+    .where(
+      and(
+        eq(alertsTable.storeId, storeId),
+        sql`${alertsTable.weekOf} = ${weekOf}`
+      )
+    );
+
   if (prevCounts.length === 0) return;
 
   const prevCount = prevCounts[0]!;

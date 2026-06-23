@@ -44,7 +44,7 @@ export async function sendAlertEmail(
   pctChange: number
 ): Promise<void> {
   if (!isEmailConfigured() || recipients.length === 0) return;
-  const dir = direction === "over" ? "high usage" : "low quantity";
+  const dir = direction === "over" ? "high usage" : "low usage";
   const subject = `Red Carpet Alert [${severity.toUpperCase()}] — ${storeName}`;
   const body = `Red Carpet Inventory Alert\n\nStore: ${storeName}\nProduct: ${chemicalName}\nSeverity: ${severity.toUpperCase()}\nIssue: ${dir} — ${Math.abs(pctChange).toFixed(1)}% change this week.\n\nLog in to review and acknowledge this alert.`;
   await Promise.allSettled(recipients.map((to) => sendEmail(to, subject, body)));
