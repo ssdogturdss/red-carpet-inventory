@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireEmployeeAuth } from "../lib/userAuth";
 import { db } from "@workspace/db";
 import {
   inventoryCountsTable,
@@ -146,7 +147,7 @@ router.delete("/inventory/:countId", async (req, res) => {
   res.json({ success: true, id: countId });
 });
 
-router.post("/inventory", async (req, res) => {
+router.post("/inventory", requireEmployeeAuth, async (req, res) => {
   const parseResult = SubmitInventoryCountBody.safeParse(req.body);
   if (!parseResult.success) {
     res.status(400).json({ error: parseResult.error.message });

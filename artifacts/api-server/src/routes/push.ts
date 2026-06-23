@@ -1,4 +1,5 @@
 import { Router, type Response } from "express";
+import { requireEmployeeAuth } from "../lib/userAuth";
 import { db } from "@workspace/db";
 import { pushTokensTable, pushReceiptsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
@@ -35,7 +36,7 @@ async function upsertToken(
 }
 
 // POST /push-tokens — canonical endpoint (upsert by token value)
-router.post("/push-tokens", async (req, res) => {
+router.post("/push-tokens", requireEmployeeAuth, async (req, res) => {
   const { token, platform, label, minSeverity } = req.body as {
     token?: string;
     platform?: string;
@@ -53,7 +54,7 @@ router.post("/push-tokens", async (req, res) => {
 });
 
 // DELETE /push-tokens/:token — canonical endpoint (delete by token string)
-router.delete("/push-tokens/:token", async (req, res) => {
+router.delete("/push-tokens/:token", requireEmployeeAuth, async (req, res) => {
   const token = decodeURIComponent(req.params["token"] ?? "");
   if (!token) { res.status(400).json({ error: "token is required" }); return; }
   await db.delete(pushTokensTable).where(eq(pushTokensTable.token, token));
@@ -61,7 +62,7 @@ router.delete("/push-tokens/:token", async (req, res) => {
 });
 
 // Legacy aliases kept for backward compatibility
-router.post("/push/register", async (req, res) => {
+router.post("/push/register", requireEmployeeAuth, async (req, res) => {
   const { token, platform, label, minSeverity } = req.body as {
     token?: string;
     platform?: string;
@@ -78,7 +79,7 @@ router.post("/push/register", async (req, res) => {
   );
 });
 
-router.delete("/push/register", async (req, res) => {
+router.delete("/push/register", requireEmployeeAuth, async (req, res) => {
   const { token } = req.body as { token?: string };
   if (!token) { res.status(400).json({ error: "token is required" }); return; }
   await db.delete(pushTokensTable).where(eq(pushTokensTable.token, token));

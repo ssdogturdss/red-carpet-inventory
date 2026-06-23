@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { ScanInventorySheetBody } from "@workspace/api-zod";
+import { requireEmployeeAuth } from "../lib/userAuth";
 
 const router = Router();
 
-router.post("/inventory/scan", async (req, res) => {
+router.post("/inventory/scan", requireEmployeeAuth, async (req, res) => {
   const parseResult = ScanInventorySheetBody.safeParse(req.body);
   if (!parseResult.success) {
     res.status(400).json({ error: parseResult.error.message });
