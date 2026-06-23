@@ -12,7 +12,7 @@ import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
 
 const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
-const TOKEN_KEY = "@rci_user_token_v1";
+const TOKEN_KEY = "rci_user_token_v2";
 
 export interface CurrentUser {
   id: number;
