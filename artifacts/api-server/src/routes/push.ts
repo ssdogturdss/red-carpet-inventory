@@ -1,21 +1,10 @@
-import { Router, type Request, type Response, type NextFunction } from "express";
+import { Router, type Response } from "express";
 import { db } from "@workspace/db";
 import { pushTokensTable, pushReceiptsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
+import { requireAdminPin } from "../lib/adminAuth";
 
 const router = Router();
-
-const ADMIN_PIN_HEADER = "x-admin-pin";
-
-function requireAdminPin(req: Request, res: Response, next: NextFunction) {
-  const pin = req.headers[ADMIN_PIN_HEADER] as string | undefined;
-  const adminPin = process.env.ADMIN_PIN ?? "1234";
-  if (!pin || pin !== adminPin) {
-    res.status(401).json({ error: "Admin PIN required" });
-    return;
-  }
-  next();
-}
 
 async function upsertToken(
   token: string,

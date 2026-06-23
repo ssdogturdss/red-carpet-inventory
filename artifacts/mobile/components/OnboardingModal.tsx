@@ -56,8 +56,8 @@ const STEPS: Step[] = [
     color: "#dc2626",
     bg: "#fef2f2",
     title: "Admin Panel",
-    body: "Tap Admin and enter your PIN (default: 1234) to manage alerts, stores, products, and contacts. You can acknowledge or delete alerts, and configure email/SMS notifications.",
-    tip: "Change the admin PIN via the ADMIN_PIN server environment variable.",
+    body: "Tap Admin and enter your PIN to manage alerts, stores, products, and contacts. You can acknowledge or delete alerts, and configure email/SMS notifications.",
+    tip: "The admin PIN is set via the ADMIN_PIN server environment variable.",
   },
 ];
 

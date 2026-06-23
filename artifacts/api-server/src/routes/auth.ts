@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { usersTable, storesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { requireAdminPin } from "../lib/adminAuth";
 
 const router = Router();
 
@@ -87,9 +88,6 @@ function generateToken(): string {
   return randomBytes(32).toString("hex");
 }
 
-function validateAdminPin(pin: string): boolean {
-  return pin === (process.env.ADMIN_PIN ?? "1234");
-}
 
 router.get("/auth/users", async (_req, res): Promise<void> => {
   const users = await db
@@ -213,13 +211,7 @@ router.post("/auth/logout", async (req, res): Promise<void> => {
   res.json({ success: true, id: user?.id ?? 0 });
 });
 
-router.get("/admin/users", async (req, res): Promise<void> => {
-  const pin = req.headers["x-admin-pin"] as string | undefined;
-  if (!pin || !validateAdminPin(pin)) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
-
+router.get("/admin/users", requireAdminPin, async (req, res): Promise<void> => {
   const users = await db
     .select({
       id: usersTable.id,
@@ -237,13 +229,7 @@ router.get("/admin/users", async (req, res): Promise<void> => {
   res.json(users.map((u) => ({ ...u, createdAt: u.createdAt.toISOString() })));
 });
 
-router.post("/admin/users", async (req, res): Promise<void> => {
-  const pin = req.headers["x-admin-pin"] as string | undefined;
-  if (!pin || !validateAdminPin(pin)) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
-
+router.post("/admin/users", requireAdminPin, async (req, res): Promise<void> => {
   const { name, pin: userPin, storeId, role, active } = req.body as {
     name?: string;
     pin?: string;
@@ -289,13 +275,7 @@ router.post("/admin/users", async (req, res): Promise<void> => {
   });
 });
 
-router.put("/admin/users/:userId", async (req, res): Promise<void> => {
-  const pin = req.headers["x-admin-pin"] as string | undefined;
-  if (!pin || !validateAdminPin(pin)) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
-
+router.put("/admin/users/:userId", requireAdminPin, async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params["userId"]) ? req.params["userId"][0] : req.params["userId"];
   const userId = parseInt(rawId ?? "", 10);
   if (isNaN(userId)) {
@@ -345,13 +325,7 @@ router.put("/admin/users/:userId", async (req, res): Promise<void> => {
   });
 });
 
-router.delete("/admin/users/:userId", async (req, res): Promise<void> => {
-  const pin = req.headers["x-admin-pin"] as string | undefined;
-  if (!pin || !validateAdminPin(pin)) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
-
+router.delete("/admin/users/:userId", requireAdminPin, async (req, res): Promise<void> => {
   const rawId = Array.isArray(req.params["userId"]) ? req.params["userId"][0] : req.params["userId"];
   const userId = parseInt(rawId ?? "", 10);
   if (isNaN(userId)) {

@@ -43,7 +43,7 @@ A mobile-first chemical inventory management system for 11 stores tracking 23 ch
 
 ## Admin PIN
 
-Default PIN is `1234`. Override by setting the `ADMIN_PIN` environment variable/secret on the server.
+Set the `ADMIN_PIN` environment variable/secret on the server. Admin access is disabled if the secret is not configured.
 
 ## Data Model
 

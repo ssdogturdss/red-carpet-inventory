@@ -4,19 +4,9 @@ import { botSettingsTable } from "@workspace/db/schema";
 import { sql } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import PDFDocument from "pdfkit";
+import { requireAdminPin } from "../lib/adminAuth";
 
 const router = Router();
-
-// ─── Admin PIN middleware ─────────────────────────────────────────────────────
-function requireAdminPin(req: any, res: any, next: any) {
-  const pin = req.headers["x-admin-pin"] as string | undefined;
-  const adminPin = process.env.ADMIN_PIN ?? "1234";
-  if (!pin || pin !== adminPin) {
-    res.status(401).json({ error: "Admin PIN required" });
-    return;
-  }
-  next();
-}
 
 // ─── Tool definitions ─────────────────────────────────────────────────────────
 const TOOLS: any[] = [
