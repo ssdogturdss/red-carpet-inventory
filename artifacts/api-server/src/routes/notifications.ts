@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { requireEmployeeAuth } from "../lib/userAuth";
+import { requireAdminPin } from "../lib/adminAuth";
 import { db } from "@workspace/db";
 import { notificationContactsTable, storesTable } from "@workspace/db";
 import { eq, isNull, or } from "drizzle-orm";
@@ -7,7 +9,7 @@ import { isSmsConfigured, sendSms } from "../services/sms";
 
 const router = Router();
 
-router.get("/notifications/contacts", async (req, res) => {
+router.get("/notifications/contacts", requireAdminPin, async (req, res) => {
   const storeId = req.query["storeId"] ? Number(req.query["storeId"]) : undefined;
 
   const rows = await db
@@ -38,7 +40,7 @@ router.get("/notifications/contacts", async (req, res) => {
   })));
 });
 
-router.post("/notifications/contacts", async (req, res) => {
+router.post("/notifications/contacts", requireAdminPin, async (req, res) => {
   const { storeId, email, phone, label, active, severity } = req.body as {
     storeId?: number | null;
     email?: string;
@@ -73,7 +75,7 @@ router.post("/notifications/contacts", async (req, res) => {
   res.status(201).json({ ...contact, createdAt: contact.createdAt.toISOString() });
 });
 
-router.patch("/notifications/contacts/:id", async (req, res) => {
+router.patch("/notifications/contacts/:id", requireAdminPin, async (req, res) => {
   const id = Number(req.params["id"]);
   const { email, phone, label, active, severity, storeId } = req.body as {
     email?: string | null;
@@ -106,13 +108,13 @@ router.patch("/notifications/contacts/:id", async (req, res) => {
   res.json({ ...updated, createdAt: updated.createdAt.toISOString() });
 });
 
-router.delete("/notifications/contacts/:id", async (req, res) => {
+router.delete("/notifications/contacts/:id", requireAdminPin, async (req, res) => {
   const id = Number(req.params["id"]);
   await db.delete(notificationContactsTable).where(eq(notificationContactsTable.id, id));
   res.json({ success: true, id });
 });
 
-router.post("/notifications/contacts/:id/test", async (req, res) => {
+router.post("/notifications/contacts/:id/test", requireAdminPin, async (req, res) => {
   const id = Number(req.params["id"]);
 
   const [contact] = await db
@@ -162,7 +164,7 @@ router.post("/notifications/contacts/:id/test", async (req, res) => {
   res.json({ success: anySuccess, error: errors.length > 0 ? errors.join("; ") : undefined });
 });
 
-router.get("/notifications/status", async (_req, res) => {
+router.get("/notifications/status", requireEmployeeAuth, async (_req, res) => {
   const emailConfigured = isEmailConfigured();
   const smsConfigured = isSmsConfigured();
   res.json({ configured: emailConfigured || smsConfigured, emailConfigured, smsConfigured });

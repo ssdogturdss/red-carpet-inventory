@@ -1,16 +1,18 @@
 import { Router } from "express";
+import { requireEmployeeAuth } from "../lib/userAuth";
+import { requireAdminPin } from "../lib/adminAuth";
 import { db } from "@workspace/db";
 import { storesTable, inventoryCountsTable, inventoryEntriesTable, alertsTable } from "@workspace/db";
 import { asc, eq } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/stores", async (_req, res) => {
+router.get("/stores", requireEmployeeAuth, async (_req, res) => {
   const stores = await db.select().from(storesTable).orderBy(asc(storesTable.storeNumber));
   res.json(stores.map((s) => ({ id: s.id, name: s.name, storeNumber: s.storeNumber })));
 });
 
-router.post("/stores", async (req, res) => {
+router.post("/stores", requireAdminPin, async (req, res) => {
   const { name, storeNumber } = req.body as { name?: string; storeNumber?: string };
 
   if (!name?.trim() || !storeNumber?.trim()) {
@@ -31,7 +33,7 @@ router.post("/stores", async (req, res) => {
   res.status(201).json({ id: created.id, name: created.name, storeNumber: created.storeNumber });
 });
 
-router.patch("/stores/:storeId", async (req, res) => {
+router.patch("/stores/:storeId", requireAdminPin, async (req, res) => {
   const storeId = Number(req.params["storeId"]);
   const { name, storeNumber } = req.body as { name?: string; storeNumber?: string };
 
@@ -53,7 +55,7 @@ router.patch("/stores/:storeId", async (req, res) => {
   res.json({ id: updated.id, name: updated.name, storeNumber: updated.storeNumber });
 });
 
-router.delete("/stores/:storeId", async (req, res) => {
+router.delete("/stores/:storeId", requireAdminPin, async (req, res) => {
   const storeId = Number(req.params["storeId"]);
 
   const counts = await db

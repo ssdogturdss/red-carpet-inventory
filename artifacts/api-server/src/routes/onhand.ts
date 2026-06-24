@@ -1,22 +1,25 @@
 import { Router } from "express";
+import { requireEmployeeAuth, isAdmin, denyIfWrongStore } from "../lib/userAuth";
 import { db } from "@workspace/db";
 import { inventoryOnHandTable, storesTable, chemicalsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/on-hand", async (req, res) => {
-  const storeId = req.query["storeId"] ? Number(req.query["storeId"]) : undefined;
+router.get("/on-hand", requireEmployeeAuth, async (req, res) => {
+  const requestedStoreId = req.query["storeId"] ? Number(req.query["storeId"]) : undefined;
 
-  if (!storeId) {
+  if (!requestedStoreId) {
     res.status(400).json({ error: "storeId query parameter is required" });
     return;
   }
 
+  if (denyIfWrongStore(req, res, requestedStoreId)) return;
+
   const [store] = await db
     .select({ name: storesTable.name })
     .from(storesTable)
-    .where(eq(storesTable.id, storeId));
+    .where(eq(storesTable.id, requestedStoreId));
 
   const entries = await db
     .select({
@@ -29,7 +32,7 @@ router.get("/on-hand", async (req, res) => {
     })
     .from(inventoryOnHandTable)
     .innerJoin(chemicalsTable, eq(inventoryOnHandTable.chemicalId, chemicalsTable.id))
-    .where(eq(inventoryOnHandTable.storeId, storeId))
+    .where(eq(inventoryOnHandTable.storeId, requestedStoreId))
     .orderBy(chemicalsTable.name);
 
   const lastUpdated =
@@ -41,7 +44,7 @@ router.get("/on-hand", async (req, res) => {
       : null;
 
   res.json({
-    storeId,
+    storeId: requestedStoreId,
     storeName: store?.name ?? "",
     updatedAt: lastUpdated ? lastUpdated.toISOString() : null,
     entries: entries.map((e) => ({
@@ -51,18 +54,20 @@ router.get("/on-hand", async (req, res) => {
   });
 });
 
-router.patch("/on-hand/adjust", async (req, res) => {
-  const { storeId, chemicalId, quantity, unit } = req.body as {
+router.patch("/on-hand/adjust", requireEmployeeAuth, async (req, res) => {
+  const { storeId: bodyStoreId, chemicalId, quantity, unit } = req.body as {
     storeId: number;
     chemicalId: number;
     quantity: number;
     unit?: string;
   };
 
-  if (!storeId || !chemicalId || quantity === undefined || quantity === null) {
+  if (!bodyStoreId || !chemicalId || quantity === undefined || quantity === null) {
     res.status(400).json({ error: "storeId, chemicalId, and quantity are required" });
     return;
   }
+
+  if (denyIfWrongStore(req, res, Number(bodyStoreId))) return;
 
   const [chem] = await db
     .select({ name: chemicalsTable.name, unit: chemicalsTable.unit })
@@ -72,7 +77,7 @@ router.patch("/on-hand/adjust", async (req, res) => {
   const [record] = await db
     .insert(inventoryOnHandTable)
     .values({
-      storeId: Number(storeId),
+      storeId: Number(bodyStoreId),
       chemicalId: Number(chemicalId),
       quantity: Number(quantity),
       unit: unit ?? chem?.unit ?? "gallons",

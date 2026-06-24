@@ -1,12 +1,19 @@
 import { Router } from "express";
+import { requireEmployeeAuth, isAdmin, scopedStoreId, denyIfWrongStore } from "../lib/userAuth";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 
 const router = Router();
 
 // ─── GET /reports/chemicals ───────────────────────────────────────────────────
-router.get("/reports/chemicals", async (req, res) => {
+router.get("/reports/chemicals", requireEmployeeAuth, async (req, res) => {
+  if (!isAdmin(req) && !req.user?.storeId) {
+    res.status(403).json({ error: "No store assigned to your account" });
+    return;
+  }
+
   const weekOf = req.query.weekOf as string | undefined;
+  const effectiveStoreId = scopedStoreId(req, undefined);
 
   const rows = await db.execute(sql`
     WITH selected_counts AS (
@@ -48,6 +55,7 @@ router.get("/reports/chemicals", async (req, res) => {
     LEFT JOIN inventory_entries ie ON ie.count_id = sc.id AND ie.chemical_id = c.id
     LEFT JOIN previous_counts pc ON pc.store_id = s.id
     LEFT JOIN inventory_entries pie ON pie.count_id = pc.id AND pie.chemical_id = c.id
+    ${effectiveStoreId !== null ? sql`WHERE s.id = ${effectiveStoreId}` : sql``}
     ORDER BY c.name, s.name
   `);
 
@@ -104,9 +112,11 @@ router.get("/reports/chemicals", async (req, res) => {
 });
 
 // ─── GET /reports/store/:storeId ──────────────────────────────────────────────
-router.get("/reports/store/:storeId", async (req, res) => {
+router.get("/reports/store/:storeId", requireEmployeeAuth, async (req, res) => {
   const storeId = Number(req.params.storeId);
   const weekOf = req.query.weekOf as string | undefined;
+
+  if (denyIfWrongStore(req, res, storeId)) return;
 
   const storeRows = await db.execute(sql`
     SELECT id, name, store_number FROM stores WHERE id = ${storeId}
@@ -187,7 +197,14 @@ router.get("/reports/store/:storeId", async (req, res) => {
 });
 
 // ─── GET /reports/missing-submissions ────────────────────────────────────────
-router.get("/reports/missing-submissions", async (_req, res) => {
+router.get("/reports/missing-submissions", requireEmployeeAuth, async (req, res) => {
+  if (!isAdmin(req) && !req.user?.storeId) {
+    res.status(403).json({ error: "No store assigned to your account" });
+    return;
+  }
+
+  const effectiveStoreId = scopedStoreId(req, undefined);
+
   const rows = await db.execute(sql`
     WITH current_week AS (
       SELECT date_trunc('week', CURRENT_DATE)::date AS week_start
@@ -209,8 +226,9 @@ router.get("/reports/missing-submissions", async (_req, res) => {
       END               AS weeks_since_last
     FROM stores s
     LEFT JOIN latest_per_store lps ON lps.store_id = s.id
-    WHERE lps.week_of IS NULL
-       OR lps.week_of < (SELECT week_start FROM current_week)
+    WHERE (lps.week_of IS NULL
+       OR lps.week_of < (SELECT week_start FROM current_week))
+      ${effectiveStoreId !== null ? sql`AND s.id = ${effectiveStoreId}` : sql``}
     ORDER BY s.name
   `);
 
@@ -226,17 +244,28 @@ router.get("/reports/missing-submissions", async (_req, res) => {
 });
 
 // ─── GET /reports/trend ───────────────────────────────────────────────────────
-router.get("/reports/trend", async (req, res) => {
+router.get("/reports/trend", requireEmployeeAuth, async (req, res) => {
   const chemicalId = Number(req.query.chemicalId);
   const weeks = Math.min(Number(req.query.weeks ?? 8), 26);
-  const storeId = req.query.storeId ? Number(req.query.storeId) : null;
+  const requestedStoreId = req.query.storeId ? Number(req.query.storeId) : null;
 
   if (!chemicalId) {
     res.status(400).json({ error: "chemicalId is required" });
     return;
   }
 
-  // Fetch the most-recent N weeks first (DESC), then re-sort ASC for charting.
+  const effectiveStoreId = scopedStoreId(req, requestedStoreId ?? undefined);
+
+  if (!isAdmin(req) && !effectiveStoreId) {
+    res.status(403).json({ error: "No store assigned to your account" });
+    return;
+  }
+
+  if (effectiveStoreId !== null && requestedStoreId !== null && !isAdmin(req) && effectiveStoreId !== requestedStoreId) {
+    res.status(403).json({ error: "Access denied" });
+    return;
+  }
+
   const rows = await db.execute(sql`
     WITH recent AS (
       SELECT
@@ -247,7 +276,7 @@ router.get("/reports/trend", async (req, res) => {
       JOIN inventory_entries ie
         ON ie.count_id = ic.id
        AND ie.chemical_id = ${chemicalId}
-      ${storeId ? sql`WHERE ic.store_id = ${storeId}` : sql``}
+      ${effectiveStoreId !== null ? sql`WHERE ic.store_id = ${effectiveStoreId}` : sql``}
       GROUP BY ic.week_of
       ORDER BY ic.week_of DESC
       LIMIT ${weeks}

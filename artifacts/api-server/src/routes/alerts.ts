@@ -1,12 +1,19 @@
 import { Router } from "express";
+import { requireEmployeeAuth, isAdmin, scopedStoreId, denyIfWrongStore } from "../lib/userAuth";
 import { db } from "@workspace/db";
 import { alertsTable, storesTable, chemicalsTable } from "@workspace/db";
-import { eq, and, desc, count } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/alerts", async (req, res) => {
-  const storeId = req.query["storeId"] ? Number(req.query["storeId"]) : undefined;
+router.get("/alerts", requireEmployeeAuth, async (req, res) => {
+  if (!isAdmin(req) && !req.user?.storeId) {
+    res.status(403).json({ error: "No store assigned to your account" });
+    return;
+  }
+
+  const requestedStoreId = req.query["storeId"] ? Number(req.query["storeId"]) : undefined;
+  const effectiveStoreId = scopedStoreId(req, requestedStoreId);
   const weekOf = req.query["weekOf"] as string | undefined;
   const acknowledged =
     req.query["acknowledged"] !== undefined
@@ -15,7 +22,7 @@ router.get("/alerts", async (req, res) => {
   const limit = req.query["limit"] ? Number(req.query["limit"]) : 100;
 
   const conditions = [];
-  if (storeId !== undefined) conditions.push(eq(alertsTable.storeId, storeId));
+  if (effectiveStoreId !== null) conditions.push(eq(alertsTable.storeId, effectiveStoreId));
   if (weekOf) conditions.push(eq(alertsTable.weekOf, weekOf));
   if (acknowledged !== undefined) conditions.push(eq(alertsTable.acknowledged, acknowledged));
 
@@ -52,7 +59,14 @@ router.get("/alerts", async (req, res) => {
   );
 });
 
-router.get("/alerts/summary", async (_req, res) => {
+router.get("/alerts/summary", requireEmployeeAuth, async (req, res) => {
+  if (!isAdmin(req) && !req.user?.storeId) {
+    res.status(403).json({ error: "No store assigned to your account" });
+    return;
+  }
+
+  const effectiveStoreId = scopedStoreId(req, undefined);
+
   const allAlerts = await db
     .select({
       storeId: alertsTable.storeId,
@@ -61,7 +75,8 @@ router.get("/alerts/summary", async (_req, res) => {
       acknowledged: alertsTable.acknowledged,
     })
     .from(alertsTable)
-    .innerJoin(storesTable, eq(alertsTable.storeId, storesTable.id));
+    .innerJoin(storesTable, eq(alertsTable.storeId, storesTable.id))
+    .where(effectiveStoreId !== null ? eq(alertsTable.storeId, effectiveStoreId) : undefined);
 
   const unacknowledged = allAlerts.filter((a) => !a.acknowledged);
   const critical = unacknowledged.filter((a) => a.severity === "critical");
@@ -88,14 +103,39 @@ router.get("/alerts/summary", async (_req, res) => {
   });
 });
 
-router.delete("/alerts/:alertId", async (req, res) => {
+router.delete("/alerts/:alertId", requireEmployeeAuth, async (req, res) => {
   const alertId = Number(req.params["alertId"]);
+
+  const [existing] = await db
+    .select({ storeId: alertsTable.storeId })
+    .from(alertsTable)
+    .where(eq(alertsTable.id, alertId));
+
+  if (!existing) {
+    res.status(404).json({ error: "Alert not found" });
+    return;
+  }
+
+  if (denyIfWrongStore(req, res, existing.storeId)) return;
+
   await db.delete(alertsTable).where(eq(alertsTable.id, alertId));
   res.json({ success: true, id: alertId });
 });
 
-router.patch("/alerts/:alertId/acknowledge", async (req, res) => {
+router.patch("/alerts/:alertId/acknowledge", requireEmployeeAuth, async (req, res) => {
   const alertId = Number(req.params["alertId"]);
+
+  const [existing] = await db
+    .select({ storeId: alertsTable.storeId })
+    .from(alertsTable)
+    .where(eq(alertsTable.id, alertId));
+
+  if (!existing) {
+    res.status(404).json({ error: "Alert not found" });
+    return;
+  }
+
+  if (denyIfWrongStore(req, res, existing.storeId)) return;
 
   const [updated] = await db
     .update(alertsTable)

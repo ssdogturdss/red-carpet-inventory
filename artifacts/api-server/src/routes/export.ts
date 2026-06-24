@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireEmployeeAuth, isAdmin, scopedStoreId } from "../lib/userAuth";
 import { db } from "@workspace/db";
 import {
   inventoryCountsTable,
@@ -10,13 +11,19 @@ import { eq, and, desc } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/export/csv", async (req, res) => {
-  const storeId = req.query["storeId"] ? Number(req.query["storeId"]) : undefined;
+router.get("/export/csv", requireEmployeeAuth, async (req, res) => {
+  if (!isAdmin(req) && !req.user?.storeId) {
+    res.status(403).json({ error: "No store assigned to your account" });
+    return;
+  }
+
+  const requestedStoreId = req.query["storeId"] ? Number(req.query["storeId"]) : undefined;
+  const effectiveStoreId = scopedStoreId(req, requestedStoreId);
   const weekOf = req.query["weekOf"] as string | undefined;
   const limit = req.query["limit"] ? Number(req.query["limit"]) : 500;
 
   const conditions = [];
-  if (storeId) conditions.push(eq(inventoryCountsTable.storeId, storeId));
+  if (effectiveStoreId !== null) conditions.push(eq(inventoryCountsTable.storeId, effectiveStoreId));
   if (weekOf) conditions.push(eq(inventoryCountsTable.weekOf, weekOf));
 
   const counts = await db
@@ -65,7 +72,7 @@ router.get("/export/csv", async (req, res) => {
   }
 
   const filename = weekOf
-    ? `inventory_${weekOf}${storeId ? `_store${storeId}` : ""}.csv`
+    ? `inventory_${weekOf}${effectiveStoreId ? `_store${effectiveStoreId}` : ""}.csv`
     : `inventory_export.csv`;
 
   res.setHeader("Content-Type", "text/csv");
@@ -73,7 +80,12 @@ router.get("/export/csv", async (req, res) => {
   res.send(rows.join("\r\n"));
 });
 
-router.get("/export/grid-csv", async (req, res) => {
+router.get("/export/grid-csv", requireEmployeeAuth, async (req, res) => {
+  if (!isAdmin(req)) {
+    res.status(403).json({ error: "Grid export requires admin access" });
+    return;
+  }
+
   const weekOf = req.query["weekOf"] as string | undefined;
 
   const stores = await db.select().from(storesTable).orderBy(storesTable.name);

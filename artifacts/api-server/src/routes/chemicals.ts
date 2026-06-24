@@ -1,11 +1,13 @@
 import { Router } from "express";
+import { requireEmployeeAuth } from "../lib/userAuth";
+import { requireAdminPin } from "../lib/adminAuth";
 import { db } from "@workspace/db";
 import { chemicalsTable, inventoryEntriesTable, alertsTable } from "@workspace/db";
 import { asc, eq } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/chemicals", async (_req, res) => {
+router.get("/chemicals", requireEmployeeAuth, async (_req, res) => {
   const chemicals = await db.select().from(chemicalsTable).orderBy(asc(chemicalsTable.name));
   res.json(
     chemicals.map((c) => ({
@@ -17,7 +19,7 @@ router.get("/chemicals", async (_req, res) => {
   );
 });
 
-router.patch("/chemicals/:chemicalId", async (req, res) => {
+router.patch("/chemicals/:chemicalId", requireAdminPin, async (req, res) => {
   const chemicalId = Number(req.params["chemicalId"]);
   const { name, unit, thresholdPercent } = req.body as {
     name?: string;
@@ -44,7 +46,7 @@ router.patch("/chemicals/:chemicalId", async (req, res) => {
   res.json({ id: updated.id, name: updated.name, unit: updated.unit, thresholdPercent: updated.thresholdPercent });
 });
 
-router.delete("/chemicals/:chemicalId", async (req, res) => {
+router.delete("/chemicals/:chemicalId", requireAdminPin, async (req, res) => {
   const chemicalId = Number(req.params["chemicalId"]);
 
   await db.delete(inventoryEntriesTable).where(eq(inventoryEntriesTable.chemicalId, chemicalId));

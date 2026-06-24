@@ -1,18 +1,25 @@
 import { Router } from "express";
+import { requireEmployeeAuth, isAdmin, scopedStoreId, denyIfWrongStore } from "../lib/userAuth";
 import { db } from "@workspace/db";
 import { chemicalOrdersTable, storesTable, chemicalsTable, usersTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/orders", async (req, res) => {
-  const storeId = req.query["storeId"] ? Number(req.query["storeId"]) : undefined;
+router.get("/orders", requireEmployeeAuth, async (req, res) => {
+  if (!isAdmin(req) && !req.user?.storeId) {
+    res.status(403).json({ error: "No store assigned to your account" });
+    return;
+  }
+
+  const requestedStoreId = req.query["storeId"] ? Number(req.query["storeId"]) : undefined;
+  const effectiveStoreId = scopedStoreId(req, requestedStoreId);
   const status = req.query["status"] as string | undefined;
   const chemicalId = req.query["chemicalId"] ? Number(req.query["chemicalId"]) : undefined;
   const limit = req.query["limit"] ? Number(req.query["limit"]) : 200;
 
   const conditions = [];
-  if (storeId) conditions.push(eq(chemicalOrdersTable.storeId, storeId));
+  if (effectiveStoreId !== null) conditions.push(eq(chemicalOrdersTable.storeId, effectiveStoreId));
   if (status) conditions.push(eq(chemicalOrdersTable.status, status));
   if (chemicalId) conditions.push(eq(chemicalOrdersTable.chemicalId, chemicalId));
 
@@ -46,10 +53,19 @@ router.get("/orders", async (req, res) => {
   res.json(orders.map((o) => ({ ...o, createdAt: o.createdAt.toISOString() })));
 });
 
-router.post("/orders", async (req, res) => {
-  const { storeId, chemicalId, quantityOrdered, unit, orderDate, expectedDelivery, poNumber, orderedBy, notes, userId } =
+router.post("/orders", requireEmployeeAuth, async (req, res) => {
+  const userStoreId = isAdmin(req)
+    ? Number(req.body.storeId)
+    : (req.user?.storeId ?? null);
+
+  if (!userStoreId) {
+    res.status(403).json({ error: "No store assigned to your account" });
+    return;
+  }
+
+  const { chemicalId, quantityOrdered, unit, orderDate, expectedDelivery, poNumber, orderedBy, notes, userId } =
     req.body as {
-      storeId: number; chemicalId: number; quantityOrdered: number; unit?: string;
+      chemicalId: number; quantityOrdered: number; unit?: string;
       orderDate: string; expectedDelivery?: string; poNumber?: string; orderedBy?: string; notes?: string;
       userId?: number | null;
     };
@@ -57,7 +73,7 @@ router.post("/orders", async (req, res) => {
   const [order] = await db
     .insert(chemicalOrdersTable)
     .values({
-      storeId: Number(storeId),
+      storeId: userStoreId,
       chemicalId: Number(chemicalId),
       quantityOrdered: Number(quantityOrdered),
       unit: unit ?? "gallons",
@@ -80,8 +96,21 @@ router.post("/orders", async (req, res) => {
   res.json({ ...order, storeName: store?.name ?? "", chemicalName: chemical?.name ?? "", userName: user?.name ?? null, createdAt: order.createdAt.toISOString() });
 });
 
-router.patch("/orders/:orderId", async (req, res) => {
+router.patch("/orders/:orderId", requireEmployeeAuth, async (req, res) => {
   const orderId = Number(req.params["orderId"]);
+
+  const [existing] = await db
+    .select({ storeId: chemicalOrdersTable.storeId })
+    .from(chemicalOrdersTable)
+    .where(eq(chemicalOrdersTable.id, orderId));
+
+  if (!existing) {
+    res.status(404).json({ error: "Order not found" });
+    return;
+  }
+
+  if (denyIfWrongStore(req, res, existing.storeId)) return;
+
   const { status, quantityOrdered, expectedDelivery, poNumber, orderedBy, notes, userId } = req.body as {
     status?: string; quantityOrdered?: number; expectedDelivery?: string;
     poNumber?: string; orderedBy?: string; notes?: string; userId?: number | null;
@@ -110,8 +139,21 @@ router.patch("/orders/:orderId", async (req, res) => {
   res.json({ ...updated, createdAt: updated.createdAt.toISOString() });
 });
 
-router.delete("/orders/:orderId", async (req, res) => {
+router.delete("/orders/:orderId", requireEmployeeAuth, async (req, res) => {
   const orderId = Number(req.params["orderId"]);
+
+  const [existing] = await db
+    .select({ storeId: chemicalOrdersTable.storeId })
+    .from(chemicalOrdersTable)
+    .where(eq(chemicalOrdersTable.id, orderId));
+
+  if (!existing) {
+    res.status(404).json({ error: "Order not found" });
+    return;
+  }
+
+  if (denyIfWrongStore(req, res, existing.storeId)) return;
+
   await db.delete(chemicalOrdersTable).where(eq(chemicalOrdersTable.id, orderId));
   res.json({ success: true, id: orderId });
 });

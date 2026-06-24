@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireEmployeeAuth } from "../lib/userAuth";
+import { requireEmployeeAuth, isAdmin, scopedStoreId, denyIfWrongStore } from "../lib/userAuth";
 import { db } from "@workspace/db";
 import {
   inventoryCountsTable,
@@ -21,13 +21,19 @@ import { sendAlertPush } from "../services/push";
 
 const router = Router();
 
-router.get("/inventory", async (req, res) => {
-  const storeId = req.query["storeId"] ? Number(req.query["storeId"]) : undefined;
+router.get("/inventory", requireEmployeeAuth, async (req, res) => {
+  if (!isAdmin(req) && !req.user?.storeId) {
+    res.status(403).json({ error: "No store assigned to your account" });
+    return;
+  }
+
+  const requestedStoreId = req.query["storeId"] ? Number(req.query["storeId"]) : undefined;
+  const effectiveStoreId = scopedStoreId(req, requestedStoreId);
   const weekOf = req.query["weekOf"] as string | undefined;
   const limit = req.query["limit"] ? Number(req.query["limit"]) : 50;
 
   const conditions = [];
-  if (storeId) conditions.push(eq(inventoryCountsTable.storeId, storeId));
+  if (effectiveStoreId !== null) conditions.push(eq(inventoryCountsTable.storeId, effectiveStoreId));
   if (weekOf) conditions.push(eq(inventoryCountsTable.weekOf, weekOf));
 
   const counts = await db
@@ -73,11 +79,11 @@ router.get("/inventory", async (req, res) => {
   res.json(result);
 });
 
-router.get("/inventory/scan", async (_req, res) => {
+router.get("/inventory/scan", requireEmployeeAuth, async (_req, res) => {
   res.status(405).json({ error: "Use POST for scan" });
 });
 
-router.get("/inventory/:countId", async (req, res) => {
+router.get("/inventory/:countId", requireEmployeeAuth, async (req, res) => {
   const countId = Number(req.params["countId"]);
 
   if (!Number.isInteger(countId) || countId <= 0) {
@@ -104,6 +110,8 @@ router.get("/inventory/:countId", async (req, res) => {
     return;
   }
 
+  if (denyIfWrongStore(req, res, count.storeId)) return;
+
   const entries = await db
     .select({
       chemicalId: inventoryEntriesTable.chemicalId,
@@ -118,8 +126,21 @@ router.get("/inventory/:countId", async (req, res) => {
   res.json({ ...count, submittedAt: count.submittedAt.toISOString(), entries });
 });
 
-router.patch("/inventory/:countId", async (req, res) => {
+router.patch("/inventory/:countId", requireEmployeeAuth, async (req, res) => {
   const countId = Number(req.params["countId"]);
+
+  const [existing] = await db
+    .select({ storeId: inventoryCountsTable.storeId })
+    .from(inventoryCountsTable)
+    .where(eq(inventoryCountsTable.id, countId));
+
+  if (!existing) {
+    res.status(404).json({ error: "Count not found" });
+    return;
+  }
+
+  if (denyIfWrongStore(req, res, existing.storeId)) return;
+
   const { notes, submittedBy } = req.body as { notes?: string | null; submittedBy?: string };
 
   const updates: Partial<typeof inventoryCountsTable.$inferInsert> = {};
@@ -140,8 +161,21 @@ router.patch("/inventory/:countId", async (req, res) => {
   res.json({ success: true, id: countId });
 });
 
-router.delete("/inventory/:countId", async (req, res) => {
+router.delete("/inventory/:countId", requireEmployeeAuth, async (req, res) => {
   const countId = Number(req.params["countId"]);
+
+  const [existing] = await db
+    .select({ storeId: inventoryCountsTable.storeId })
+    .from(inventoryCountsTable)
+    .where(eq(inventoryCountsTable.id, countId));
+
+  if (!existing) {
+    res.status(404).json({ error: "Count not found" });
+    return;
+  }
+
+  if (denyIfWrongStore(req, res, existing.storeId)) return;
+
   await db.delete(inventoryEntriesTable).where(eq(inventoryEntriesTable.countId, countId));
   await db.delete(inventoryCountsTable).where(eq(inventoryCountsTable.id, countId));
   res.json({ success: true, id: countId });
@@ -156,10 +190,16 @@ router.post("/inventory", requireEmployeeAuth, async (req, res) => {
 
   const body = parseResult.data;
 
+  const userStoreId = isAdmin(req) ? body.storeId : (req.user?.storeId ?? null);
+  if (!userStoreId) {
+    res.status(403).json({ error: "No store assigned to your account" });
+    return;
+  }
+
   const [count] = await db
     .insert(inventoryCountsTable)
     .values({
-      storeId: body.storeId,
+      storeId: userStoreId,
       weekOf: body.weekOf,
       submittedBy: body.submittedBy,
       userId: (body as { userId?: number | null }).userId ?? null,
@@ -181,12 +221,12 @@ router.post("/inventory", requireEmployeeAuth, async (req, res) => {
   );
 
   // Compare to previous week's count and generate alerts
-  await generateAlerts(count.id, body.storeId, body.weekOf, body.entries, req);
+  await generateAlerts(count.id, userStoreId, body.weekOf, body.entries, req);
 
   const [store] = await db
     .select({ name: storesTable.name })
     .from(storesTable)
-    .where(eq(storesTable.id, body.storeId));
+    .where(eq(storesTable.id, userStoreId));
 
   const entries = await db
     .select({
@@ -205,7 +245,7 @@ router.post("/inventory", requireEmployeeAuth, async (req, res) => {
       .insert(inventoryOnHandTable)
       .values(
         entries.map((e) => ({
-          storeId: body.storeId,
+          storeId: userStoreId,
           chemicalId: e.chemicalId,
           quantity: e.quantity,
           unit: e.unit,
