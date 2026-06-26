@@ -2,8 +2,10 @@ import { type Request, type Response, type NextFunction } from "express";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
+import { verifyAdminPin } from "./adminAuth";
 
 const USER_TOKEN_HEADER = "x-user-token";
+const ADMIN_PIN_HEADER = "x-admin-pin";
 
 /**
  * Express middleware that requires a valid employee session token.
@@ -16,6 +18,18 @@ export async function requireEmployeeAuth(
   res: Response,
   next: NextFunction
 ): Promise<void> {
+  // A valid admin PIN satisfies employee auth with full admin privileges.
+  const adminPin = req.headers[ADMIN_PIN_HEADER] as string | undefined;
+  if (adminPin) {
+    const ip = req.ip ?? req.socket?.remoteAddress ?? "unknown";
+    const check = verifyAdminPin(adminPin, ip);
+    if (check.result === "ok") {
+      req.user = { id: 0, role: "admin", storeId: null };
+      next();
+      return;
+    }
+  }
+
   const token = req.headers[USER_TOKEN_HEADER] as string | undefined;
   if (!token) {
     res.status(401).json({ error: "Authentication required" });

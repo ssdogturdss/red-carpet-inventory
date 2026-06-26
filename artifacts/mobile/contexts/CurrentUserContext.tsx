@@ -216,27 +216,21 @@ function LoginScreen({ onLogin }: { onLogin: (user: CurrentUser, token: string) 
   });
 
   const handleAdminBypass = async () => {
-    const ADMIN_PIN_URL = `${BASE_URL}/api/auth/login`;
     try {
-      const res = await fetch(ADMIN_PIN_URL, {
+      const verifyRes = await fetch(`${BASE_URL}/api/admin/auth`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: 0, pin: adminPin }),
+        body: JSON.stringify({ pin: adminPin }),
       });
-      if (res.status === 400) {
-        // userId=0 won't match — but we can verify PIN by calling admin endpoint
+      const data = await verifyRes.json() as { success: boolean; error?: string };
+      if (verifyRes.ok && data.success) {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        onLogin({ id: 0, name: "Admin", storeId: null, storeName: null, role: "admin" }, "__admin__");
+      } else {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        setAdminError(true);
       }
     } catch {
-      // ignore
-    }
-    // Verify admin PIN via a known admin-only endpoint
-    const verifyRes = await fetch(`${BASE_URL}/api/admin/users`, {
-      headers: { "x-admin-pin": adminPin },
-    });
-    if (verifyRes.ok) {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      onLogin({ id: 0, name: "Admin", storeId: null, storeName: null, role: "admin" }, "__admin__");
-    } else {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setAdminError(true);
     }
