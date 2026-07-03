@@ -10,6 +10,7 @@ import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useColors } from "@/hooks/useColors";
+import { setDefaultHeaders } from "@workspace/api-client-react";
 
 const BASE_URL = `https://${process.env.EXPO_PUBLIC_DOMAIN}`;
 const TOKEN_KEY = "rci_user_token_v2";
@@ -130,6 +131,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: CurrentUser, token: string) 
       const data = (await res.json()) as { success: boolean; token?: string; user?: CurrentUser };
       if (data.success && data.token && data.user) {
         await storeToken(data.token);
+        setDefaultHeaders({ "x-user-token": data.token });
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         onLogin(data.user, data.token);
       } else {
@@ -224,6 +226,7 @@ function LoginScreen({ onLogin }: { onLogin: (user: CurrentUser, token: string) 
       });
       const data = await verifyRes.json() as { success: boolean; error?: string };
       if (verifyRes.ok && data.success) {
+        setDefaultHeaders({ "x-admin-pin": adminPin });
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         onLogin({ id: 0, name: "Admin", storeId: null, storeName: null, role: "admin" }, "__admin__");
       } else {
@@ -371,6 +374,7 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
       if (stored) {
         const me = await fetchMe(stored);
         if (me) {
+          setDefaultHeaders({ "x-user-token": stored });
           setUser(me);
           setToken(stored);
         } else {
@@ -398,6 +402,7 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
       }
     }
     await clearToken();
+    setDefaultHeaders({});
     setUser(null);
     setToken(null);
   }, [token]);
