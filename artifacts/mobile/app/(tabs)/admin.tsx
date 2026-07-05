@@ -21,6 +21,7 @@ import {
   useGetAdminUsers, useCreateAdminUser, useUpdateAdminUser, useDeleteAdminUser,
   useGetAdminPushTokens, useDeleteAdminPushToken,
   useGetAdminPushReceipts,
+  setDefaultHeaders,
 } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 import { EmptyState } from "@/components/EmptyState";
@@ -1364,7 +1365,7 @@ export default function AdminScreen() {
   if (!authenticated) {
     return (
       <PinScreen
-        onSuccess={(pin) => { setAuthenticated(true); setAdminPin(pin); }}
+        onSuccess={(pin) => { setDefaultHeaders({ "x-admin-pin": pin }); setAuthenticated(true); setAdminPin(pin); }}
         insets={{ top: insets.top }}
       />
     );
