@@ -4,6 +4,26 @@
     "appVersionSource": "local"
   },
   "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "RedCarpetInventory.replit.app"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_DOMAIN": "RedCarpetInventory.replit.app"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "resourceClass": "m-medium",
+        "simulator": false
+      }
+    },
     "production": {
       "env": {
         "EXPO_PUBLIC_DOMAIN": "RedCarpetInventory.replit.app"
@@ -11,6 +31,9 @@
       "ios": {
         "resourceClass": "m-medium",
         "simulator": false
+      },
+      "android": {
+        "buildType": "app-bundle"
       }
     }
   },

@@ -19,7 +19,10 @@
       "bundleIdentifier": "com.redcarpetinventory.app",
       "buildNumber": "1"
     },
-    "android": {},
+    "android": {
+      "package": "com.redcarpetinventory.app",
+      "versionCode": 1
+    },
     "web": {
       "favicon": "./assets/images/icon.png",
       "name": "Red Carpet Inventory",
@@ -37,7 +40,22 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#cc0000"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Red Carpet Inventory to access your photos to attach inventory sheet images.",
+          "cameraPermission": "Allow Red Carpet Inventory to use your camera to scan inventory count sheets."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
