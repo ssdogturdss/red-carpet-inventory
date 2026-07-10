@@ -2,7 +2,7 @@
   "expo": {
     "name": "Red Carpet Inventory",
     "slug": "mobile",
-    "owner": "imaalien",
+    "owner": "syntheticsolutions",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -17,11 +17,17 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.redcarpetinventory.app",
-      "buildNumber": "1"
+      "buildNumber": "2",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.redcarpetinventory.app",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/images/icon.png",
@@ -63,7 +69,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "acad93ff-8678-4d60-8825-773258875948"
+        "projectId": "bfd9be3e-0fb3-4402-a511-6866f81edc21"
       }
     }
   }

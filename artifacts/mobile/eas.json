@@ -25,6 +25,7 @@
       }
     },
     "production": {
+      "distribution": "store",
       "env": {
         "EXPO_PUBLIC_DOMAIN": "RedCarpetInventory.replit.app"
       },
