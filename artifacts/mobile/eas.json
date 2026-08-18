@@ -8,13 +8,13 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "RedCarpetInventory.replit.app"
+        "EXPO_PUBLIC_DOMAIN": "http://localhost:8080"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "RedCarpetInventory.replit.app"
+        "EXPO_PUBLIC_DOMAIN": "http://localhost:8080"
       },
       "android": {
         "buildType": "apk"
@@ -27,7 +27,7 @@
     "production": {
       "distribution": "store",
       "env": {
-        "EXPO_PUBLIC_DOMAIN": "RedCarpetInventory.replit.app"
+        "EXPO_PUBLIC_DOMAIN": "https://your-api-domain.com"
       },
       "ios": {
         "resourceClass": "m-medium",

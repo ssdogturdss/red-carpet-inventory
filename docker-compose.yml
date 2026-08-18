@@ -1,0 +1,64 @@
+version: "3.9"
+
+# =============================================================================
+# Red Carpet Chemical Inventory — Docker Compose (local development / VPS)
+# =============================================================================
+# Usage:
+#   docker compose up --build         # Start postgres + api server
+#   docker compose up -d              # Detached mode
+#   docker compose down -v            # Stop and remove volumes
+#
+# Copy .env.example to .env and set real values before running.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # PostgreSQL database
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: inventory
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # API server (Express)
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/inventory
+      PORT: 8080
+      NODE_ENV: production
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production}
+      ADMIN_PIN: ${ADMIN_PIN:-1234}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENAI_VISION_MODEL: ${OPENAI_VISION_MODEL:-gpt-4o}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  postgres_data:

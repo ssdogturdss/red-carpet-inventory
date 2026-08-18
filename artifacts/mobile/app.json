@@ -42,7 +42,7 @@
       [
         "expo-router",
         {
-          "origin": "https://RedCarpetInventory.replit.app"
+          "origin": "https://redcarpetinventory.app"
         }
       ],
       "expo-font",

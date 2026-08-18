@@ -36,8 +36,12 @@ Rules:
 - confidence "high" = clearly readable, "medium" = partially readable, "low" = guessed or not found
 - Return ONLY the JSON, no other text`;
 
+  // Model is configurable — set OPENAI_VISION_MODEL to override.
+  // Replit AI Integration default: gpt-5.4. Standard OpenAI: gpt-4o.
+  const model = process.env.OPENAI_VISION_MODEL ?? "gpt-4o";
+
   const response = await openai.chat.completions.create({
-    model: "gpt-5.4",
+    model,
     max_completion_tokens: 2048,
     messages: [
       {
@@ -67,7 +71,7 @@ Rules:
     parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
   } catch {
     req.log.error({ raw }, "Failed to parse AI response");
-    res.status(500).json({ error: "Failed to parse AI response", raw });
+    res.status(500).json({ error: "Failed to parse AI response" });
     return;
   }
 
