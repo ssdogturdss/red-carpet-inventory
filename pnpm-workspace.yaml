@@ -70,6 +70,7 @@ autoInstallPeers: false
 
 onlyBuiltDependencies:
   - '@swc/core'
+  - dtrace-provider
   - esbuild
   - msw
   - unrs-resolver
@@ -86,7 +87,6 @@ overrides:
   "esbuild>@esbuild/linux-loong64": "-"
   "esbuild>@esbuild/linux-mips64el": "-"
   "esbuild>@esbuild/linux-ppc64": "-"
-  "esbuild>@esbuild/linux-riscv64": "-"
   "esbuild>@esbuild/linux-s390x": "-"
   "esbuild>@esbuild/netbsd-arm64": "-"
   "esbuild>@esbuild/netbsd-x64": "-"
